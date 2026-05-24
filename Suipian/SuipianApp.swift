@@ -1,23 +1,13 @@
-//
-//  SuipianApp.swift
-//  Suipian
-//
-//  Created by kok-s0s on 2026/5/24.
-//
-
 import SwiftUI
 import SwiftData
 
 @main
 struct SuipianApp: App {
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
+        let schema = Schema([Fragment.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try ModelContainer(for: schema, configurations: [config])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
