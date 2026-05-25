@@ -1,4 +1,5 @@
 import SwiftUI
+import Photos
 
 struct FullScreenMediaViewer: View {
     let identifiers: [String]
@@ -8,6 +9,8 @@ struct FullScreenMediaViewer: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var currentIndex: Int
+    // Precomputed synchronously in init — PHAsset metadata read is fast
+    private let videoIDs: Set<String>
 
     init(identifiers: [String], startIndex: Int, coverIdentifier: String? = nil, onSetCover: ((String) -> Void)? = nil) {
         self.identifiers = identifiers
@@ -15,6 +18,13 @@ struct FullScreenMediaViewer: View {
         self.coverIdentifier = coverIdentifier
         self.onSetCover = onSetCover
         _currentIndex = State(initialValue: startIndex)
+
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
+        var vids = Set<String>()
+        assets.enumerateObjects { asset, _, _ in
+            if asset.mediaType == .video { vids.insert(asset.localIdentifier) }
+        }
+        videoIDs = vids
     }
 
     private var effectiveCoverID: String? {
@@ -28,14 +38,22 @@ struct FullScreenMediaViewer: View {
 
             TabView(selection: $currentIndex) {
                 ForEach(Array(identifiers.enumerated()), id: \.offset) { index, id in
-                    ZoomablePhotoView(identifier: id)
-                        .tag(index)
+                    if videoIDs.contains(id) {
+                        // Videos: no gesture wrapper — VideoPlayer controls must receive touches freely
+                        MediaDetailView(identifier: id)
+                            .ignoresSafeArea()
+                            .tag(index)
+                    } else {
+                        // Photos: pinch-to-zoom, double-tap, pan
+                        ZoomablePhotoView(identifier: id)
+                            .tag(index)
+                    }
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: identifiers.count > 1 ? .always : .never))
             .ignoresSafeArea()
 
-            // top bar
+            // Close button (top-right)
             HStack {
                 Spacer()
                 Button { dismiss() } label: {
@@ -48,15 +66,13 @@ struct FullScreenMediaViewer: View {
             .padding(.top, 8)
             .padding(.horizontal, 16)
 
-            // bottom bar — set cover
-            if identifiers.count > 1, let onSetCover {
+            // Set-cover button (bottom, photos only, multi-media only)
+            if identifiers.count > 1, let onSetCover, !videoIDs.contains(identifiers[currentIndex]) {
                 VStack {
                     Spacer()
                     let currentID = identifiers[currentIndex]
                     let isCover = currentID == effectiveCoverID
-                    Button {
-                        onSetCover(currentID)
-                    } label: {
+                    Button { onSetCover(currentID) } label: {
                         Label(
                             isCover ? "当前首图" : "设为首图",
                             systemImage: isCover ? "photo.badge.checkmark.fill" : "photo.badge.checkmark"
@@ -74,6 +90,8 @@ struct FullScreenMediaViewer: View {
         }
     }
 }
+
+// MARK: - Zoomable wrapper for photos only
 
 private struct ZoomablePhotoView: View {
     let identifier: String
@@ -101,9 +119,7 @@ private struct ZoomablePhotoView: View {
             )
             .simultaneousGesture(
                 DragGesture()
-                    .updating($dragDelta) { value, state, _ in
-                        state = value.translation
-                    }
+                    .updating($dragDelta) { value, state, _ in state = value.translation }
                     .onEnded { value in
                         panOffset = CGSize(
                             width: panOffset.width + value.translation.width,
@@ -114,12 +130,8 @@ private struct ZoomablePhotoView: View {
             )
             .onTapGesture(count: 2) {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    if scale > 1.0 {
-                        scale = 1.0
-                        panOffset = .zero
-                    } else {
-                        scale = 2.5
-                    }
+                    if scale > 1.0 { scale = 1.0; panOffset = .zero }
+                    else { scale = 2.5 }
                 }
             }
     }
