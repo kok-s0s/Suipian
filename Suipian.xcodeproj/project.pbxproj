@@ -256,7 +256,8 @@
 				DEVELOPMENT_TEAM = VBJ2Z8Y5RC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于在旅行记录中标注您的当前位置";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于在碎片中标注位置";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "用于读取您选择关联到碎片的照片和视频";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -289,7 +290,8 @@
 				DEVELOPMENT_TEAM = VBJ2Z8Y5RC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于在旅行记录中标注您的当前位置";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于在碎片中标注位置";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "用于读取您选择关联到碎片的照片和视频";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

@@ -10,8 +10,8 @@ struct FragmentEditView: View {
     var fragment: Fragment?
 
     @State private var content = ""
-    @State private var photosData: [Data] = []
-    @State private var selectedPhotos: [PhotosPickerItem] = []
+    @State private var mediaIdentifiers: [String] = []
+    @State private var selectedItems: [PhotosPickerItem] = []
     @State private var tags: [String] = []
     @State private var tagInput = ""
     @State private var date = Date()
@@ -26,14 +26,15 @@ struct FragmentEditView: View {
     var isEditing: Bool { fragment != nil }
     var hasLocation: Bool { latitude != 0 || longitude != 0 }
     var canSave: Bool {
-        !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !photosData.isEmpty
+        !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !mediaIdentifiers.isEmpty
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    // ── 主文本区 ──────────────────────────────
+
+                    // ── 主文本区 ─────────────────────────────────
                     ZStack(alignment: .topLeading) {
                         if content.isEmpty {
                             Text("写下这个碎片……")
@@ -51,41 +52,40 @@ struct FragmentEditView: View {
 
                     Divider().padding(.vertical, 12)
 
-                    // ── 图片 ─────────────────────────────────
+                    // ── 媒体（照片 & 视频）────────────────────────
                     VStack(alignment: .leading, spacing: 10) {
                         PhotosPicker(
-                            selection: $selectedPhotos,
-                            maxSelectionCount: 9,
-                            matching: .images
+                            selection: $selectedItems,
+                            maxSelectionCount: 20,
+                            matching: .any(of: [.images, .videos])
                         ) {
-                            Label("添加图片", systemImage: "photo.on.rectangle.angled")
+                            Label("添加照片或视频", systemImage: "photo.on.rectangle.angled")
                                 .font(.subheadline)
                                 .foregroundStyle(Color.accentColor)
                         }
                         .padding(.horizontal, 16)
 
-                        if !photosData.isEmpty {
+                        if !mediaIdentifiers.isEmpty {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 10) {
-                                    ForEach(Array(photosData.enumerated()), id: \.offset) { index, data in
-                                        if let image = UIImage(data: data) {
-                                            ZStack(alignment: .topTrailing) {
-                                                Image(uiImage: image)
-                                                    .resizable()
-                                                    .scaledToFill()
-                                                    .frame(width: 96, height: 96)
-                                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    ForEach(Array(mediaIdentifiers.enumerated()), id: \.offset) { index, id in
+                                        ZStack(alignment: .topTrailing) {
+                                            MediaThumbnailView(
+                                                identifier: id,
+                                                size: CGSize(width: 200, height: 200)
+                                            )
+                                            .frame(width: 96, height: 96)
+                                            .clipShape(RoundedRectangle(cornerRadius: 10))
 
-                                                Button {
-                                                    photosData.remove(at: index)
-                                                } label: {
-                                                    Image(systemName: "xmark.circle.fill")
-                                                        .font(.title3)
-                                                        .foregroundStyle(.white)
-                                                        .shadow(radius: 2)
-                                                }
-                                                .padding(4)
+                                            Button {
+                                                mediaIdentifiers.remove(at: index)
+                                            } label: {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .font(.title3)
+                                                    .foregroundStyle(.white)
+                                                    .shadow(radius: 2)
                                             }
+                                            .padding(4)
                                         }
                                     }
                                 }
@@ -96,7 +96,7 @@ struct FragmentEditView: View {
 
                     Divider().padding(.vertical, 12)
 
-                    // ── 标签 ─────────────────────────────────
+                    // ── 标签 ─────────────────────────────────────
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
                             Image(systemName: "tag")
@@ -141,12 +141,11 @@ struct FragmentEditView: View {
 
                     Divider().padding(.vertical, 12)
 
-                    // ── 时间 & 地点 ────────────────────────────
+                    // ── 时间 & 地点 ───────────────────────────────
                     VStack(alignment: .leading, spacing: 12) {
                         DatePicker("时间", selection: $date)
                             .padding(.horizontal, 16)
 
-                        // Location
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Image(systemName: "location")
@@ -162,9 +161,7 @@ struct FragmentEditView: View {
                                         .font(.subheadline)
                                 }
                                 if hasLocation {
-                                    Button {
-                                        clearLocation()
-                                    } label: {
+                                    Button { clearLocation() } label: {
                                         Image(systemName: "xmark.circle.fill")
                                             .foregroundStyle(Color.secondary)
                                     }
@@ -175,9 +172,7 @@ struct FragmentEditView: View {
                             if !searchResults.isEmpty {
                                 VStack(alignment: .leading, spacing: 0) {
                                     ForEach(searchResults) { result in
-                                        Button {
-                                            selectLocation(result)
-                                        } label: {
+                                        Button { selectLocation(result) } label: {
                                             VStack(alignment: .leading, spacing: 2) {
                                                 Text(result.name)
                                                     .font(.subheadline)
@@ -231,17 +226,13 @@ struct FragmentEditView: View {
                 }
             }
             .onAppear { loadExisting() }
-            .onChange(of: selectedPhotos) { _, newItems in
-                Task {
-                    for item in newItems {
-                        if let data = try? await item.loadTransferable(type: Data.self),
-                           let image = UIImage(data: data),
-                           let compressed = image.jpegData(compressionQuality: 0.7) {
-                            photosData.append(compressed)
-                        }
+            .onChange(of: selectedItems) { _, newItems in
+                for item in newItems {
+                    if let id = item.itemIdentifier, !mediaIdentifiers.contains(id) {
+                        mediaIdentifiers.append(id)
                     }
-                    selectedPhotos = []
                 }
+                selectedItems = []
             }
         }
     }
@@ -251,7 +242,7 @@ struct FragmentEditView: View {
     private func loadExisting() {
         guard let fragment else { return }
         content = fragment.content
-        photosData = fragment.photosData
+        mediaIdentifiers = fragment.mediaIdentifiers
         tags = fragment.tags
         date = fragment.date
         latitude = fragment.latitude
@@ -306,17 +297,15 @@ struct FragmentEditView: View {
     }
 
     private func clearLocation() {
-        latitude = 0
-        longitude = 0
-        locationName = ""
-        locationSearch = ""
+        latitude = 0; longitude = 0
+        locationName = ""; locationSearch = ""
         cameraPosition = .automatic
     }
 
     private func save() {
         if let fragment {
             fragment.content = content
-            fragment.photosData = photosData
+            fragment.mediaIdentifiers = mediaIdentifiers
             fragment.tags = tags
             fragment.date = date
             fragment.latitude = latitude
@@ -325,7 +314,7 @@ struct FragmentEditView: View {
         } else {
             modelContext.insert(Fragment(
                 content: content,
-                photosData: photosData,
+                mediaIdentifiers: mediaIdentifiers,
                 date: date,
                 tags: tags,
                 latitude: latitude,

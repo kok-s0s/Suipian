@@ -9,7 +9,14 @@ struct SuipianApp: App {
         do {
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            // Schema changed (e.g. photosData → mediaIdentifiers) — delete old store
+            let fm = FileManager.default
+            if let support = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+                let files = (try? fm.contentsOfDirectory(at: support, includingPropertiesForKeys: nil)) ?? []
+                files.filter { $0.pathExtension == "store" || $0.pathExtension == "sqlite" }
+                    .forEach { try? fm.removeItem(at: $0) }
+            }
+            return try! ModelContainer(for: schema, configurations: [config])
         }
     }()
 

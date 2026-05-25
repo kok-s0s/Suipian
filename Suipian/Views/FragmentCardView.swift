@@ -5,40 +5,42 @@ struct FragmentCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Cover photo
-            if let data = fragment.photosData.first, let image = UIImage(data: data) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 220)
-                    .clipped()
-                    .overlay(alignment: .bottomTrailing) {
-                        if fragment.photosData.count > 1 {
-                            Label("\(fragment.photosData.count)", systemImage: "square.on.square")
-                                .font(.caption2)
-                                .fontWeight(.medium)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(.ultraThinMaterial)
-                                .clipShape(Capsule())
-                                .padding(10)
-                        }
+            // Cover media (first photo or video)
+            if let firstID = fragment.mediaIdentifiers.first {
+                MediaThumbnailView(
+                    identifier: firstID,
+                    size: CGSize(width: 800, height: 500)
+                )
+                .frame(maxWidth: .infinity, minHeight: 200, maxHeight: 220)
+                .clipped()
+                .overlay(alignment: .bottomTrailing) {
+                    if fragment.mediaIdentifiers.count > 1 {
+                        Label(
+                            "\(fragment.mediaIdentifiers.count)",
+                            systemImage: "square.on.square"
+                        )
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                        .padding(10)
                     }
+                }
             }
 
             // Text & metadata
             VStack(alignment: .leading, spacing: 10) {
                 if !fragment.content.isEmpty {
                     Text(fragment.content)
-                        .font(fragment.photosData.isEmpty ? .body : .subheadline)
+                        .font(fragment.hasMedia ? .subheadline : .body)
                         .foregroundStyle(.primary)
-                        .lineLimit(fragment.photosData.isEmpty ? 8 : 3)
+                        .lineLimit(fragment.hasMedia ? 3 : 8)
                         .multilineTextAlignment(.leading)
                 }
 
                 HStack(alignment: .center) {
-                    // Tags
                     if !fragment.tags.isEmpty {
                         HStack(spacing: 6) {
                             ForEach(fragment.tags.prefix(3), id: \.self) { tag in

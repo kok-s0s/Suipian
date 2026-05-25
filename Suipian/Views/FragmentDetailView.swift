@@ -10,24 +10,20 @@ struct FragmentDetailView: View {
 
     @State private var showingEdit = false
     @State private var showingDeleteConfirm = false
+    @State private var fullScreenIndex: Int? = nil
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // Photo carousel
-                if !fragment.photosData.isEmpty {
+                // Media carousel
+                if !fragment.mediaIdentifiers.isEmpty {
                     TabView {
-                        ForEach(Array(fragment.photosData.enumerated()), id: \.offset) { _, data in
-                            if let image = UIImage(data: data) {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(maxWidth: .infinity)
-                                    .clipped()
-                            }
+                        ForEach(Array(fragment.mediaIdentifiers.enumerated()), id: \.offset) { index, id in
+                            MediaDetailView(identifier: id)
+                                .onTapGesture { fullScreenIndex = index }
                         }
                     }
-                    .tabViewStyle(.page(indexDisplayMode: fragment.photosData.count > 1 ? .always : .never))
+                    .tabViewStyle(.page(indexDisplayMode: fragment.mediaIdentifiers.count > 1 ? .always : .never))
                     .frame(height: 320)
                 }
 
@@ -101,15 +97,11 @@ struct FragmentDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
-                    Button {
-                        showingEdit = true
-                    } label: {
+                    Button { showingEdit = true } label: {
                         Label("编辑", systemImage: "pencil")
                     }
                     Divider()
-                    Button(role: .destructive) {
-                        showingDeleteConfirm = true
-                    } label: {
+                    Button(role: .destructive) { showingDeleteConfirm = true } label: {
                         Label("删除", systemImage: "trash")
                     }
                 } label: {

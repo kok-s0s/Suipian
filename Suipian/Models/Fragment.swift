@@ -4,7 +4,8 @@ import SwiftData
 @Model
 final class Fragment {
     var content: String
-    var photosData: [Data]
+    // PHAsset local identifiers — photos and videos, no pixel data stored
+    var mediaIdentifiers: [String]
     var date: Date
     var tags: [String]
     var latitude: Double
@@ -12,10 +13,11 @@ final class Fragment {
     var locationName: String
 
     var hasLocation: Bool { latitude != 0 || longitude != 0 }
+    var hasMedia: Bool { !mediaIdentifiers.isEmpty }
 
     init(
         content: String = "",
-        photosData: [Data] = [],
+        mediaIdentifiers: [String] = [],
         date: Date = Date(),
         tags: [String] = [],
         latitude: Double = 0,
@@ -23,7 +25,7 @@ final class Fragment {
         locationName: String = ""
     ) {
         self.content = content
-        self.photosData = photosData
+        self.mediaIdentifiers = mediaIdentifiers
         self.date = date
         self.tags = tags
         self.latitude = latitude
