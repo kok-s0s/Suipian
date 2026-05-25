@@ -129,7 +129,9 @@ struct FragmentDetailView: View {
         .fullScreenCover(isPresented: $showingFullScreen) {
             FullScreenMediaViewer(
                 identifiers: fragment.mediaIdentifiers,
-                startIndex: fullScreenStartIndex
+                startIndex: fullScreenStartIndex,
+                coverIdentifier: fragment.coverIdentifier,
+                onSetCover: { id in fragment.coverIdentifier = id }
             )
         }
     }

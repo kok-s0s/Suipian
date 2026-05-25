@@ -3,18 +3,27 @@ import SwiftUI
 struct FullScreenMediaViewer: View {
     let identifiers: [String]
     let startIndex: Int
+    var coverIdentifier: String?
+    var onSetCover: ((String) -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @State private var currentIndex: Int
 
-    init(identifiers: [String], startIndex: Int) {
+    init(identifiers: [String], startIndex: Int, coverIdentifier: String? = nil, onSetCover: ((String) -> Void)? = nil) {
         self.identifiers = identifiers
         self.startIndex = startIndex
+        self.coverIdentifier = coverIdentifier
+        self.onSetCover = onSetCover
         _currentIndex = State(initialValue: startIndex)
     }
 
+    private var effectiveCoverID: String? {
+        if let id = coverIdentifier, identifiers.contains(id) { return id }
+        return identifiers.first
+    }
+
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .top) {
             Color.black.ignoresSafeArea()
 
             TabView(selection: $currentIndex) {
@@ -26,14 +35,42 @@ struct FullScreenMediaViewer: View {
             .tabViewStyle(.page(indexDisplayMode: identifiers.count > 1 ? .always : .never))
             .ignoresSafeArea()
 
-            Button { dismiss() } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title)
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.5), radius: 4)
+            // top bar
+            HStack {
+                Spacer()
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title)
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.5), radius: 4)
+                }
             }
             .padding(.top, 8)
-            .padding(.trailing, 16)
+            .padding(.horizontal, 16)
+
+            // bottom bar — set cover
+            if identifiers.count > 1, let onSetCover {
+                VStack {
+                    Spacer()
+                    let currentID = identifiers[currentIndex]
+                    let isCover = currentID == effectiveCoverID
+                    Button {
+                        onSetCover(currentID)
+                    } label: {
+                        Label(
+                            isCover ? "当前首图" : "设为首图",
+                            systemImage: isCover ? "photo.badge.checkmark.fill" : "photo.badge.checkmark"
+                        )
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(isCover ? .white.opacity(0.5) : .white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(.ultraThinMaterial, in: Capsule())
+                    }
+                    .disabled(isCover)
+                    .padding(.bottom, 48)
+                }
+            }
         }
     }
 }

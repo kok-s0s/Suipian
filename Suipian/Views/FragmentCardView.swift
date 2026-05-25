@@ -5,10 +5,10 @@ struct FragmentCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Cover media (first photo or video)
-            if let firstID = fragment.mediaIdentifiers.first {
+            // Cover media (user-chosen or first)
+            if let coverID = fragment.coverMediaID {
                 MediaThumbnailView(
-                    identifier: firstID,
+                    identifier: coverID,
                     size: CGSize(width: 800, height: 500)
                 )
                 .frame(maxWidth: .infinity, minHeight: 200, maxHeight: 220)
@@ -64,6 +64,16 @@ struct FragmentCardView: View {
                             Image(systemName: "location.fill")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
+                            if !fragment.locationName.isEmpty {
+                                Text(fragment.locationName)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                Text("·")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
                         }
                         Text(fragment.date.formatted(.relative(presentation: .named)))
                             .font(.caption)

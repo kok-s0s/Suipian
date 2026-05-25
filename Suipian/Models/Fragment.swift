@@ -13,9 +13,15 @@ final class Fragment {
     var latitude: Double
     var longitude: Double
     var locationName: String
+    // nil means use first item in mediaIdentifiers
+    var coverIdentifier: String?
 
     var hasLocation: Bool { latitude != 0 || longitude != 0 }
     var hasMedia: Bool { !mediaIdentifiers.isEmpty }
+    var coverMediaID: String? {
+        if let id = coverIdentifier, mediaIdentifiers.contains(id) { return id }
+        return mediaIdentifiers.first
+    }
 
     init(
         content: String = "",

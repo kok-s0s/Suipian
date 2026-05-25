@@ -12,6 +12,7 @@ struct FragmentEditView: View {
 
     @State private var content = ""
     @State private var mediaIdentifiers: [String] = []
+    @State private var coverIdentifier: String? = nil
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var tags: [String] = []
     @State private var tagInput = ""
@@ -72,6 +73,7 @@ struct FragmentEditView: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 10) {
                                     ForEach(Array(mediaIdentifiers.enumerated()), id: \.offset) { index, id in
+                                        let isCover = id == (coverIdentifier ?? mediaIdentifiers.first)
                                         ZStack(alignment: .topTrailing) {
                                             MediaThumbnailView(
                                                 identifier: id,
@@ -79,8 +81,13 @@ struct FragmentEditView: View {
                                             )
                                             .frame(width: 96, height: 96)
                                             .clipShape(RoundedRectangle(cornerRadius: 10))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 10)
+                                                    .strokeBorder(Color.accentColor, lineWidth: isCover ? 2 : 0)
+                                            )
 
                                             Button {
+                                                if coverIdentifier == id { coverIdentifier = nil }
                                                 mediaIdentifiers.remove(at: index)
                                             } label: {
                                                 Image(systemName: "xmark.circle.fill")
@@ -89,6 +96,30 @@ struct FragmentEditView: View {
                                                     .shadow(radius: 2)
                                             }
                                             .padding(4)
+
+                                            if isCover {
+                                                Image(systemName: "photo.badge.checkmark.fill")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.white)
+                                                    .shadow(radius: 2)
+                                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                                                    .padding(5)
+                                            }
+                                        }
+                                        .contextMenu {
+                                            if !isCover {
+                                                Button {
+                                                    coverIdentifier = id
+                                                } label: {
+                                                    Label("设为首图", systemImage: "photo.badge.checkmark")
+                                                }
+                                            }
+                                            Button(role: .destructive) {
+                                                if coverIdentifier == id { coverIdentifier = nil }
+                                                mediaIdentifiers.remove(at: index)
+                                            } label: {
+                                                Label("移除", systemImage: "trash")
+                                            }
                                         }
                                     }
                                 }
@@ -267,6 +298,7 @@ struct FragmentEditView: View {
         guard let fragment else { return }
         content = fragment.content
         mediaIdentifiers = fragment.mediaIdentifiers
+        coverIdentifier = fragment.coverIdentifier
         tags = fragment.tags
         date = fragment.date
         latitude = fragment.latitude
@@ -360,13 +392,14 @@ struct FragmentEditView: View {
         if let fragment {
             fragment.content = content
             fragment.mediaIdentifiers = mediaIdentifiers
+            fragment.coverIdentifier = coverIdentifier
             fragment.tags = tags
             fragment.date = date
             fragment.latitude = latitude
             fragment.longitude = longitude
             fragment.locationName = locationName
         } else {
-            modelContext.insert(Fragment(
+            let f = Fragment(
                 content: content,
                 mediaIdentifiers: mediaIdentifiers,
                 date: date,
@@ -374,7 +407,9 @@ struct FragmentEditView: View {
                 latitude: latitude,
                 longitude: longitude,
                 locationName: locationName
-            ))
+            )
+            f.coverIdentifier = coverIdentifier
+            modelContext.insert(f)
         }
         dismiss()
     }
