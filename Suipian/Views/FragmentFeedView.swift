@@ -108,7 +108,7 @@ struct FragmentFeedView: View {
             FragmentEditView()
         }
         .sheet(isPresented: $showingTagPicker) {
-            TagPickerSheet(sortedTags: sortedTags, selectedTag: $selectedTag)
+            TagPickerSheet(sortedTags: sortedTags, totalCount: fragments.count, selectedTag: $selectedTag)
         }
     }
 }
@@ -117,6 +117,7 @@ struct FragmentFeedView: View {
 
 private struct TagPickerSheet: View {
     let sortedTags: [(tag: String, count: Int)]
+    let totalCount: Int
     @Binding var selectedTag: String?
     @Environment(\.dismiss) private var dismiss
 
@@ -127,7 +128,7 @@ private struct TagPickerSheet: View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 10) {
                     // "全部" cell
-                    tagCell(label: "全部", count: nil, isSelected: selectedTag == nil) {
+                    tagCell(label: "全部", count: totalCount, isSelected: selectedTag == nil) {
                         selectedTag = nil
                         dismiss()
                     }
