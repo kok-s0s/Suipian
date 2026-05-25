@@ -11,8 +11,9 @@ struct FullScreenMediaViewer: View {
     @State private var currentIndex: Int
     private let videoIDs: Set<String>
 
-    // Swipe-to-dismiss state
+    // Swipe-to-dismiss
     @State private var dismissOffset: CGFloat = 0
+    @State private var dismissGestureCommitted = false  // direction-locked flag
     @State private var isCurrentPhotoZoomed = false
 
     init(identifiers: [String], startIndex: Int, coverIdentifier: String? = nil, onSetCover: ((String) -> Void)? = nil) {
@@ -22,7 +23,6 @@ struct FullScreenMediaViewer: View {
         self.onSetCover = onSetCover
         _currentIndex = State(initialValue: startIndex)
 
-        // Synchronous metadata fetch — just reads the Photos DB, < 1 ms
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
         var vids = Set<String>()
         assets.enumerateObjects { asset, _, _ in
@@ -94,23 +94,34 @@ struct FullScreenMediaViewer: View {
             }
         }
         .offset(y: max(0, dismissOffset))
-        // simultaneousGesture lets TabView's horizontal swipe coexist
         .simultaneousGesture(
             DragGesture(minimumDistance: 20)
                 .onChanged { value in
                     guard !isCurrentPhotoZoomed else { return }
-                    // Only track the downward vertical component
+
+                    if !dismissGestureCommitted {
+                        // Direction lock: require a clearly downward-vertical start.
+                        // Horizontal swipes (for TabView page changes) will never commit.
+                        let isDown = value.translation.height > 0
+                        let isVertical = abs(value.translation.height) > abs(value.translation.width) * 1.5
+                        guard isDown && isVertical else { return }
+                        dismissGestureCommitted = true
+                    }
+
                     dismissOffset = max(0, value.translation.height)
                 }
                 .onEnded { value in
-                    guard !isCurrentPhotoZoomed else {
+                    let wasCommitted = dismissGestureCommitted
+                    dismissGestureCommitted = false
+
+                    guard !isCurrentPhotoZoomed, wasCommitted else {
                         withAnimation(.spring(response: 0.3)) { dismissOffset = 0 }
                         return
                     }
-                    let isVertical = abs(value.translation.height) > abs(value.translation.width)
+
                     let overThreshold = dismissOffset > 100
                         || value.predictedEndTranslation.height > 260
-                    if isVertical && overThreshold {
+                    if overThreshold {
                         dismiss()
                     } else {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -120,14 +131,14 @@ struct FullScreenMediaViewer: View {
                 }
         )
         .onChange(of: currentIndex) { _, _ in
-            // Reset zoom + dismiss offset when page changes
             isCurrentPhotoZoomed = false
+            dismissGestureCommitted = false
             withAnimation(.spring(response: 0.3)) { dismissOffset = 0 }
         }
     }
 }
 
-// MARK: - Zoomable photo (photos only, not videos)
+// MARK: - Zoomable wrapper (photos only)
 
 private struct ZoomablePhotoView: View {
     let identifier: String
