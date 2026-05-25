@@ -59,15 +59,6 @@ struct SettingsView: View {
                 }
             }
             .onAppear { loadReminderTime() }
-            #if DEBUG
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("导出图标") { Task { await exportAppIcon() } }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            #endif
             .alert("需要通知权限", isPresented: $showingPermissionAlert) {
                 Button("去设置") {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
