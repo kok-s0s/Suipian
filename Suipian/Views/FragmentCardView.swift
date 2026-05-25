@@ -4,49 +4,10 @@ import Photos
 struct FragmentCardView: View {
     let fragment: Fragment
 
-    // pixelWidth / pixelHeight from PHAsset metadata (fast, no image load)
-    @State private var coverAspectRatio: CGFloat? = nil
-
-    private var imageHeight: CGFloat {
-        guard let ratio = coverAspectRatio, ratio > 0 else { return 220 }
-        let cardWidth = UIScreen.main.bounds.width - 32  // 16pt padding each side
-        let natural = cardWidth / ratio
-        return max(180, min(natural, 360))
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Cover media (user-chosen or first)
             if let coverID = fragment.coverMediaID {
-                MediaThumbnailView(
-                    identifier: coverID,
-                    size: CGSize(width: 800, height: 1400)
-                )
-                .frame(maxWidth: .infinity)
-                .frame(height: imageHeight)
-                .clipped()
-                .animation(.easeOut(duration: 0.15), value: coverAspectRatio)
-                .overlay(alignment: .bottomTrailing) {
-                    if fragment.mediaIdentifiers.count > 1 {
-                        Label(
-                            "\(fragment.mediaIdentifiers.count)",
-                            systemImage: "square.on.square"
-                        )
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
-                        .padding(10)
-                    }
-                }
-                .task(id: coverID) {
-                    let assets = PHAsset.fetchAssets(withLocalIdentifiers: [coverID], options: nil)
-                    if let asset = assets.firstObject, asset.pixelWidth > 0 {
-                        coverAspectRatio = CGFloat(asset.pixelWidth) / CGFloat(asset.pixelHeight)
-                    }
-                }
+                CardCoverView(identifier: coverID, count: fragment.mediaIdentifiers.count)
             }
 
             // Text & metadata
@@ -106,5 +67,82 @@ struct FragmentCardView: View {
         .background(Color(.systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color(.label).opacity(0.06), radius: 8, y: 2)
+    }
+}
+
+// MARK: - Cover image: scaledToFit, no cropping
+
+private struct CardCoverView: View {
+    let identifier: String
+    let count: Int
+
+    @State private var thumbnail: UIImage?
+    @State private var isVideo = false
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            Group {
+                if let thumbnail {
+                    Image(uiImage: thumbnail)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Color(.systemGray5)
+                        .frame(maxWidth: .infinity, minHeight: 180)
+                        .overlay(ProgressView().tint(.secondary))
+                }
+            }
+            .background(Color(.systemGray5))
+
+            if isVideo {
+                Color.black.opacity(0.15)
+                Image(systemName: "play.circle.fill")
+                    .font(.system(size: 40))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.4), radius: 4)
+            }
+
+            if count > 1 {
+                Label("\(count)", systemImage: "square.on.square")
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .padding(10)
+            }
+        }
+        .task(id: identifier) { await load() }
+    }
+
+    private func load() async {
+        await requestPermissionIfNeeded()
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
+        guard let asset = assets.firstObject else { return }
+        isVideo = asset.mediaType == .video
+
+        let scale = UIScreen.main.scale
+        let cardWidth = UIScreen.main.bounds.width - 32
+        let targetWidth = cardWidth * scale
+        // aspect-fit target: tall enough for 9:16 portrait
+        let targetSize = CGSize(width: targetWidth, height: targetWidth * 2)
+
+        let opts = PHImageRequestOptions()
+        opts.isNetworkAccessAllowed = true
+        opts.deliveryMode = .highQualityFormat
+        opts.resizeMode = .exact
+
+        thumbnail = await withCheckedContinuation { cont in
+            PHImageManager.default().requestImage(
+                for: asset,
+                targetSize: targetSize,
+                contentMode: .aspectFit,   // fit, not fill — no cropping
+                options: opts
+            ) { img, _ in
+                cont.resume(returning: img)
+            }
+        }
     }
 }
