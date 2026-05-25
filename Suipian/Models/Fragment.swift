@@ -16,6 +16,11 @@ final class Fragment {
     var audioFileNames: [String] = []
     var mood: String = ""
     var storyName: String = ""
+    var musicTitle: String = ""
+    var musicArtist: String = ""
+    var musicAlbum: String = ""
+    var musicArtworkData: Data = Data()
+    var musicStoreID: String = ""
 
     var hasLocation: Bool { latitude != 0 || longitude != 0 }
     var hasMedia: Bool { !mediaIdentifiers.isEmpty }

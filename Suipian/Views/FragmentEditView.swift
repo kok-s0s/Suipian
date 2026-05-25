@@ -28,7 +28,26 @@ struct FragmentEditView: View {
     @State private var audioFileNames: [String] = []
     @State private var mood: String = ""
     @State private var storyName: String = ""
+    @State private var storyFieldFocused = false
+    @State private var musicTitle: String = ""
+    @State private var musicArtist: String = ""
+    @State private var musicAlbum: String = ""
+    @State private var musicArtworkData: Data = Data()
+    @State private var musicStoreID: String = ""
     @State private var isFetchingLocation = false
+
+    @Query(sort: \Fragment.date, order: .reverse) private var allFragments: [Fragment]
+
+    private var existingStoryNames: [String] {
+        let names = allFragments.compactMap { $0.storyName.isEmpty ? nil : $0.storyName }
+        return Array(NSOrderedSet(array: names)) as? [String] ?? []
+    }
+
+    private var storySuggestions: [String] {
+        guard storyFieldFocused else { return [] }
+        if storyName.isEmpty { return existingStoryNames }
+        return existingStoryNames.filter { $0.localizedCaseInsensitiveContains(storyName) && $0 != storyName }
+    }
     @State private var cameraPosition: MapCameraPosition = .automatic
 
     var isEditing: Bool { fragment != nil }
@@ -193,21 +212,70 @@ struct FragmentEditView: View {
 
                     Divider().padding(.vertical, 12)
 
+                    // ── Apple Music ───────────────────────────────
+                    MusicNowPlayingRow(
+                        title: $musicTitle,
+                        artist: $musicArtist,
+                        album: $musicAlbum,
+                        artworkData: $musicArtworkData,
+                        storeID: $musicStoreID
+                    )
+
+                    Divider().padding(.vertical, 12)
+
                     // ── 故事线 ────────────────────────────────────
-                    HStack {
-                        Image(systemName: "link")
-                            .foregroundStyle(.secondary)
-                            .font(.subheadline)
-                        TextField("关联到故事线（选填）", text: $storyName)
-                            .font(.subheadline)
-                        if !storyName.isEmpty {
-                            Button { storyName = "" } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack {
+                            Image(systemName: "link")
+                                .foregroundStyle(.secondary)
+                                .font(.subheadline)
+                            TextField("关联到故事线（选填）", text: $storyName,
+                                      onEditingChanged: { storyFieldFocused = $0 })
+                                .font(.subheadline)
+                            if !storyName.isEmpty {
+                                Button { storyName = ""; storyFieldFocused = false } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
+                        .padding(.horizontal, 16)
+
+                        if !storySuggestions.isEmpty {
+                            VStack(alignment: .leading, spacing: 0) {
+                                ForEach(storySuggestions, id: \.self) { name in
+                                    Button {
+                                        storyName = name
+                                        storyFieldFocused = false
+                                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                                                        to: nil, from: nil, for: nil)
+                                    } label: {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "link")
+                                                .font(.caption)
+                                                .foregroundStyle(Color.accentColor)
+                                            Text(name)
+                                                .font(.subheadline)
+                                                .foregroundStyle(.primary)
+                                            Spacer()
+                                            Image(systemName: "arrow.up.left")
+                                                .font(.caption2)
+                                                .foregroundStyle(.tertiary)
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 10)
+                                    }
+                                    if name != storySuggestions.last {
+                                        Divider().padding(.leading, 16)
+                                    }
+                                }
+                            }
+                            .background(Color(.secondarySystemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .padding(.horizontal, 16)
+                            .padding(.top, 6)
+                        }
                     }
-                    .padding(.horizontal, 16)
 
                     Divider().padding(.vertical, 12)
 
@@ -347,6 +415,11 @@ struct FragmentEditView: View {
         isPrivate = fragment.isPrivate
         mood = fragment.mood
         storyName = fragment.storyName
+        musicTitle = fragment.musicTitle
+        musicArtist = fragment.musicArtist
+        musicAlbum = fragment.musicAlbum
+        musicArtworkData = fragment.musicArtworkData
+        musicStoreID = fragment.musicStoreID
         content = fragment.content
         mediaIdentifiers = fragment.mediaIdentifiers
         coverIdentifier = fragment.coverIdentifier
@@ -447,6 +520,11 @@ struct FragmentEditView: View {
             fragment.audioFileNames = audioFileNames
             fragment.mood = mood
             fragment.storyName = storyName
+            fragment.musicTitle = musicTitle
+            fragment.musicArtist = musicArtist
+            fragment.musicAlbum = musicAlbum
+            fragment.musicArtworkData = musicArtworkData
+            fragment.musicStoreID = musicStoreID
             fragment.tags = tags
             fragment.date = date
             fragment.latitude = latitude
@@ -468,6 +546,11 @@ struct FragmentEditView: View {
             f.audioFileNames = audioFileNames
             f.mood = mood
             f.storyName = storyName
+            f.musicTitle = musicTitle
+            f.musicArtist = musicArtist
+            f.musicAlbum = musicAlbum
+            f.musicArtworkData = musicArtworkData
+            f.musicStoreID = musicStoreID
             modelContext.insert(f)
         }
         UINotificationFeedbackGenerator().notificationOccurred(.success)

@@ -283,6 +283,7 @@
 				DEVELOPMENT_TEAM = VBJ2Z8Y5RC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "用于读取当前播放的歌曲信息，附加到碎片";
 				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄照片并关联到碎片";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "用于解锁碎片，保护你的隐私";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于在碎片中标注位置";
@@ -321,6 +322,7 @@
 				DEVELOPMENT_TEAM = VBJ2Z8Y5RC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "用于读取当前播放的歌曲信息，附加到碎片";
 				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄照片并关联到碎片";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "用于解锁碎片，保护你的隐私";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于在碎片中标注位置";

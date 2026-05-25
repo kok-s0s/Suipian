@@ -69,6 +69,17 @@ struct FragmentDetailView: View {
                             .lineSpacing(6)
                     }
 
+                    // Music
+                    if !fragment.musicTitle.isEmpty {
+                        MusicDetailCard(
+                            title: fragment.musicTitle,
+                            artist: fragment.musicArtist,
+                            album: fragment.musicAlbum,
+                            artworkData: fragment.musicArtworkData,
+                            storeID: fragment.musicStoreID
+                        )
+                    }
+
                     // Audio clips
                     if !fragment.audioFileNames.isEmpty {
                         VStack(spacing: 8) {

@@ -77,6 +77,10 @@ struct FragmentCardView: View {
                     Spacer()
 
                     HStack(spacing: 4) {
+                        if !fragment.musicTitle.isEmpty {
+                            MusicBadge(title: fragment.musicTitle, artworkData: fragment.musicArtworkData)
+                            Text("·").font(.caption).foregroundStyle(.tertiary)
+                        }
                         if !fragment.mood.isEmpty {
                             Text(fragment.mood).font(.caption)
                             Text("·").font(.caption).foregroundStyle(.tertiary)
