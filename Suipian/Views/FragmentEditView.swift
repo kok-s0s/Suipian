@@ -59,7 +59,8 @@ struct FragmentEditView: View {
                         PhotosPicker(
                             selection: $selectedItems,
                             maxSelectionCount: 20,
-                            matching: .any(of: [.images, .videos])
+                            matching: .any(of: [.images, .videos]),
+                            photoLibrary: .shared()
                         ) {
                             Label("添加照片或视频", systemImage: "photo.on.rectangle.angled")
                                 .font(.subheadline)
@@ -149,20 +150,29 @@ struct FragmentEditView: View {
                             .padding(.horizontal, 16)
 
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                // 当前位置按钮
-                                Button {
-                                    Task { await useCurrentLocation() }
-                                } label: {
+                            // 一键获取当前位置
+                            Button {
+                                Task { await useCurrentLocation() }
+                            } label: {
+                                HStack(spacing: 6) {
                                     if isFetchingLocation {
                                         ProgressView().scaleEffect(0.8)
+                                        Text("正在获取位置…")
                                     } else {
                                         Image(systemName: hasLocation ? "location.fill" : "location")
-                                            .foregroundStyle(hasLocation ? Color.accentColor : Color.secondary)
-                                            .font(.subheadline)
+                                        Text(hasLocation ? "已获取当前位置" : "使用当前位置")
                                     }
                                 }
-                                .disabled(isFetchingLocation)
+                                .font(.subheadline)
+                                .foregroundStyle(hasLocation ? Color.accentColor : Color.secondary)
+                            }
+                            .disabled(isFetchingLocation)
+                            .padding(.horizontal, 16)
+
+                            HStack {
+                                Image(systemName: "magnifyingglass")
+                                    .foregroundStyle(.secondary)
+                                    .font(.subheadline)
 
                                 TextField("搜索地点（选填）", text: $locationSearch)
                                     .submitLabel(.search)

@@ -4,8 +4,10 @@ import SwiftData
 @Model
 final class Fragment {
     var content: String
-    // PHAsset local identifiers — photos and videos, no pixel data stored
+    // PHAsset local identifiers — photo & video references, no pixel data stored
     var mediaIdentifiers: [String]
+    // Kept for schema compatibility with older stores; not used by the UI
+    var photosData: [Data]
     var date: Date
     var tags: [String]
     var latitude: Double
@@ -26,6 +28,7 @@ final class Fragment {
     ) {
         self.content = content
         self.mediaIdentifiers = mediaIdentifiers
+        self.photosData = []
         self.date = date
         self.tags = tags
         self.latitude = latitude
