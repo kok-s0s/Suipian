@@ -68,6 +68,17 @@ struct FragmentEditView: View {
             .prefix(6)
             .map { SavedLocation(name: $0.key, latitude: $0.value.lat, longitude: $0.value.lng) }
     }
+
+    private var frequentTags: [String] {
+        var freq: [String: Int] = [:]
+        for f in allFragments {
+            for t in f.tags { freq[t, default: 0] += 1 }
+        }
+        return freq.sorted { $0.value > $1.value }
+            .prefix(12)
+            .map { $0.key }
+            .filter { !tags.contains($0) }
+    }
     @State private var cameraPosition: MapCameraPosition = .automatic
 
     var isEditing: Bool { fragment != nil }
@@ -196,6 +207,28 @@ struct FragmentEditView: View {
                             }
                         }
                         .padding(.horizontal, 16)
+
+                        // 常用标签快选（输入框为空且有历史标签时显示）
+                        if tagInput.isEmpty && !frequentTags.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(frequentTags, id: \.self) { tag in
+                                        Button {
+                                            if !tags.contains(tag) { tags.append(tag) }
+                                        } label: {
+                                            Text("#\(tag)")
+                                                .font(.subheadline)
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 7)
+                                                .background(Color.accentColor.opacity(0.08))
+                                                .foregroundStyle(Color.accentColor)
+                                                .clipShape(Capsule())
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                            }
+                        }
 
                         if !tags.isEmpty {
                             ScrollView(.horizontal, showsIndicators: false) {

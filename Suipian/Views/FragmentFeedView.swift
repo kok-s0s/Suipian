@@ -23,11 +23,6 @@ struct FragmentFeedView: View {
     @State private var showingRandomReview = false
     @State private var randomFragment: Fragment? = nil
 
-    // Batch selection
-    @State private var isSelecting = false
-    @State private var selectedIDs: Set<PersistentIdentifier> = []
-    @State private var showingBatchDeleteConfirm = false
-
     var onThisDayFragments: [Fragment] {
         let cal = Calendar.current
         let today = cal.dateComponents([.month, .day], from: Date())
@@ -74,50 +69,6 @@ struct FragmentFeedView: View {
         guard !reviewableFragments.isEmpty else { return }
         randomFragment = reviewableFragments.randomElement()
         showingRandomReview = true
-    }
-
-    @ViewBuilder
-    private func fragmentCell<Content: View>(fragment: Fragment, @ViewBuilder content: () -> Content) -> some View {
-        let pid = fragment.persistentModelID
-        let isSelected = selectedIDs.contains(pid)
-
-        ZStack(alignment: .topLeading) {
-            if isSelecting {
-                content()
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(isSelected ? Color.accentColor : Color.clear, lineWidth: 2.5)
-                    )
-                    .opacity(isSelecting && !isSelected ? 0.75 : 1)
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            if isSelected { selectedIDs.remove(pid) } else { selectedIDs.insert(pid) }
-                        }
-                    }
-            } else {
-                NavigationLink {
-                    FragmentDetailView(fragment: fragment)
-                } label: {
-                    content()
-                }
-                .buttonStyle(.plain)
-                .onLongPressGesture {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    withAnimation(.spring(response: 0.3)) {
-                        isSelecting = true
-                        selectedIDs = [pid]
-                    }
-                }
-            }
-
-            if isSelecting {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(isSelected ? Color.accentColor : Color(.systemGray3))
-                    .background(Circle().fill(.white).padding(2))
-                    .padding(8)
-            }
-        }
     }
 
     var body: some View {
@@ -184,9 +135,12 @@ struct FragmentFeedView: View {
                         let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
                         LazyVGrid(columns: columns, spacing: 12) {
                             ForEach(filteredFragments) { fragment in
-                                fragmentCell(fragment: fragment) {
+                                NavigationLink {
+                                    FragmentDetailView(fragment: fragment)
+                                } label: {
                                     FragmentGridCellView(fragment: fragment)
                                 }
+                                .buttonStyle(.plain)
                             }
                         }
                         .padding(.horizontal, 16)
@@ -194,9 +148,12 @@ struct FragmentFeedView: View {
                     } else {
                         LazyVStack(spacing: 14) {
                             ForEach(filteredFragments) { fragment in
-                                fragmentCell(fragment: fragment) {
+                                NavigationLink {
+                                    FragmentDetailView(fragment: fragment)
+                                } label: {
                                     FragmentCardView(fragment: fragment)
                                 }
+                                .buttonStyle(.plain)
                             }
                         }
                         .padding(.horizontal, 16)
@@ -204,58 +161,28 @@ struct FragmentFeedView: View {
                     }
                 }
             }
-            .navigationTitle(isSelecting
-                ? (selectedIDs.isEmpty ? "选择碎片" : "已选 \(selectedIDs.count) 条")
-                : (selectedTag.map { "#\($0)" } ?? "碎片"))
+            .navigationTitle(selectedTag.map { "#\($0)" } ?? "碎片")
             .navigationBarTitleDisplayMode(.large)
             .searchable(text: $searchText, prompt: "搜索内容、标签、地点")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    if isSelecting {
-                        Button("取消") {
-                            isSelecting = false
-                            selectedIDs = []
-                        }
-                        .foregroundStyle(Color.accentColor)
-                    } else {
-                        Button {
-                            showingSettings = true
-                        } label: {
-                            Image(systemName: "gearshape")
-                                .foregroundStyle(.secondary)
-                        }
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .foregroundStyle(.secondary)
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    if isSelecting {
-                        if !selectedIDs.isEmpty {
-                            Button(role: .destructive) {
-                                showingBatchDeleteConfirm = true
-                            } label: {
-                                Image(systemName: "trash")
-                            }
+                    if !reviewableFragments.isEmpty {
+                        Button { pickRandomFragment() } label: {
+                            Image(systemName: "dice").foregroundStyle(.secondary)
                         }
-                        Button {
-                            if selectedIDs.count == filteredFragments.count {
-                                selectedIDs = []
-                            } else {
-                                selectedIDs = Set(filteredFragments.map { $0.persistentModelID })
-                            }
-                        } label: {
-                            Text(selectedIDs.count == filteredFragments.count ? "取消全选" : "全选")
-                                .font(.subheadline)
-                        }
-                    } else {
-                        if !reviewableFragments.isEmpty {
-                            Button { pickRandomFragment() } label: {
-                                Image(systemName: "dice").foregroundStyle(.secondary)
-                            }
-                        }
-                        Button { isGridView.toggle() } label: {
-                            Image(systemName: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
-                                .foregroundStyle(.secondary)
-                                .contentTransition(.symbolEffect(.replace))
-                        }
+                    }
+                    Button { isGridView.toggle() } label: {
+                        Image(systemName: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
+                            .foregroundStyle(.secondary)
+                            .contentTransition(.symbolEffect(.replace))
                     }
                 }
             }
@@ -269,45 +196,27 @@ struct FragmentFeedView: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                if !isSelecting {
+                Button { showingCreate = true } label: {
+                    Image(systemName: "plus")
+                        .font(.title2).fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .frame(width: 58, height: 58)
+                        .background(Color.accentColor)
+                        .clipShape(Circle())
+                        .shadow(color: Color.accentColor.opacity(0.4), radius: 8, y: 4)
+                }
+                .contextMenu {
                     Button { showingCreate = true } label: {
-                        Image(systemName: "plus")
-                            .font(.title2).fontWeight(.semibold)
-                            .foregroundStyle(.white)
-                            .frame(width: 58, height: 58)
-                            .background(Color.accentColor)
-                            .clipShape(Circle())
-                            .shadow(color: Color.accentColor.opacity(0.4), radius: 8, y: 4)
+                        Label("纯文字", systemImage: "text.alignleft")
                     }
-                    .contextMenu {
-                        Button { showingCreate = true } label: {
-                            Label("纯文字", systemImage: "text.alignleft")
-                        }
-                        Button { showingQuickPicker = true } label: {
-                            Label("从相册选", systemImage: "photo.on.rectangle")
-                        }
-                        Button { showingCamera = true } label: {
-                            Label("直接拍照", systemImage: "camera")
-                        }
+                    Button { showingQuickPicker = true } label: {
+                        Label("从相册选", systemImage: "photo.on.rectangle")
                     }
-                    .padding(.trailing, 20).padding(.bottom, 24)
+                    Button { showingCamera = true } label: {
+                        Label("直接拍照", systemImage: "camera")
+                    }
                 }
-            }
-            .confirmationDialog(
-                "删除 \(selectedIDs.count) 条碎片？",
-                isPresented: $showingBatchDeleteConfirm,
-                titleVisibility: .visible
-            ) {
-                Button("全部删除", role: .destructive) {
-                    let toDelete = filteredFragments.filter { selectedIDs.contains($0.persistentModelID) }
-                    toDelete.forEach { f in
-                        f.audioFileNames.forEach { AudioStore.delete($0) }
-                        modelContext.delete(f)
-                    }
-                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
-                    selectedIDs = []
-                    isSelecting = false
-                }
+                .padding(.trailing, 20).padding(.bottom, 24)
             }
         }
         .sheet(isPresented: $showingCreate) {
