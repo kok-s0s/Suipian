@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 import MapKit
+import CoreLocation
 
 struct FragmentEditView: View {
     @Environment(\.modelContext) private var modelContext
@@ -21,6 +22,7 @@ struct FragmentEditView: View {
     @State private var locationSearch = ""
     @State private var searchResults: [FragmentLocationResult] = []
     @State private var isSearching = false
+    @State private var isFetchingLocation = false
     @State private var cameraPosition: MapCameraPosition = .automatic
 
     var isEditing: Bool { fragment != nil }
@@ -148,12 +150,24 @@ struct FragmentEditView: View {
 
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Image(systemName: "location")
-                                    .foregroundStyle(hasLocation ? Color.accentColor : Color.secondary)
-                                    .font(.subheadline)
+                                // 当前位置按钮
+                                Button {
+                                    Task { await useCurrentLocation() }
+                                } label: {
+                                    if isFetchingLocation {
+                                        ProgressView().scaleEffect(0.8)
+                                    } else {
+                                        Image(systemName: hasLocation ? "location.fill" : "location")
+                                            .foregroundStyle(hasLocation ? Color.accentColor : Color.secondary)
+                                            .font(.subheadline)
+                                    }
+                                }
+                                .disabled(isFetchingLocation)
+
                                 TextField("搜索地点（选填）", text: $locationSearch)
                                     .submitLabel(.search)
                                     .onSubmit { performSearch() }
+
                                 if isSearching {
                                     ProgressView().scaleEffect(0.8)
                                 } else if !locationSearch.isEmpty && !hasLocation {
@@ -294,6 +308,36 @@ struct FragmentEditView: View {
             center: result.coordinate,
             span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
         ))
+    }
+
+    private func useCurrentLocation() async {
+        isFetchingLocation = true
+        defer { isFetchingLocation = false }
+        do {
+            for try await update in CLLocationUpdate.liveUpdates() {
+                guard let location = update.location else { continue }
+
+                latitude = location.coordinate.latitude
+                longitude = location.coordinate.longitude
+
+                // 反向地理编码 → 地名
+                if let placemark = try? await CLGeocoder().reverseGeocodeLocation(location).first {
+                    let parts = [placemark.locality, placemark.subLocality]
+                        .compactMap { $0 }
+                    let name = parts.isEmpty ? (placemark.name ?? "") : parts.joined(separator: "·")
+                    locationName = name
+                    locationSearch = name
+                }
+
+                cameraPosition = .region(MKCoordinateRegion(
+                    center: location.coordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                ))
+                break  // 只取第一个精确位置
+            }
+        } catch {
+            // 用户拒绝授权或定位失败，静默处理
+        }
     }
 
     private func clearLocation() {
