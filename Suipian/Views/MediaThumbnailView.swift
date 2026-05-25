@@ -70,13 +70,26 @@ struct MediaDetailView: View {
     @State private var player: AVPlayer?
     @State private var isVideo = false
     @State private var loaded = false
+    @State private var downloadProgress: Double = 0
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
 
             if !loaded {
-                ProgressView().tint(.white)
+                VStack(spacing: 12) {
+                    ProgressView().tint(.white)
+                    if downloadProgress > 0 && downloadProgress < 1 {
+                        VStack(spacing: 6) {
+                            ProgressView(value: downloadProgress)
+                                .tint(.white)
+                                .frame(width: 140)
+                            Text("从 iCloud 下载 \(Int(downloadProgress * 100))%")
+                                .font(.caption2)
+                                .foregroundStyle(.white.opacity(0.7))
+                        }
+                    }
+                }
             } else if isVideo, let player {
                 VideoPlayer(player: player)
             } else if let image {
@@ -106,8 +119,15 @@ struct MediaDetailView: View {
         isVideo = asset.mediaType == .video
 
         if isVideo {
+            let opts = PHVideoRequestOptions()
+            opts.isNetworkAccessAllowed = true
+            opts.deliveryMode = .automatic
+            opts.progressHandler = { progress, _, _, _ in
+                DispatchQueue.main.async { downloadProgress = progress }
+            }
+
             let avAsset = await withCheckedContinuation { (cont: CheckedContinuation<AVAsset?, Never>) in
-                PHImageManager.default().requestAVAsset(forVideo: asset, options: nil) { av, _, _ in
+                PHImageManager.default().requestAVAsset(forVideo: asset, options: opts) { av, _, _ in
                     cont.resume(returning: av)
                 }
             }
