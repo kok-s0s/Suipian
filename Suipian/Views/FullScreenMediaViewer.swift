@@ -102,16 +102,15 @@ private struct ZoomablePhotoView: View {
             .simultaneousGesture(
                 DragGesture()
                     .updating($dragDelta) { value, state, _ in
-                        guard scale > 1 else { return }
                         state = value.translation
                     }
                     .onEnded { value in
-                        guard scale > 1 else { return }
                         panOffset = CGSize(
                             width: panOffset.width + value.translation.width,
                             height: panOffset.height + value.translation.height
                         )
-                    }
+                    },
+                including: scale > 1 ? .all : .none
             )
             .onTapGesture(count: 2) {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
