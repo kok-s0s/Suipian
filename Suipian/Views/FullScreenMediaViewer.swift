@@ -1,0 +1,90 @@
+import SwiftUI
+
+struct FullScreenMediaViewer: View {
+    let identifiers: [String]
+    let startIndex: Int
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var currentIndex: Int
+
+    init(identifiers: [String], startIndex: Int) {
+        self.identifiers = identifiers
+        self.startIndex = startIndex
+        _currentIndex = State(initialValue: startIndex)
+    }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.black.ignoresSafeArea()
+
+            TabView(selection: $currentIndex) {
+                ForEach(Array(identifiers.enumerated()), id: \.offset) { index, id in
+                    ZoomablePhotoView(identifier: id)
+                        .tag(index)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: identifiers.count > 1 ? .always : .never))
+            .ignoresSafeArea()
+
+            Button { dismiss() } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title)
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.5), radius: 4)
+            }
+            .padding(.top, 8)
+            .padding(.trailing, 16)
+        }
+    }
+}
+
+private struct ZoomablePhotoView: View {
+    let identifier: String
+
+    @State private var scale: CGFloat = 1.0
+    @State private var panOffset: CGSize = .zero
+    @GestureState private var pinchScale: CGFloat = 1.0
+    @GestureState private var dragDelta: CGSize = .zero
+
+    var body: some View {
+        MediaDetailView(identifier: identifier)
+            .scaleEffect(max(1.0, scale * pinchScale))
+            .offset(
+                x: scale > 1 ? panOffset.width + dragDelta.width : 0,
+                y: scale > 1 ? panOffset.height + dragDelta.height : 0
+            )
+            .gesture(
+                MagnificationGesture()
+                    .updating($pinchScale) { value, state, _ in state = value }
+                    .onEnded { value in
+                        let newScale = max(1.0, scale * value)
+                        scale = newScale
+                        if newScale <= 1.0 { panOffset = .zero }
+                    }
+            )
+            .simultaneousGesture(
+                DragGesture()
+                    .updating($dragDelta) { value, state, _ in
+                        guard scale > 1 else { return }
+                        state = value.translation
+                    }
+                    .onEnded { value in
+                        guard scale > 1 else { return }
+                        panOffset = CGSize(
+                            width: panOffset.width + value.translation.width,
+                            height: panOffset.height + value.translation.height
+                        )
+                    }
+            )
+            .onTapGesture(count: 2) {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    if scale > 1.0 {
+                        scale = 1.0
+                        panOffset = .zero
+                    } else {
+                        scale = 2.5
+                    }
+                }
+            }
+    }
+}

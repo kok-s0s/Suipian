@@ -43,8 +43,8 @@ struct MediaThumbnailView: View {
 
         let opts = PHImageRequestOptions()
         opts.isNetworkAccessAllowed = true
-        opts.deliveryMode = .fastFormat
-        opts.resizeMode = .fast
+        opts.deliveryMode = .highQualityFormat
+        opts.resizeMode = .exact
 
         thumbnail = await withCheckedContinuation { cont in
             PHImageManager.default().requestImage(

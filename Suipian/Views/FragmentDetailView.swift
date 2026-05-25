@@ -10,7 +10,8 @@ struct FragmentDetailView: View {
 
     @State private var showingEdit = false
     @State private var showingDeleteConfirm = false
-    @State private var fullScreenIndex: Int? = nil
+    @State private var showingFullScreen = false
+    @State private var fullScreenStartIndex = 0
 
     var body: some View {
         ScrollView {
@@ -20,7 +21,10 @@ struct FragmentDetailView: View {
                     TabView {
                         ForEach(Array(fragment.mediaIdentifiers.enumerated()), id: \.offset) { index, id in
                             MediaDetailView(identifier: id)
-                                .onTapGesture { fullScreenIndex = index }
+                                .onTapGesture {
+                                    fullScreenStartIndex = index
+                                    showingFullScreen = true
+                                }
                         }
                     }
                     .tabViewStyle(.page(indexDisplayMode: fragment.mediaIdentifiers.count > 1 ? .always : .never))
@@ -121,6 +125,12 @@ struct FragmentDetailView: View {
         }
         .sheet(isPresented: $showingEdit) {
             FragmentEditView(fragment: fragment)
+        }
+        .fullScreenCover(isPresented: $showingFullScreen) {
+            FullScreenMediaViewer(
+                identifiers: fragment.mediaIdentifiers,
+                startIndex: fullScreenStartIndex
+            )
         }
     }
 }
