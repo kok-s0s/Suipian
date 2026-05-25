@@ -48,6 +48,26 @@ struct FragmentEditView: View {
         if storyName.isEmpty { return existingStoryNames }
         return existingStoryNames.filter { $0.localizedCaseInsensitiveContains(storyName) && $0 != storyName }
     }
+
+    private struct SavedLocation {
+        let name: String
+        let latitude: Double
+        let longitude: Double
+    }
+
+    private var frequentLocations: [SavedLocation] {
+        var freq: [String: (count: Int, lat: Double, lng: Double)] = [:]
+        for f in allFragments where f.hasLocation && !f.locationName.isEmpty {
+            if let e = freq[f.locationName] {
+                freq[f.locationName] = (e.count + 1, e.lat, e.lng)
+            } else {
+                freq[f.locationName] = (1, f.latitude, f.longitude)
+            }
+        }
+        return freq.sorted { $0.value.count > $1.value.count }
+            .prefix(6)
+            .map { SavedLocation(name: $0.key, latitude: $0.value.lat, longitude: $0.value.lng) }
+    }
     @State private var cameraPosition: MapCameraPosition = .automatic
 
     var isEditing: Bool { fragment != nil }
@@ -336,6 +356,50 @@ struct FragmentEditView: View {
                                 }
                             }
                             .padding(.horizontal, 16)
+
+                            // 常用地点快选（无已选地点且未在搜索时显示）
+                            if !hasLocation && locationSearch.isEmpty && !frequentLocations.isEmpty {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("常用地点")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                        .padding(.horizontal, 16)
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 8) {
+                                            ForEach(frequentLocations, id: \.name) { loc in
+                                                Button {
+                                                    locationName = loc.name
+                                                    locationSearch = loc.name
+                                                    latitude = loc.latitude
+                                                    longitude = loc.longitude
+                                                    cameraPosition = .region(MKCoordinateRegion(
+                                                        center: CLLocationCoordinate2D(
+                                                            latitude: loc.latitude,
+                                                            longitude: loc.longitude),
+                                                        span: MKCoordinateSpan(
+                                                            latitudeDelta: 0.05,
+                                                            longitudeDelta: 0.05)
+                                                    ))
+                                                } label: {
+                                                    HStack(spacing: 4) {
+                                                        Image(systemName: "location.fill")
+                                                            .font(.caption2)
+                                                        Text(loc.name)
+                                                            .font(.subheadline)
+                                                            .lineLimit(1)
+                                                    }
+                                                    .padding(.horizontal, 12)
+                                                    .padding(.vertical, 7)
+                                                    .background(Color.accentColor.opacity(0.08))
+                                                    .foregroundStyle(Color.accentColor)
+                                                    .clipShape(Capsule())
+                                                }
+                                            }
+                                        }
+                                        .padding(.horizontal, 16)
+                                    }
+                                }
+                            }
 
                             if !searchResults.isEmpty {
                                 VStack(alignment: .leading, spacing: 0) {
