@@ -9,6 +9,7 @@ struct FragmentEditView: View {
     @Environment(\.dismiss) private var dismiss
 
     var fragment: Fragment?
+    var preloadedMediaIDs: [String] = []
 
     @State private var content = ""
     @State private var mediaIdentifiers: [String] = []
@@ -23,13 +24,19 @@ struct FragmentEditView: View {
     @State private var locationSearch = ""
     @State private var searchResults: [FragmentLocationResult] = []
     @State private var isSearching = false
+    @State private var isPrivate = false
+    @State private var audioFileNames: [String] = []
+    @State private var mood: String = ""
+    @State private var storyName: String = ""
     @State private var isFetchingLocation = false
     @State private var cameraPosition: MapCameraPosition = .automatic
 
     var isEditing: Bool { fragment != nil }
     var hasLocation: Bool { latitude != 0 || longitude != 0 }
     var canSave: Bool {
-        !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !mediaIdentifiers.isEmpty
+        !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !mediaIdentifiers.isEmpty
+            || !audioFileNames.isEmpty
     }
 
     var body: some View {
@@ -130,6 +137,11 @@ struct FragmentEditView: View {
 
                     Divider().padding(.vertical, 12)
 
+                    // ── 语音 ──────────────────────────────────────
+                    AudioRecorderRow(audioFileNames: $audioFileNames)
+
+                    Divider().padding(.vertical, 12)
+
                     // ── 标签 ─────────────────────────────────────
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
@@ -172,6 +184,39 @@ struct FragmentEditView: View {
                             }
                         }
                     }
+
+                    Divider().padding(.vertical, 12)
+
+                    // ── 情绪 ──────────────────────────────────────
+                    MoodPickerRow(selected: $mood)
+                        .padding(.horizontal, 16)
+
+                    Divider().padding(.vertical, 12)
+
+                    // ── 故事线 ────────────────────────────────────
+                    HStack {
+                        Image(systemName: "link")
+                            .foregroundStyle(.secondary)
+                            .font(.subheadline)
+                        TextField("关联到故事线（选填）", text: $storyName)
+                            .font(.subheadline)
+                        if !storyName.isEmpty {
+                            Button { storyName = "" } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+
+                    Divider().padding(.vertical, 12)
+
+                    // ── 私密 ──────────────────────────────────────
+                    Toggle(isOn: $isPrivate) {
+                        Label("设为私密", systemImage: "lock.fill")
+                            .font(.subheadline)
+                    }
+                    .padding(.horizontal, 16)
 
                     Divider().padding(.vertical, 12)
 
@@ -295,10 +340,17 @@ struct FragmentEditView: View {
     // MARK: - Helpers
 
     private func loadExisting() {
-        guard let fragment else { return }
+        guard let fragment else {
+            if !preloadedMediaIDs.isEmpty { mediaIdentifiers = preloadedMediaIDs }
+            return
+        }
+        isPrivate = fragment.isPrivate
+        mood = fragment.mood
+        storyName = fragment.storyName
         content = fragment.content
         mediaIdentifiers = fragment.mediaIdentifiers
         coverIdentifier = fragment.coverIdentifier
+        audioFileNames = fragment.audioFileNames
         tags = fragment.tags
         date = fragment.date
         latitude = fragment.latitude
@@ -363,10 +415,9 @@ struct FragmentEditView: View {
                 longitude = location.coordinate.longitude
 
                 // 反向地理编码 → 地名
-                if let placemark = try? await CLGeocoder().reverseGeocodeLocation(location).first {
-                    let parts = [placemark.locality, placemark.subLocality]
-                        .compactMap { $0 }
-                    let name = parts.isEmpty ? (placemark.name ?? "") : parts.joined(separator: "·")
+                if let req = MKReverseGeocodingRequest(location: location),
+                   let mapItem = (try? await req.mapItems)?.first {
+                    let name = mapItem.address?.shortAddress ?? mapItem.address?.fullAddress ?? mapItem.name ?? ""
                     locationName = name
                     locationSearch = name
                 }
@@ -393,11 +444,15 @@ struct FragmentEditView: View {
             fragment.content = content
             fragment.mediaIdentifiers = mediaIdentifiers
             fragment.coverIdentifier = coverIdentifier
+            fragment.audioFileNames = audioFileNames
+            fragment.mood = mood
+            fragment.storyName = storyName
             fragment.tags = tags
             fragment.date = date
             fragment.latitude = latitude
             fragment.longitude = longitude
             fragment.locationName = locationName
+            fragment.isPrivate = isPrivate
         } else {
             let f = Fragment(
                 content: content,
@@ -409,9 +464,69 @@ struct FragmentEditView: View {
                 locationName: locationName
             )
             f.coverIdentifier = coverIdentifier
+            f.isPrivate = isPrivate
+            f.audioFileNames = audioFileNames
+            f.mood = mood
+            f.storyName = storyName
             modelContext.insert(f)
         }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
         dismiss()
+    }
+}
+
+// MARK: - Mood picker
+
+private let moodOptions: [(emoji: String, label: String)] = [
+    ("😊", "开心"), ("🥰", "幸福"), ("😌", "平静"),
+    ("😞", "难过"), ("😤", "生气"), ("😰", "焦虑"), ("😴", "疲惫")
+]
+
+private struct MoodPickerRow: View {
+    @Binding var selected: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 4) {
+                Image(systemName: "face.smiling")
+                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+                Text("当前心情")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if !selected.isEmpty {
+                    Button { selected = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(moodOptions, id: \.emoji) { opt in
+                        Button {
+                            selected = selected == opt.emoji ? "" : opt.emoji
+                        } label: {
+                            VStack(spacing: 2) {
+                                Text(opt.emoji).font(.title3)
+                                Text(opt.label).font(.caption2)
+                                    .foregroundStyle(selected == opt.emoji ? Color.accentColor : .secondary)
+                            }
+                            .padding(.horizontal, 10).padding(.vertical, 6)
+                            .background(selected == opt.emoji
+                                        ? Color.accentColor.opacity(0.12)
+                                        : Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .strokeBorder(selected == opt.emoji ? Color.accentColor : .clear, lineWidth: 1.5)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -419,6 +534,6 @@ struct FragmentLocationResult: Identifiable {
     let id = UUID()
     let mapItem: MKMapItem
     var name: String { mapItem.name ?? "未知地点" }
-    var subtitle: String? { mapItem.placemark.title }
-    var coordinate: CLLocationCoordinate2D { mapItem.placemark.coordinate }
+    var subtitle: String? { mapItem.address?.shortAddress ?? mapItem.address?.fullAddress }
+    var coordinate: CLLocationCoordinate2D { mapItem.location.coordinate }
 }

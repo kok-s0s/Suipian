@@ -6,8 +6,23 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXCopyFilesBuildPhase section */
+		FD7255EE2FC43ADA0044FDE3 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		FD04603D2FC27EDA0037185F /* Suipian.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Suipian.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FD7255D92FC43AD70044FDE3 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		FD7255DB2FC43AD80044FDE3 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -33,6 +48,7 @@
 			isa = PBXGroup;
 			children = (
 				FD04603F2FC27EDA0037185F /* Suipian */,
+				FD7255D82FC43AD70044FDE3 /* Frameworks */,
 				FD04603E2FC27EDA0037185F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -45,6 +61,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		FD7255D82FC43AD70044FDE3 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				FD7255D92FC43AD70044FDE3 /* WidgetKit.framework */,
+				FD7255DB2FC43AD80044FDE3 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -55,6 +80,7 @@
 				FD0460392FC27EDA0037185F /* Sources */,
 				FD04603A2FC27EDA0037185F /* Frameworks */,
 				FD04603B2FC27EDA0037185F /* Resources */,
+				FD7255EE2FC43ADA0044FDE3 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
@@ -251,12 +277,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Suipian/Suipian.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VBJ2Z8Y5RC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄照片并关联到碎片";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "用于解锁碎片，保护你的隐私";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于在碎片中标注位置";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于录制语音碎片";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "用于读取您选择关联到碎片的照片和视频";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -285,12 +315,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Suipian/Suipian.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VBJ2Z8Y5RC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄照片并关联到碎片";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "用于解锁碎片，保护你的隐私";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于在碎片中标注位置";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于录制语音碎片";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "用于读取您选择关联到碎片的照片和视频";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

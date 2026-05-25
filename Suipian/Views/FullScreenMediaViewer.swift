@@ -77,7 +77,10 @@ struct FullScreenMediaViewer: View {
                     Spacer()
                     let currentID = identifiers[currentIndex]
                     let isCover = currentID == effectiveCoverID
-                    Button { onSetCover(currentID) } label: {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        onSetCover(currentID)
+                    } label: {
                         Label(
                             isCover ? "当前首图" : "设为首图",
                             systemImage: isCover ? "photo.badge.checkmark.fill" : "photo.badge.checkmark"

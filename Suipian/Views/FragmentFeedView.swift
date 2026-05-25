@@ -1,13 +1,35 @@
 import SwiftUI
 import SwiftData
+import PhotosUI
+import Photos
 
 struct FragmentFeedView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Fragment.date, order: .reverse) private var fragments: [Fragment]
 
+    @AppStorage("fragmentViewIsGrid") private var isGridView = false
+
     @State private var selectedTag: String? = nil
     @State private var showingCreate = false
     @State private var showingTagPicker = false
+    @State private var searchText = ""
+    @State private var showingQuickPicker = false
+    @State private var showingCamera = false
+    @State private var quickMediaIDs: [String] = []
+    @State private var cameraID: String? = nil
+    @State private var showingCreateWithMedia = false
+    @State private var showingSettings = false
+
+    var onThisDayFragments: [Fragment] {
+        let cal = Calendar.current
+        let today = cal.dateComponents([.month, .day], from: Date())
+        let thisYear = cal.component(.year, from: Date())
+        return fragments.filter {
+            let c = cal.dateComponents([.month, .day], from: $0.date)
+            return c.month == today.month && c.day == today.day
+                && cal.component(.year, from: $0.date) < thisYear
+        }
+    }
 
     // Tags sorted by frequency (most used first)
     var sortedTags: [(tag: String, count: Int)] {
@@ -19,14 +41,32 @@ struct FragmentFeedView: View {
     }
 
     var filteredFragments: [Fragment] {
-        guard let tag = selectedTag else { return fragments }
-        return fragments.filter { $0.tags.contains(tag) }
+        var result = fragments
+        if let tag = selectedTag {
+            result = result.filter { $0.tags.contains(tag) }
+        }
+        if !searchText.isEmpty {
+            let q = searchText.lowercased()
+            result = result.filter {
+                $0.content.lowercased().contains(q) ||
+                $0.tags.contains { $0.lowercased().contains(q) } ||
+                $0.locationName.lowercased().contains(q)
+            }
+        }
+        return result
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
+                    // On This Day banner
+                    if !onThisDayFragments.isEmpty {
+                        OnThisDayBanner(fragments: onThisDayFragments)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                    }
+
                     // Compact filter bar — replaces the old horizontal scroll strip
                     if !sortedTags.isEmpty {
                         HStack(spacing: 10) {
@@ -66,22 +106,58 @@ struct FragmentFeedView: View {
                     }
 
                     // Fragment cards
-                    LazyVStack(spacing: 14) {
-                        ForEach(filteredFragments) { fragment in
-                            NavigationLink {
-                                FragmentDetailView(fragment: fragment)
-                            } label: {
-                                FragmentCardView(fragment: fragment)
+                    if isGridView {
+                        let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+                        LazyVGrid(columns: columns, spacing: 12) {
+                            ForEach(filteredFragments) { fragment in
+                                NavigationLink {
+                                    FragmentDetailView(fragment: fragment)
+                                } label: {
+                                    FragmentGridCellView(fragment: fragment)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 100)
+                    } else {
+                        LazyVStack(spacing: 14) {
+                            ForEach(filteredFragments) { fragment in
+                                NavigationLink {
+                                    FragmentDetailView(fragment: fragment)
+                                } label: {
+                                    FragmentCardView(fragment: fragment)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 100)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 100)
                 }
             }
             .navigationTitle(selectedTag.map { "#\($0)" } ?? "碎片")
             .navigationBarTitleDisplayMode(.large)
+            .searchable(text: $searchText, prompt: "搜索内容、标签、地点")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isGridView.toggle()
+                    } label: {
+                        Image(systemName: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
+                            .foregroundStyle(.secondary)
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                }
+            }
             .overlay {
                 if filteredFragments.isEmpty {
                     ContentUnavailableView(
@@ -101,15 +177,166 @@ struct FragmentFeedView: View {
                         .clipShape(Circle())
                         .shadow(color: Color.accentColor.opacity(0.4), radius: 8, y: 4)
                 }
+                .contextMenu {
+                    Button { showingCreate = true } label: {
+                        Label("纯文字", systemImage: "text.alignleft")
+                    }
+                    Button { showingQuickPicker = true } label: {
+                        Label("从相册选", systemImage: "photo.on.rectangle")
+                    }
+                    Button { showingCamera = true } label: {
+                        Label("直接拍照", systemImage: "camera")
+                    }
+                }
                 .padding(.trailing, 20).padding(.bottom, 24)
             }
         }
         .sheet(isPresented: $showingCreate) {
             FragmentEditView()
         }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+        }
         .sheet(isPresented: $showingTagPicker) {
             TagPickerSheet(sortedTags: sortedTags, totalCount: fragments.count, selectedTag: $selectedTag)
         }
+        .sheet(isPresented: $showingQuickPicker, onDismiss: {
+            if !quickMediaIDs.isEmpty { showingCreateWithMedia = true }
+        }) {
+            PhotoLibraryPicker(selectedIDs: $quickMediaIDs)
+        }
+        .fullScreenCover(isPresented: $showingCamera, onDismiss: {
+            if let id = cameraID {
+                quickMediaIDs = [id]
+                cameraID = nil
+                showingCreateWithMedia = true
+            }
+        }) {
+            CameraPickerView(capturedID: $cameraID)
+                .ignoresSafeArea()
+        }
+        .sheet(isPresented: $showingCreateWithMedia, onDismiss: { quickMediaIDs = [] }) {
+            FragmentEditView(preloadedMediaIDs: quickMediaIDs)
+        }
+    }
+}
+
+// MARK: - On This Day banner
+
+private struct OnThisDayBanner: View {
+    let fragments: [Fragment]
+    @State private var showingDetail = false
+
+    private var years: [Int] {
+        let cal = Calendar.current
+        return Array(Set(fragments.map { cal.component(.year, from: $0.date) })).sorted(by: >)
+    }
+
+    var body: some View {
+        Button { showingDetail = true } label: {
+            HStack(spacing: 12) {
+                // Thumbnails stack
+                ZStack {
+                    ForEach(Array(fragments.prefix(3).enumerated()), id: \.offset) { i, fragment in
+                        if let id = fragment.coverMediaID {
+                            MediaThumbnailView(identifier: id, size: CGSize(width: 120, height: 120))
+                                .frame(width: 48, height: 48)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .offset(x: CGFloat(i) * 6, y: CGFloat(i) * -3)
+                                .zIndex(Double(3 - i))
+                        }
+                    }
+                }
+                .frame(width: 60, height: 56)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("今天历史上")
+                        .font(.subheadline).fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                    Text(yearsLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color.accentColor.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+        .buttonStyle(.plain)
+        .navigationDestination(isPresented: $showingDetail) {
+            OnThisDayView(fragments: fragments)
+        }
+    }
+
+    private var yearsLabel: String {
+        years.map { "\($0) 年" }.joined(separator: "、") + "的碎片"
+    }
+}
+
+// MARK: - Grid cell
+
+private struct FragmentGridCellView: View {
+    let fragment: Fragment
+
+    var body: some View {
+        if fragment.isPrivate {
+            privateCell
+        } else {
+            normalCell
+        }
+    }
+
+    private var privateCell: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "lock.fill")
+                .font(.title3)
+                .foregroundStyle(Color.accentColor)
+            Text("私密碎片")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, minHeight: 100)
+        .padding(.vertical, 16)
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: Color(.label).opacity(0.06), radius: 6, y: 2)
+    }
+
+    private var normalCell: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let coverID = fragment.coverMediaID {
+                MediaThumbnailView(identifier: coverID, size: CGSize(width: 400, height: 400))
+                    .frame(maxWidth: .infinity)
+                    .aspectRatio(1, contentMode: .fill)
+                    .clipped()
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                if !fragment.content.isEmpty {
+                    Text(fragment.content)
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                        .lineLimit(fragment.hasMedia ? 2 : 4)
+                        .multilineTextAlignment(.leading)
+                }
+                Text(fragment.date.formatted(.relative(presentation: .named)))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+        }
+        .frame(maxWidth: .infinity)
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: Color(.label).opacity(0.06), radius: 6, y: 2)
     }
 }
 
@@ -178,6 +405,79 @@ private struct TagPickerSheet: View {
             .background(isSelected ? Color.accentColor : Color.accentColor.opacity(0.08))
             .foregroundStyle(isSelected ? .white : Color.accentColor)
             .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+}
+
+// MARK: - Photo library picker (PHPickerViewController wrapper)
+
+private struct PhotoLibraryPicker: UIViewControllerRepresentable {
+    @Binding var selectedIDs: [String]
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var config = PHPickerConfiguration(photoLibrary: .shared())
+        config.selectionLimit = 20
+        config.filter = .any(of: [.images, .videos])
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uvc: PHPickerViewController, context: Context) {}
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        let parent: PhotoLibraryPicker
+        init(_ parent: PhotoLibraryPicker) { self.parent = parent }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            let ids = results.compactMap { $0.assetIdentifier }
+            DispatchQueue.main.async {
+                self.parent.selectedIDs = ids
+                self.parent.dismiss()
+            }
+        }
+    }
+}
+
+// MARK: - Camera picker (UIImagePickerController wrapper)
+
+private struct CameraPickerView: UIViewControllerRepresentable {
+    @Binding var capturedID: String?
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = UIImagePickerController.isSourceTypeAvailable(.camera) ? .camera : .photoLibrary
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uvc: UIImagePickerController, context: Context) {}
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let parent: CameraPickerView
+        init(_ parent: CameraPickerView) { self.parent = parent }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            guard let image = info[.originalImage] as? UIImage else { parent.dismiss(); return }
+            var placeholder: PHObjectPlaceholder?
+            PHPhotoLibrary.shared().performChanges({
+                let req = PHAssetChangeRequest.creationRequestForAsset(from: image)
+                placeholder = req.placeholderForCreatedAsset
+            }) { _, _ in
+                DispatchQueue.main.async {
+                    self.parent.capturedID = placeholder?.localIdentifier
+                    self.parent.dismiss()
+                }
+            }
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
         }
     }
 }

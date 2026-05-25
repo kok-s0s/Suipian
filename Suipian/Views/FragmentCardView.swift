@@ -5,6 +5,43 @@ struct FragmentCardView: View {
     let fragment: Fragment
 
     var body: some View {
+        if fragment.isPrivate {
+            privateCard
+        } else {
+            normalCard
+        }
+    }
+
+    private var privateCard: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "lock.fill")
+                .font(.title2)
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 44, height: 44)
+                .background(Color.accentColor.opacity(0.1))
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("私密碎片")
+                    .font(.subheadline).fontWeight(.medium)
+                    .foregroundStyle(.primary)
+                Text("需要 Face ID 才能查看")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text(fragment.date.formatted(.relative(presentation: .named)))
+                .font(.caption).foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 14)
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color(.label).opacity(0.06), radius: 8, y: 2)
+    }
+
+    @ViewBuilder
+    private var normalCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let coverID = fragment.coverMediaID {
                 CardCoverView(identifier: coverID, count: fragment.mediaIdentifiers.count)
@@ -40,6 +77,10 @@ struct FragmentCardView: View {
                     Spacer()
 
                     HStack(spacing: 4) {
+                        if !fragment.mood.isEmpty {
+                            Text(fragment.mood).font(.caption)
+                            Text("·").font(.caption).foregroundStyle(.tertiary)
+                        }
                         if fragment.hasLocation {
                             Image(systemName: "location.fill")
                                 .font(.caption2)
@@ -76,8 +117,10 @@ private struct CardCoverView: View {
     let identifier: String
     let count: Int
 
+    @Environment(\.displayScale) private var displayScale
     @State private var thumbnail: UIImage?
     @State private var isVideo = false
+    @State private var cardWidth: CGFloat = 300
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -114,19 +157,19 @@ private struct CardCoverView: View {
                     .padding(10)
             }
         }
-        .task(id: identifier) { await load() }
+        .background(GeometryReader { geo in
+            Color.clear.onAppear { cardWidth = geo.size.width }
+        })
+        .task(id: identifier) { await load(scale: displayScale) }
     }
 
-    private func load() async {
+    private func load(scale: CGFloat) async {
         await requestPermissionIfNeeded()
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
         guard let asset = assets.firstObject else { return }
         isVideo = asset.mediaType == .video
 
-        let scale = UIScreen.main.scale
-        let cardWidth = UIScreen.main.bounds.width - 32
         let targetWidth = cardWidth * scale
-        // aspect-fit target: tall enough for 9:16 portrait
         let targetSize = CGSize(width: targetWidth, height: targetWidth * 2)
 
         let opts = PHImageRequestOptions()
@@ -138,7 +181,7 @@ private struct CardCoverView: View {
             PHImageManager.default().requestImage(
                 for: asset,
                 targetSize: targetSize,
-                contentMode: .aspectFit,   // fit, not fill — no cropping
+                contentMode: .aspectFit,
                 options: opts
             ) { img, _ in
                 cont.resume(returning: img)

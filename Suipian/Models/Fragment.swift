@@ -3,18 +3,19 @@ import SwiftData
 
 @Model
 final class Fragment {
-    var content: String
-    // PHAsset local identifiers — photo & video references, no pixel data stored
-    var mediaIdentifiers: [String]
-    // Kept for schema compatibility with older stores; not used by the UI
-    var photosData: [Data]
-    var date: Date
-    var tags: [String]
-    var latitude: Double
-    var longitude: Double
-    var locationName: String
-    // nil means use first item in mediaIdentifiers
+    var content: String = ""
+    var mediaIdentifiers: [String] = []
+    var photosData: [Data] = []
+    var date: Date = Date()
+    var tags: [String] = []
+    var latitude: Double = 0
+    var longitude: Double = 0
+    var locationName: String = ""
     var coverIdentifier: String?
+    var isPrivate: Bool = false
+    var audioFileNames: [String] = []
+    var mood: String = ""
+    var storyName: String = ""
 
     var hasLocation: Bool { latitude != 0 || longitude != 0 }
     var hasMedia: Bool { !mediaIdentifiers.isEmpty }
