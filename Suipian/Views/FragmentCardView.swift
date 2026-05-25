@@ -1,7 +1,18 @@
 import SwiftUI
+import Photos
 
 struct FragmentCardView: View {
     let fragment: Fragment
+
+    // pixelWidth / pixelHeight from PHAsset metadata (fast, no image load)
+    @State private var coverAspectRatio: CGFloat? = nil
+
+    private var imageHeight: CGFloat {
+        guard let ratio = coverAspectRatio, ratio > 0 else { return 220 }
+        let cardWidth = UIScreen.main.bounds.width - 32  // 16pt padding each side
+        let natural = cardWidth / ratio
+        return max(180, min(natural, 360))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -9,10 +20,12 @@ struct FragmentCardView: View {
             if let coverID = fragment.coverMediaID {
                 MediaThumbnailView(
                     identifier: coverID,
-                    size: CGSize(width: 800, height: 500)
+                    size: CGSize(width: 800, height: 1400)
                 )
-                .frame(maxWidth: .infinity, minHeight: 200, maxHeight: 220)
+                .frame(maxWidth: .infinity)
+                .frame(height: imageHeight)
                 .clipped()
+                .animation(.easeOut(duration: 0.15), value: coverAspectRatio)
                 .overlay(alignment: .bottomTrailing) {
                     if fragment.mediaIdentifiers.count > 1 {
                         Label(
@@ -26,6 +39,12 @@ struct FragmentCardView: View {
                         .background(.ultraThinMaterial)
                         .clipShape(Capsule())
                         .padding(10)
+                    }
+                }
+                .task(id: coverID) {
+                    let assets = PHAsset.fetchAssets(withLocalIdentifiers: [coverID], options: nil)
+                    if let asset = assets.firstObject, asset.pixelWidth > 0 {
+                        coverAspectRatio = CGFloat(asset.pixelWidth) / CGFloat(asset.pixelHeight)
                     }
                 }
             }
