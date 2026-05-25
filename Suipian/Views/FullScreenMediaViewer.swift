@@ -9,8 +9,11 @@ struct FullScreenMediaViewer: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var currentIndex: Int
-    // Precomputed synchronously in init — PHAsset metadata read is fast
     private let videoIDs: Set<String>
+
+    // Swipe-to-dismiss state
+    @State private var dismissOffset: CGFloat = 0
+    @State private var isCurrentPhotoZoomed = false
 
     init(identifiers: [String], startIndex: Int, coverIdentifier: String? = nil, onSetCover: ((String) -> Void)? = nil) {
         self.identifiers = identifiers
@@ -19,6 +22,7 @@ struct FullScreenMediaViewer: View {
         self.onSetCover = onSetCover
         _currentIndex = State(initialValue: startIndex)
 
+        // Synchronous metadata fetch — just reads the Photos DB, < 1 ms
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
         var vids = Set<String>()
         assets.enumerateObjects { asset, _, _ in
@@ -34,18 +38,18 @@ struct FullScreenMediaViewer: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Color.black.ignoresSafeArea()
+            Color.black
+                .opacity(max(0.15, 1.0 - Double(dismissOffset) / 320))
+                .ignoresSafeArea()
 
             TabView(selection: $currentIndex) {
                 ForEach(Array(identifiers.enumerated()), id: \.offset) { index, id in
                     if videoIDs.contains(id) {
-                        // Videos: no gesture wrapper — VideoPlayer controls must receive touches freely
                         MediaDetailView(identifier: id)
                             .ignoresSafeArea()
                             .tag(index)
                     } else {
-                        // Photos: pinch-to-zoom, double-tap, pan
-                        ZoomablePhotoView(identifier: id)
+                        ZoomablePhotoView(identifier: id, isZoomed: $isCurrentPhotoZoomed)
                             .tag(index)
                     }
                 }
@@ -53,7 +57,7 @@ struct FullScreenMediaViewer: View {
             .tabViewStyle(.page(indexDisplayMode: identifiers.count > 1 ? .always : .never))
             .ignoresSafeArea()
 
-            // Close button (top-right)
+            // Close button
             HStack {
                 Spacer()
                 Button { dismiss() } label: {
@@ -66,8 +70,9 @@ struct FullScreenMediaViewer: View {
             .padding(.top, 8)
             .padding(.horizontal, 16)
 
-            // Set-cover button (bottom, photos only, multi-media only)
-            if identifiers.count > 1, let onSetCover, !videoIDs.contains(identifiers[currentIndex]) {
+            // Set-cover button (photos only, multi-media only)
+            if identifiers.count > 1, let onSetCover,
+               !videoIDs.contains(identifiers[currentIndex]) {
                 VStack {
                     Spacer()
                     let currentID = identifiers[currentIndex]
@@ -88,13 +93,45 @@ struct FullScreenMediaViewer: View {
                 }
             }
         }
+        .offset(y: max(0, dismissOffset))
+        // simultaneousGesture lets TabView's horizontal swipe coexist
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 20)
+                .onChanged { value in
+                    guard !isCurrentPhotoZoomed else { return }
+                    // Only track the downward vertical component
+                    dismissOffset = max(0, value.translation.height)
+                }
+                .onEnded { value in
+                    guard !isCurrentPhotoZoomed else {
+                        withAnimation(.spring(response: 0.3)) { dismissOffset = 0 }
+                        return
+                    }
+                    let isVertical = abs(value.translation.height) > abs(value.translation.width)
+                    let overThreshold = dismissOffset > 100
+                        || value.predictedEndTranslation.height > 260
+                    if isVertical && overThreshold {
+                        dismiss()
+                    } else {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            dismissOffset = 0
+                        }
+                    }
+                }
+        )
+        .onChange(of: currentIndex) { _, _ in
+            // Reset zoom + dismiss offset when page changes
+            isCurrentPhotoZoomed = false
+            withAnimation(.spring(response: 0.3)) { dismissOffset = 0 }
+        }
     }
 }
 
-// MARK: - Zoomable wrapper for photos only
+// MARK: - Zoomable photo (photos only, not videos)
 
 private struct ZoomablePhotoView: View {
     let identifier: String
+    @Binding var isZoomed: Bool
 
     @State private var scale: CGFloat = 1.0
     @State private var panOffset: CGSize = .zero
@@ -114,6 +151,7 @@ private struct ZoomablePhotoView: View {
                     .onEnded { value in
                         let newScale = max(1.0, scale * value)
                         scale = newScale
+                        isZoomed = newScale > 1.0
                         if newScale <= 1.0 { panOffset = .zero }
                     }
             )
@@ -130,8 +168,11 @@ private struct ZoomablePhotoView: View {
             )
             .onTapGesture(count: 2) {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    if scale > 1.0 { scale = 1.0; panOffset = .zero }
-                    else { scale = 2.5 }
+                    if scale > 1.0 {
+                        scale = 1.0; panOffset = .zero; isZoomed = false
+                    } else {
+                        scale = 2.5; isZoomed = true
+                    }
                 }
             }
     }
