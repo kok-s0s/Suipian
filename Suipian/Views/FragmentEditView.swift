@@ -446,6 +446,7 @@ struct FragmentEditView: View {
                 }
                 .padding(.bottom, 20)
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(isEditing ? "编辑碎片" : "新建碎片")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

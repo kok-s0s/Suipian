@@ -8,6 +8,7 @@ struct FragmentFeedView: View {
     @Query(sort: \Fragment.date, order: .reverse) private var fragments: [Fragment]
 
     @AppStorage("fragmentViewIsGrid") private var isGridView = false
+    @AppStorage("fragmentSortAscending") private var sortAscending = false
 
     @State private var selectedTag: String? = nil
     @State private var showingCreate = false
@@ -19,6 +20,13 @@ struct FragmentFeedView: View {
     @State private var cameraID: String? = nil
     @State private var showingCreateWithMedia = false
     @State private var showingSettings = false
+    @State private var showingRandomReview = false
+    @State private var randomFragment: Fragment? = nil
+
+    // Batch selection
+    @State private var isSelecting = false
+    @State private var selectedIDs: Set<PersistentIdentifier> = []
+    @State private var showingBatchDeleteConfirm = false
 
     var onThisDayFragments: [Fragment] {
         let cal = Calendar.current
@@ -53,7 +61,63 @@ struct FragmentFeedView: View {
                 $0.locationName.lowercased().contains(q)
             }
         }
-        return result
+        return sortAscending ? result.reversed() : result
+    }
+
+    // Fragments older than 7 days, for random review
+    private var reviewableFragments: [Fragment] {
+        let cutoff = Date().addingTimeInterval(-7 * 86400)
+        return fragments.filter { $0.date < cutoff }
+    }
+
+    private func pickRandomFragment() {
+        guard !reviewableFragments.isEmpty else { return }
+        randomFragment = reviewableFragments.randomElement()
+        showingRandomReview = true
+    }
+
+    @ViewBuilder
+    private func fragmentCell<Content: View>(fragment: Fragment, @ViewBuilder content: () -> Content) -> some View {
+        let pid = fragment.persistentModelID
+        let isSelected = selectedIDs.contains(pid)
+
+        ZStack(alignment: .topLeading) {
+            if isSelecting {
+                content()
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(isSelected ? Color.accentColor : Color.clear, lineWidth: 2.5)
+                    )
+                    .opacity(isSelecting && !isSelected ? 0.75 : 1)
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            if isSelected { selectedIDs.remove(pid) } else { selectedIDs.insert(pid) }
+                        }
+                    }
+            } else {
+                NavigationLink {
+                    FragmentDetailView(fragment: fragment)
+                } label: {
+                    content()
+                }
+                .buttonStyle(.plain)
+                .onLongPressGesture {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    withAnimation(.spring(response: 0.3)) {
+                        isSelecting = true
+                        selectedIDs = [pid]
+                    }
+                }
+            }
+
+            if isSelecting {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? Color.accentColor : Color(.systemGray3))
+                    .background(Circle().fill(.white).padding(2))
+                    .padding(8)
+            }
+        }
     }
 
     var body: some View {
@@ -67,32 +131,42 @@ struct FragmentFeedView: View {
                             .padding(.top, 8)
                     }
 
-                    // Compact filter bar — replaces the old horizontal scroll strip
-                    if !sortedTags.isEmpty {
-                        HStack(spacing: 10) {
-                            if let tag = selectedTag {
-                                HStack(spacing: 5) {
-                                    Text("#\(tag)")
-                                        .font(.subheadline).fontWeight(.medium)
-                                        .foregroundStyle(Color.accentColor)
-                                        .lineLimit(1)
-                                    Button { selectedTag = nil } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.caption)
-                                            .foregroundStyle(Color.accentColor.opacity(0.8))
-                                    }
+                    // Compact filter bar
+                    HStack(spacing: 10) {
+                        if let tag = selectedTag {
+                            HStack(spacing: 5) {
+                                Text("#\(tag)")
+                                    .font(.subheadline).fontWeight(.medium)
+                                    .foregroundStyle(Color.accentColor)
+                                    .lineLimit(1)
+                                Button { selectedTag = nil } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(Color.accentColor.opacity(0.8))
                                 }
-                                .padding(.horizontal, 12).padding(.vertical, 6)
-                                .background(Color.accentColor.opacity(0.1))
-                                .clipShape(Capsule())
-                            } else {
-                                Text("全部 · \(fragments.count) 条碎片")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
                             }
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .background(Color.accentColor.opacity(0.1))
+                            .clipShape(Capsule())
+                        } else {
+                            Text("全部 · \(fragments.count) 条碎片")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
 
-                            Spacer()
+                        Spacer()
 
+                        // Sort order toggle
+                        Button {
+                            sortAscending.toggle()
+                        } label: {
+                            Image(systemName: sortAscending ? "arrow.up.circle" : "arrow.down.circle")
+                                .font(.title3)
+                                .foregroundStyle(sortAscending ? Color.accentColor : .secondary)
+                        }
+
+                        // Tag filter
+                        if !sortedTags.isEmpty {
                             Button { showingTagPicker = true } label: {
                                 Image(systemName: selectedTag != nil
                                       ? "line.3.horizontal.decrease.circle.fill"
@@ -101,21 +175,18 @@ struct FragmentFeedView: View {
                                     .foregroundStyle(selectedTag != nil ? Color.accentColor : .secondary)
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
 
                     // Fragment cards
                     if isGridView {
                         let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
                         LazyVGrid(columns: columns, spacing: 12) {
                             ForEach(filteredFragments) { fragment in
-                                NavigationLink {
-                                    FragmentDetailView(fragment: fragment)
-                                } label: {
+                                fragmentCell(fragment: fragment) {
                                     FragmentGridCellView(fragment: fragment)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
                         .padding(.horizontal, 16)
@@ -123,12 +194,9 @@ struct FragmentFeedView: View {
                     } else {
                         LazyVStack(spacing: 14) {
                             ForEach(filteredFragments) { fragment in
-                                NavigationLink {
-                                    FragmentDetailView(fragment: fragment)
-                                } label: {
+                                fragmentCell(fragment: fragment) {
                                     FragmentCardView(fragment: fragment)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
                         .padding(.horizontal, 16)
@@ -136,25 +204,58 @@ struct FragmentFeedView: View {
                     }
                 }
             }
-            .navigationTitle(selectedTag.map { "#\($0)" } ?? "碎片")
+            .navigationTitle(isSelecting
+                ? (selectedIDs.isEmpty ? "选择碎片" : "已选 \(selectedIDs.count) 条")
+                : (selectedTag.map { "#\($0)" } ?? "碎片"))
             .navigationBarTitleDisplayMode(.large)
             .searchable(text: $searchText, prompt: "搜索内容、标签、地点")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        showingSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                            .foregroundStyle(.secondary)
+                    if isSelecting {
+                        Button("取消") {
+                            isSelecting = false
+                            selectedIDs = []
+                        }
+                        .foregroundStyle(Color.accentColor)
+                    } else {
+                        Button {
+                            showingSettings = true
+                        } label: {
+                            Image(systemName: "gearshape")
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        isGridView.toggle()
-                    } label: {
-                        Image(systemName: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
-                            .foregroundStyle(.secondary)
-                            .contentTransition(.symbolEffect(.replace))
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if isSelecting {
+                        if !selectedIDs.isEmpty {
+                            Button(role: .destructive) {
+                                showingBatchDeleteConfirm = true
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                        }
+                        Button {
+                            if selectedIDs.count == filteredFragments.count {
+                                selectedIDs = []
+                            } else {
+                                selectedIDs = Set(filteredFragments.map { $0.persistentModelID })
+                            }
+                        } label: {
+                            Text(selectedIDs.count == filteredFragments.count ? "取消全选" : "全选")
+                                .font(.subheadline)
+                        }
+                    } else {
+                        if !reviewableFragments.isEmpty {
+                            Button { pickRandomFragment() } label: {
+                                Image(systemName: "dice").foregroundStyle(.secondary)
+                            }
+                        }
+                        Button { isGridView.toggle() } label: {
+                            Image(systemName: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
+                                .foregroundStyle(.secondary)
+                                .contentTransition(.symbolEffect(.replace))
+                        }
                     }
                 }
             }
@@ -168,27 +269,45 @@ struct FragmentFeedView: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                Button { showingCreate = true } label: {
-                    Image(systemName: "plus")
-                        .font(.title2).fontWeight(.semibold)
-                        .foregroundStyle(.white)
-                        .frame(width: 58, height: 58)
-                        .background(Color.accentColor)
-                        .clipShape(Circle())
-                        .shadow(color: Color.accentColor.opacity(0.4), radius: 8, y: 4)
-                }
-                .contextMenu {
+                if !isSelecting {
                     Button { showingCreate = true } label: {
-                        Label("纯文字", systemImage: "text.alignleft")
+                        Image(systemName: "plus")
+                            .font(.title2).fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                            .frame(width: 58, height: 58)
+                            .background(Color.accentColor)
+                            .clipShape(Circle())
+                            .shadow(color: Color.accentColor.opacity(0.4), radius: 8, y: 4)
                     }
-                    Button { showingQuickPicker = true } label: {
-                        Label("从相册选", systemImage: "photo.on.rectangle")
+                    .contextMenu {
+                        Button { showingCreate = true } label: {
+                            Label("纯文字", systemImage: "text.alignleft")
+                        }
+                        Button { showingQuickPicker = true } label: {
+                            Label("从相册选", systemImage: "photo.on.rectangle")
+                        }
+                        Button { showingCamera = true } label: {
+                            Label("直接拍照", systemImage: "camera")
+                        }
                     }
-                    Button { showingCamera = true } label: {
-                        Label("直接拍照", systemImage: "camera")
-                    }
+                    .padding(.trailing, 20).padding(.bottom, 24)
                 }
-                .padding(.trailing, 20).padding(.bottom, 24)
+            }
+            .confirmationDialog(
+                "删除 \(selectedIDs.count) 条碎片？",
+                isPresented: $showingBatchDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("全部删除", role: .destructive) {
+                    let toDelete = filteredFragments.filter { selectedIDs.contains($0.persistentModelID) }
+                    toDelete.forEach { f in
+                        f.audioFileNames.forEach { AudioStore.delete($0) }
+                        modelContext.delete(f)
+                    }
+                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                    selectedIDs = []
+                    isSelecting = false
+                }
             }
         }
         .sheet(isPresented: $showingCreate) {
@@ -196,6 +315,13 @@ struct FragmentFeedView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
+        }
+        .sheet(isPresented: $showingRandomReview) {
+            if let fragment = randomFragment {
+                RandomReviewSheet(fragment: fragment) {
+                    randomFragment = reviewableFragments.filter { $0.id != fragment.id }.randomElement() ?? reviewableFragments.randomElement()
+                }
+            }
         }
         .sheet(isPresented: $showingTagPicker) {
             TagPickerSheet(sortedTags: sortedTags, totalCount: fragments.count, selectedTag: $selectedTag)
@@ -479,5 +605,91 @@ private struct CameraPickerView: UIViewControllerRepresentable {
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.dismiss()
         }
+    }
+}
+
+// MARK: - Random review sheet
+
+private struct RandomReviewSheet: View {
+    let fragment: Fragment
+    let onNext: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Time context
+                    Label(
+                        fragment.date.formatted(date: .long, time: .shortened),
+                        systemImage: "clock"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                    // Cover image
+                    if let coverID = fragment.coverMediaID {
+                        MediaThumbnailView(identifier: coverID, size: CGSize(width: 600, height: 600))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 240)
+                            .clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+
+                    // Mood + content
+                    if !fragment.mood.isEmpty || !fragment.content.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if !fragment.mood.isEmpty {
+                                Text(fragment.mood)
+                                    .font(.title2)
+                            }
+                            if !fragment.content.isEmpty {
+                                Text(fragment.content)
+                                    .font(.body)
+                                    .lineSpacing(5)
+                            }
+                        }
+                    }
+
+                    // Tags
+                    if !fragment.tags.isEmpty {
+                        HStack(spacing: 8) {
+                            ForEach(fragment.tags, id: \.self) { tag in
+                                Text("#\(tag)")
+                                    .font(.caption)
+                                    .foregroundStyle(Color.accentColor)
+                                    .padding(.horizontal, 10).padding(.vertical, 4)
+                                    .background(Color.accentColor.opacity(0.1))
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+
+                    // Location
+                    if fragment.hasLocation && !fragment.locationName.isEmpty {
+                        Label(fragment.locationName, systemImage: "location.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(20)
+            }
+            .navigationTitle("随机回顾")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("关闭") { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        withAnimation(.spring(response: 0.35)) { onNext() }
+                    } label: {
+                        Label("换一条", systemImage: "shuffle")
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }

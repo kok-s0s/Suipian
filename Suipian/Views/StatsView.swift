@@ -6,17 +6,28 @@ struct StatsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    SummaryCardsSection(fragments: fragments)
-                    StreakSection(fragments: fragments)
-                    HeatmapSection(fragments: fragments)
-                    MoodStatsSection(fragments: fragments)
-                    TopTagsSection(fragments: fragments)
+            Group {
+                if fragments.isEmpty {
+                    ContentUnavailableView(
+                        "还没有任何碎片",
+                        systemImage: "chart.bar.xaxis",
+                        description: Text("开始记录碎片后，这里会展示你的统计数据")
+                    )
+                } else {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            SummaryCardsSection(fragments: fragments)
+                            StreakSection(fragments: fragments)
+                            HeatmapSection(fragments: fragments)
+                            MoodTrendSection(fragments: fragments)
+                            MoodStatsSection(fragments: fragments)
+                            TopTagsSection(fragments: fragments)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .padding(.bottom, 40)
+                    }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .padding(.bottom, 40)
             }
             .navigationTitle("统计")
             .navigationBarTitleDisplayMode(.large)
@@ -182,6 +193,65 @@ private struct HeatmapSection: View {
         .padding(16)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+// MARK: - Mood trend (last 14 days)
+
+private struct MoodTrendSection: View {
+    let fragments: [Fragment]
+
+    private var last14Days: [(date: Date, mood: String?)] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        var dayMoods: [Date: String] = [:]
+        for f in fragments where !f.mood.isEmpty {
+            let d = cal.startOfDay(for: f.date)
+            if dayMoods[d] == nil { dayMoods[d] = f.mood }
+        }
+        return (0..<14).reversed().compactMap { offset in
+            guard let d = cal.date(byAdding: .day, value: -offset, to: today) else { return nil }
+            return (date: d, mood: dayMoods[d])
+        }
+    }
+
+    private var hasMoodData: Bool {
+        last14Days.contains { $0.mood != nil }
+    }
+
+    var body: some View {
+        if hasMoodData {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("近 14 天情绪")
+                    .font(.subheadline).fontWeight(.semibold)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        ForEach(last14Days, id: \.date) { item in
+                            VStack(spacing: 4) {
+                                if let mood = item.mood {
+                                    Text(mood)
+                                        .font(.title3)
+                                        .frame(width: 34, height: 34)
+                                        .background(Color.accentColor.opacity(0.08))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                } else {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color(.systemGray5))
+                                        .frame(width: 34, height: 34)
+                                }
+                                Text(item.date, format: .dateTime.month(.twoDigits).day())
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(16)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
     }
 }
 
