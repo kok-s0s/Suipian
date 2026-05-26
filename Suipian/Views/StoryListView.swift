@@ -111,9 +111,7 @@ private struct StoryCard: View {
             }
         }
         .padding(16)
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color(.label).opacity(0.06), radius: 8, y: 2)
+        .animeCard(cornerRadius: 16)
     }
 }
 

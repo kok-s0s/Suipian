@@ -132,15 +132,28 @@ struct FragmentFeedView: View {
 
                     // Fragment cards
                     if isGridView {
-                        let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
-                        LazyVGrid(columns: columns, spacing: 12) {
-                            ForEach(filteredFragments) { fragment in
-                                NavigationLink {
-                                    FragmentDetailView(fragment: fragment)
-                                } label: {
-                                    FragmentGridCellView(fragment: fragment)
+                        let leftItems = filteredFragments.enumerated().filter { $0.offset % 2 == 0 }.map(\.element)
+                        let rightItems = filteredFragments.enumerated().filter { $0.offset % 2 == 1 }.map(\.element)
+                        HStack(alignment: .top, spacing: 12) {
+                            LazyVStack(spacing: 12) {
+                                ForEach(leftItems) { fragment in
+                                    NavigationLink {
+                                        FragmentDetailView(fragment: fragment)
+                                    } label: {
+                                        FragmentGridCellView(fragment: fragment)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
+                            }
+                            LazyVStack(spacing: 12) {
+                                ForEach(rightItems) { fragment in
+                                    NavigationLink {
+                                        FragmentDetailView(fragment: fragment)
+                                    } label: {
+                                        FragmentGridCellView(fragment: fragment)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                             }
                         }
                         .padding(.horizontal, 16)
@@ -339,9 +352,7 @@ private struct FragmentGridCellView: View {
         }
         .frame(maxWidth: .infinity, minHeight: 100)
         .padding(.vertical, 16)
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: Color(.label).opacity(0.06), radius: 6, y: 2)
+        .animeCard(cornerRadius: 12)
     }
 
     private var normalCell: some View {
@@ -351,27 +362,61 @@ private struct FragmentGridCellView: View {
                     .frame(maxWidth: .infinity)
                     .aspectRatio(1, contentMode: .fill)
                     .clipped()
+            } else {
+                // Text-only: tinted header strip
+                Color.accentColor.opacity(0.08)
+                    .frame(maxWidth: .infinity, minHeight: 6, maxHeight: 6)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 5) {
                 if !fragment.content.isEmpty {
                     Text(fragment.content)
                         .font(.caption)
                         .foregroundStyle(.primary)
-                        .lineLimit(fragment.hasMedia ? 2 : 4)
+                        .lineLimit(fragment.hasMedia ? 2 : 6)
                         .multilineTextAlignment(.leading)
                 }
-                Text(fragment.date.formatted(.relative(presentation: .named)))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+
+                if !fragment.tags.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(fragment.tags.prefix(2), id: \.self) { tag in
+                            Text("#\(tag)")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(Color.accentColor)
+                                .lineLimit(1)
+                        }
+                        if fragment.tags.count > 2 {
+                            Text("+\(fragment.tags.count - 2)")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+
+                HStack(spacing: 4) {
+                    if !fragment.mood.isEmpty {
+                        Text(fragment.mood).font(.system(size: 10))
+                    }
+                    if fragment.hasLocation && !fragment.locationName.isEmpty {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 8))
+                            .foregroundStyle(.secondary)
+                        Text(fragment.locationName)
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    Text(fragment.date.formatted(.relative(presentation: .named)))
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                }
             }
             .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
         }
         .frame(maxWidth: .infinity)
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: Color(.label).opacity(0.06), radius: 6, y: 2)
+        .animeCard(cornerRadius: 12)
     }
 }
 

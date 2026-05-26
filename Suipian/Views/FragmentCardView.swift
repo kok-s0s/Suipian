@@ -35,9 +35,7 @@ struct FragmentCardView: View {
                 .font(.caption).foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 14).padding(.vertical, 14)
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color(.label).opacity(0.06), radius: 8, y: 2)
+        .animeCard(cornerRadius: 16)
     }
 
     @ViewBuilder
@@ -109,9 +107,7 @@ struct FragmentCardView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
         }
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color(.label).opacity(0.06), radius: 8, y: 2)
+        .animeCard(cornerRadius: 16)
     }
 }
 

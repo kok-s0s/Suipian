@@ -79,6 +79,10 @@ private struct StatCard: View {
         .padding(.vertical, 16)
         .background(Color.accentColor.opacity(0.07))
         .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(Color.accentColor.opacity(0.3), lineWidth: 0.75)
+        )
     }
 }
 
@@ -115,8 +119,7 @@ private struct StreakSection: View {
             Spacer()
         }
         .padding(16)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .animeSecondaryCard(cornerRadius: 14)
     }
 }
 
@@ -191,8 +194,7 @@ private struct HeatmapSection: View {
             }
         }
         .padding(16)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .animeSecondaryCard(cornerRadius: 14)
     }
 }
 
@@ -209,7 +211,7 @@ private struct MoodTrendSection: View {
             let d = cal.startOfDay(for: f.date)
             if dayMoods[d] == nil { dayMoods[d] = f.mood }
         }
-        return (0..<14).reversed().compactMap { offset in
+        return (0..<14).compactMap { offset in
             guard let d = cal.date(byAdding: .day, value: -offset, to: today) else { return nil }
             return (date: d, mood: dayMoods[d])
         }
@@ -249,8 +251,7 @@ private struct MoodTrendSection: View {
                 }
             }
             .padding(16)
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .animeSecondaryCard(cornerRadius: 14)
         }
     }
 }
@@ -296,8 +297,7 @@ private struct MoodStatsSection: View {
                 }
             }
             .padding(16)
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .animeSecondaryCard(cornerRadius: 14)
         }
     }
 }
@@ -349,8 +349,7 @@ private struct TopTagsSection: View {
                 }
             }
             .padding(16)
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .animeSecondaryCard(cornerRadius: 14)
         }
     }
 }
