@@ -63,18 +63,18 @@ struct FloatingTabBar: View {
                     label: item.label,
                     isSelected: selectedTab == index
                 ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.75)) {
                         selectedTab = index
                     }
                 }
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
         .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.22), lineWidth: 0.75))
-        .shadow(color: Color.accentColor.opacity(0.15), radius: 14, y: 4)
-        .padding(.horizontal, 40)
+        .overlay(Capsule().strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.10), radius: 18, y: 5)
+        .padding(.horizontal, 44)
         .padding(.bottom, 16)
     }
 }
@@ -89,20 +89,16 @@ private struct FloatingTabItem: View {
         Button(action: action) {
             VStack(spacing: 3) {
                 Image(systemName: icon)
-                    .font(.system(size: 17, weight: isSelected ? .semibold : .regular))
-                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
-                    .scaleEffect(isSelected ? 1.1 : 1.0)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.65), value: isSelected)
+                    .font(.system(size: 19, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                    .scaleEffect(isSelected ? 1.08 : 1.0)
+                    .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isSelected)
                 Text(label)
-                    .font(.system(size: 10, weight: isSelected ? .medium : .regular))
-                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
-                // 小圆点选中指示器
-                Circle()
-                    .fill(isSelected ? Color.accentColor : Color.clear)
-                    .frame(width: 4, height: 4)
+                    .font(.system(size: 10, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 7)
+            .padding(.vertical, 8)
         }
         .buttonStyle(.plain)
     }
