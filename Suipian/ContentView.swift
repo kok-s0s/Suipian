@@ -5,7 +5,7 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             appBackground.ignoresSafeArea()
 
             TabView(selection: $selectedTab) {
@@ -15,9 +15,9 @@ struct ContentView: View {
                 StatsView().tag(3)
             }
             .toolbar(.hidden, for: .tabBar)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                FloatingTabBar(selectedTab: $selectedTab)
-            }
+
+            // Tab bar floats on top — no safeAreaInset, no white gap
+            FloatingTabBar(selectedTab: $selectedTab)
         }
     }
 
@@ -75,7 +75,7 @@ struct FloatingTabBar: View {
         .overlay(Capsule().strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5))
         .shadow(color: .black.opacity(0.10), radius: 18, y: 5)
         .padding(.horizontal, 44)
-        .padding(.bottom, 16)
+        .padding(.bottom, 12)
     }
 }
 

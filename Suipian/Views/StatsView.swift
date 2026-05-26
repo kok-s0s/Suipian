@@ -36,7 +36,7 @@ struct StatsView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 100)
                 }
             }
           }
