@@ -41,7 +41,6 @@ struct StoryListView: View {
                         }
                         .padding(16)
                         .padding(.bottom, 100)
-                        } // LazyVStack
                       } // ZStack
                     }
                 }
