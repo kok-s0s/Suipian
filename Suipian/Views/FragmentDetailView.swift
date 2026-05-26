@@ -7,12 +7,24 @@ struct FragmentDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     let fragment: Fragment
+    @Query private var storyFragments: [Fragment]
 
-    @Query(sort: \Fragment.date, order: .reverse) private var allFragments: [Fragment]
+    init(fragment: Fragment) {
+        self.fragment = fragment
+        let storyName = fragment.storyName
+        if storyName.isEmpty {
+            _storyFragments = Query(filter: #Predicate<Fragment> { _ in false })
+        } else {
+            _storyFragments = Query(
+                filter: #Predicate<Fragment> { $0.storyName == storyName },
+                sort: [SortDescriptor(\Fragment.date, order: .reverse)]
+            )
+        }
+    }
 
     private var relatedFragments: [Fragment] {
-        guard !fragment.storyName.isEmpty else { return [] }
-        return allFragments.filter { $0.storyName == fragment.storyName && $0.id != fragment.id }
+        let currentID = fragment.persistentModelID
+        return storyFragments.filter { $0.persistentModelID != currentID }
     }
 
     @State private var showingEdit = false

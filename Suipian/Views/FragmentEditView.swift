@@ -34,6 +34,7 @@ struct FragmentEditView: View {
     @State private var musicArtworkData: Data = Data()
     @State private var musicStoreID: String = ""
     @State private var isFetchingLocation = false
+    @State private var showDraftRestoredBanner = false
 
     @Query(sort: \Fragment.date, order: .reverse) private var allFragments: [Fragment]
 
@@ -91,15 +92,33 @@ struct FragmentEditView: View {
         var tags: [String]
         var mood: String
         var storyName: String
+        var mediaIdentifiers: [String]
+
+        init(content: String, tags: [String], mood: String, storyName: String, mediaIdentifiers: [String]) {
+            self.content = content; self.tags = tags; self.mood = mood
+            self.storyName = storyName; self.mediaIdentifiers = mediaIdentifiers
+        }
+
+        // 兼容旧草稿（无 mediaIdentifiers 字段）
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            content = try c.decode(String.self, forKey: .content)
+            tags = try c.decode([String].self, forKey: .tags)
+            mood = try c.decode(String.self, forKey: .mood)
+            storyName = try c.decode(String.self, forKey: .storyName)
+            mediaIdentifiers = (try? c.decode([String].self, forKey: .mediaIdentifiers)) ?? []
+        }
     }
 
     private func saveDraft() {
         guard !isEditing else { return }
-        guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !tags.isEmpty else {
+        guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || !tags.isEmpty || !mediaIdentifiers.isEmpty else {
             UserDefaults.standard.removeObject(forKey: Self.draftKey)
             return
         }
-        let draft = FragmentDraft(content: content, tags: tags, mood: mood, storyName: storyName)
+        let draft = FragmentDraft(content: content, tags: tags, mood: mood,
+                                  storyName: storyName, mediaIdentifiers: mediaIdentifiers)
         UserDefaults.standard.set(try? JSONEncoder().encode(draft), forKey: Self.draftKey)
     }
 
@@ -110,6 +129,10 @@ struct FragmentEditView: View {
         tags = draft.tags
         mood = draft.mood
         storyName = draft.storyName
+        if !draft.mediaIdentifiers.isEmpty {
+            mediaIdentifiers = draft.mediaIdentifiers
+        }
+        showDraftRestoredBanner = true
     }
 
     private func clearDraft() {
@@ -128,6 +151,30 @@ struct FragmentEditView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
+
+                    // ── 草稿恢复提示 ──────────────────────────────
+                    if showDraftRestoredBanner {
+                        HStack(spacing: 8) {
+                            Image(systemName: "doc.text.fill")
+                            Text("已恢复上次未保存的草稿")
+                                .font(.subheadline)
+                            Spacer()
+                            Button {
+                                withAnimation { showDraftRestoredBanner = false }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                            }
+                        }
+                        .foregroundStyle(Color.accentColor)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.accentColor.opacity(0.1))
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .task {
+                            try? await Task.sleep(nanoseconds: 3_500_000_000)
+                            withAnimation { showDraftRestoredBanner = false }
+                        }
+                    }
 
                     // ── 主文本区 ─────────────────────────────────
                     ZStack(alignment: .topLeading) {
@@ -727,6 +774,27 @@ private let moodOptions: [(emoji: String, label: String)] = [
 
 private struct MoodPickerRow: View {
     @Binding var selected: String
+    @AppStorage("customMoodEmojis") private var customMoodsData: Data = Data()
+    @State private var showingAddMood = false
+    @State private var newMoodInput = ""
+
+    private var customMoods: [String] {
+        (try? JSONDecoder().decode([String].self, from: customMoodsData)) ?? []
+    }
+
+    private func addCustomMood(_ emoji: String) {
+        let trimmed = emoji.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        var moods = customMoods
+        guard !moods.contains(trimmed) else { return }
+        moods.append(trimmed)
+        customMoodsData = (try? JSONEncoder().encode(moods)) ?? Data()
+    }
+
+    private func removeCustomMood(_ emoji: String) {
+        var moods = customMoods.filter { $0 != emoji }
+        customMoodsData = (try? JSONEncoder().encode(moods)) ?? Data()
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -747,28 +815,73 @@ private struct MoodPickerRow: View {
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
+                    // 预设情绪
                     ForEach(moodOptions, id: \.emoji) { opt in
-                        Button {
-                            selected = selected == opt.emoji ? "" : opt.emoji
-                        } label: {
-                            VStack(spacing: 2) {
-                                Text(opt.emoji).font(.title3)
-                                Text(opt.label).font(.caption2)
-                                    .foregroundStyle(selected == opt.emoji ? Color.accentColor : .secondary)
+                        moodChip(emoji: opt.emoji, label: opt.label)
+                    }
+                    // 自定义情绪（长按删除）
+                    ForEach(customMoods, id: \.self) { emoji in
+                        moodChip(emoji: emoji, label: nil)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    if selected == emoji { selected = "" }
+                                    removeCustomMood(emoji)
+                                } label: {
+                                    Label("删除", systemImage: "trash")
+                                }
                             }
-                            .padding(.horizontal, 10).padding(.vertical, 6)
-                            .background(selected == opt.emoji
-                                        ? Color.accentColor.opacity(0.12)
-                                        : Color(.systemGray6))
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .strokeBorder(selected == opt.emoji ? Color.accentColor : .clear, lineWidth: 1.5)
-                            )
+                    }
+                    // 添加按钮
+                    Button { showingAddMood = true } label: {
+                        VStack(spacing: 2) {
+                            Image(systemName: "plus")
+                                .font(.body)
+                                .frame(height: 28)
+                            Text("自定义")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(Color(.systemGray6))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                 }
             }
+        }
+        .alert("添加自定义心情", isPresented: $showingAddMood) {
+            TextField("输入一个 emoji", text: $newMoodInput)
+            Button("添加") {
+                addCustomMood(newMoodInput)
+                if !newMoodInput.trimmingCharacters(in: .whitespaces).isEmpty {
+                    selected = newMoodInput.trimmingCharacters(in: .whitespaces)
+                }
+                newMoodInput = ""
+            }
+            Button("取消", role: .cancel) { newMoodInput = "" }
+        } message: {
+            Text("切换到 Emoji 键盘输入你喜欢的心情符号")
+        }
+    }
+
+    @ViewBuilder
+    private func moodChip(emoji: String, label: String?) -> some View {
+        Button {
+            selected = selected == emoji ? "" : emoji
+        } label: {
+            VStack(spacing: 2) {
+                Text(emoji).font(.title3)
+                if let label {
+                    Text(label).font(.caption2)
+                        .foregroundStyle(selected == emoji ? Color.accentColor : .secondary)
+                }
+            }
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background(selected == emoji ? Color.accentColor.opacity(0.12) : Color(.systemGray6))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(selected == emoji ? Color.accentColor : .clear, lineWidth: 1.5)
+            )
         }
     }
 }

@@ -45,9 +45,33 @@ struct FragmentMapView: View {
     @State private var position: MapCameraPosition = .automatic
     @State private var selectedCluster: FragmentCluster? = nil
     @State private var showingClusterSheet = false
+    @State private var showingLocationSearch = false
+    @State private var locationSearchText = ""
+    @State private var locationSearchResults: [MKMapItem] = []
 
     var located: [Fragment] { fragments.filter { $0.hasLocation } }
     var clusters: [FragmentCluster] { makeClusters(located) }
+
+    private func doLocationSearch() async {
+        let query = locationSearchText.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return }
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = query
+        guard let response = try? await MKLocalSearch(request: request).start() else { return }
+        locationSearchResults = Array(response.mapItems.prefix(6))
+    }
+
+    private func selectLocationResult(_ item: MKMapItem) {
+        withAnimation(.spring(response: 0.3)) {
+            position = .region(MKCoordinateRegion(
+                center: item.placemark.coordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04)
+            ))
+        }
+        showingLocationSearch = false
+        locationSearchText = ""
+        locationSearchResults = []
+    }
 
     var body: some View {
         NavigationStack {
@@ -75,6 +99,77 @@ struct FragmentMapView: View {
                 }
                 .ignoresSafeArea(edges: .bottom)
                 .onTapGesture { withAnimation { selectedCluster = nil } }
+
+                // Location search overlay
+                if showingLocationSearch {
+                    VStack(spacing: 0) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(.secondary)
+                            TextField("搜索地点", text: $locationSearchText)
+                                .submitLabel(.search)
+                                .onSubmit { Task { await doLocationSearch() } }
+                            if !locationSearchText.isEmpty {
+                                Button {
+                                    locationSearchText = ""
+                                    locationSearchResults = []
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Button("取消") {
+                                showingLocationSearch = false
+                                locationSearchText = ""
+                                locationSearchResults = []
+                            }
+                            .foregroundStyle(Color.accentColor)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+
+                        if !locationSearchResults.isEmpty {
+                            Divider()
+                            ScrollView {
+                                LazyVStack(spacing: 0) {
+                                    ForEach(Array(locationSearchResults.enumerated()), id: \.offset) { index, item in
+                                        Button { selectLocationResult(item) } label: {
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(item.name ?? "未知地点")
+                                                    .font(.subheadline)
+                                                    .foregroundStyle(.primary)
+                                                if let addr = item.placemark.title, addr != item.name {
+                                                    Text(addr)
+                                                        .font(.caption)
+                                                        .foregroundStyle(.secondary)
+                                                        .lineLimit(1)
+                                                }
+                                            }
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(.horizontal, 14)
+                                            .padding(.vertical, 10)
+                                        }
+                                        if index < locationSearchResults.count - 1 {
+                                            Divider().padding(.leading, 14)
+                                        }
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 240)
+                        }
+                    }
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                    .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .padding(.top, 8)
+                    .task(id: locationSearchText) {
+                        guard !locationSearchText.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                        try? await Task.sleep(nanoseconds: 400_000_000)
+                        guard !Task.isCancelled else { return }
+                        await doLocationSearch()
+                    }
+                }
 
                 // Bottom card — single fragment preview or cluster entry
                 if let cluster = selectedCluster {
@@ -104,6 +199,20 @@ struct FragmentMapView: View {
             .navigationTitle("地图")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        withAnimation(.spring(response: 0.3)) {
+                            showingLocationSearch.toggle()
+                            if !showingLocationSearch {
+                                locationSearchText = ""
+                                locationSearchResults = []
+                            }
+                        }
+                    } label: {
+                        Image(systemName: showingLocationSearch ? "magnifyingglass.circle.fill" : "magnifyingglass")
+                            .foregroundStyle(Color.accentColor)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         withAnimation {

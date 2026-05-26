@@ -34,8 +34,10 @@ struct FragmentFeedView: View {
         }
     }
 
-    // Tags sorted by frequency (most used first)
-    var sortedTags: [(tag: String, count: Int)] {
+    // Cached tag frequency — recomputed only when fragments change, not on every keypress
+    @State private var cachedSortedTags: [(tag: String, count: Int)] = []
+
+    private func buildSortedTags() -> [(tag: String, count: Int)] {
         var freq: [String: Int] = [:]
         for fragment in fragments {
             for tag in fragment.tags { freq[tag, default: 0] += 1 }
@@ -58,11 +60,10 @@ struct FragmentFeedView: View {
                 $0.mood.contains(q)
             }
         }
-        let sorted = sortAscending ? result.reversed() : result
-        // Pinned fragments float to top regardless of sort order
-        let pinned = sorted.filter { $0.isPinned }
-        let rest   = sorted.filter { !$0.isPinned }
-        return pinned + rest
+        return result.sorted { lhs, rhs in
+            if lhs.isPinned != rhs.isPinned { return lhs.isPinned }
+            return sortAscending ? lhs.date < rhs.date : lhs.date > rhs.date
+        }
     }
 
     // Fragments older than 7 days, for random review
@@ -123,7 +124,7 @@ struct FragmentFeedView: View {
                         }
 
                         // Tag filter
-                        if !sortedTags.isEmpty {
+                        if !cachedSortedTags.isEmpty {
                             Button { showingTagPicker = true } label: {
                                 Image(systemName: selectedTag != nil
                                       ? "line.3.horizontal.decrease.circle.fill"
@@ -278,7 +279,9 @@ struct FragmentFeedView: View {
                     )
                 }
             }
-            .overlay(alignment: .bottomTrailing) {
+        .onAppear { cachedSortedTags = buildSortedTags() }
+        .onChange(of: fragments) { _, _ in cachedSortedTags = buildSortedTags() }
+        .overlay(alignment: .bottomTrailing) {
                 // ③ FAB with pulse rings
                 ZStack(alignment: .center) {
                     FABPulseRing(delay: 0).allowsHitTesting(false)
@@ -321,7 +324,7 @@ struct FragmentFeedView: View {
             }
         }
         .sheet(isPresented: $showingTagPicker) {
-            TagPickerSheet(sortedTags: sortedTags, totalCount: fragments.count, selectedTag: $selectedTag)
+            TagPickerSheet(cachedSortedTags: cachedSortedTags, totalCount: fragments.count, selectedTag: $selectedTag)
         }
         .sheet(isPresented: $showingQuickPicker, onDismiss: {
             if !quickMediaIDs.isEmpty { showingCreateWithMedia = true }
@@ -519,7 +522,7 @@ private struct FragmentGridCellView: View {
 // MARK: - Tag picker bottom sheet
 
 private struct TagPickerSheet: View {
-    let sortedTags: [(tag: String, count: Int)]
+    let cachedSortedTags: [(tag: String, count: Int)]
     let totalCount: Int
     @Binding var selectedTag: String?
     @Environment(\.dismiss) private var dismiss
@@ -535,7 +538,7 @@ private struct TagPickerSheet: View {
                         selectedTag = nil
                         dismiss()
                     }
-                    ForEach(sortedTags, id: \.tag) { item in
+                    ForEach(cachedSortedTags, id: \.tag) { item in
                         tagCell(label: "#\(item.tag)", count: item.count, isSelected: selectedTag == item.tag) {
                             selectedTag = item.tag
                             dismiss()
