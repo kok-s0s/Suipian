@@ -22,6 +22,7 @@ struct FragmentFeedView: View {
     @State private var showingSettings = false
     @State private var showingRandomReview = false
     @State private var randomFragment: Fragment? = nil
+    @State private var fabPulse = false
 
     var onThisDayFragments: [Fragment] {
         let cal = Calendar.current
@@ -167,6 +168,13 @@ struct FragmentFeedView: View {
                                     FragmentCardView(fragment: fragment)
                                 }
                                 .buttonStyle(.plain)
+                                // ④ 滚动进场动画
+                                .scrollTransition(.animated(.spring(response: 0.4, dampingFraction: 0.85))) { content, phase in
+                                    content
+                                        .opacity(phase.isIdentity ? 1 : 0)
+                                        .scaleEffect(phase.isIdentity ? 1 : 0.94)
+                                        .offset(y: phase.isIdentity ? 0 : 18)
+                                }
                             }
                         }
                         .padding(.horizontal, 16)
@@ -234,14 +242,26 @@ struct FragmentFeedView: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                Button { showingCreate = true } label: {
-                    Image(systemName: "plus")
-                        .font(.title2).fontWeight(.semibold)
-                        .foregroundStyle(.white)
+                ZStack {
+                    // ③ 脉冲呼吸环
+                    Circle()
+                        .stroke(Color.accentColor.opacity(0.45), lineWidth: 1.5)
                         .frame(width: 58, height: 58)
-                        .background(Color.accentColor)
-                        .clipShape(Circle())
-                        .shadow(color: Color.accentColor.opacity(0.4), radius: 8, y: 4)
+                        .scaleEffect(fabPulse ? 1.6 : 1.0)
+                        .opacity(fabPulse ? 0 : 0.7)
+                        .animation(
+                            .easeOut(duration: 1.5).repeatForever(autoreverses: false),
+                            value: fabPulse
+                        )
+
+                    Button { showingCreate = true } label: {
+                        Image(systemName: "plus")
+                            .font(.title2).fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                            .frame(width: 58, height: 58)
+                            .background(Color.accentColor)
+                            .clipShape(Circle())
+                            .shadow(color: Color.accentColor.opacity(0.4), radius: 8, y: 4)
                 }
                 .contextMenu {
                     Button { showingCreate = true } label: {
@@ -255,6 +275,8 @@ struct FragmentFeedView: View {
                     }
                 }
                 .padding(.trailing, 20).padding(.bottom, 24)
+                } // ZStack
+                .onAppear { fabPulse = true }
             }
         }
         .sheet(isPresented: $showingCreate) {
