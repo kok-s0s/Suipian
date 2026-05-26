@@ -74,8 +74,6 @@ struct FragmentFeedView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-              ZStack(alignment: .top) {
-                AppBackgroundCanvas().ignoresSafeArea().frame(maxWidth: .infinity, maxHeight: .infinity)
                 VStack(spacing: 0) {
                     // On This Day banner
                     if !onThisDayFragments.isEmpty {
@@ -186,8 +184,8 @@ struct FragmentFeedView: View {
                         .padding(.bottom, 100)
                     }
                 } // VStack
-              } // ZStack
             }
+            .background { AppBackgroundCanvas().ignoresSafeArea() }
             .navigationTitle(selectedTag.map { "#\($0)" } ?? "")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, prompt: "搜索内容、标签、地点")

@@ -26,8 +26,6 @@ struct StatsView: View {
                 )
             } else {
                 ScrollView {
-                  ZStack(alignment: .top) {
-                    AppBackgroundCanvas().ignoresSafeArea().frame(maxWidth: .infinity, maxHeight: .infinity)
                     VStack(spacing: 20) {
                         SummaryCardsSection(fragments: fragments, onDrillDown: { drillDown = $0 })
                         StreakSection(fragments: fragments, onDrillDown: { drillDown = $0 })
@@ -39,8 +37,8 @@ struct StatsView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
                     .padding(.bottom, 100)
-                  } // ZStack
                 }
+                .background { AppBackgroundCanvas().ignoresSafeArea() }
             }
           }
           .toolbar(.hidden, for: .navigationBar)
