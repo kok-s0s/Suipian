@@ -27,6 +27,8 @@ struct StoryListView: View {
                     )
                 } else {
                     ScrollView {
+                      ZStack(alignment: .top) {
+                        AppBackgroundCanvas().ignoresSafeArea().frame(maxWidth: .infinity, maxHeight: .infinity)
                         LazyVStack(spacing: 14) {
                             ForEach(stories, id: \.name) { story in
                                 NavigationLink {
@@ -39,6 +41,8 @@ struct StoryListView: View {
                         }
                         .padding(16)
                         .padding(.bottom, 100)
+                        } // LazyVStack
+                      } // ZStack
                     }
                 }
             }

@@ -60,20 +60,7 @@ struct FragmentCardView: View {
                         HStack(spacing: 5) {
                             ForEach(fragment.tags.prefix(3), id: \.self) { tag in
                                 Text("#\(tag)")
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(Color.accentColor)
-                                    .padding(.horizontal, 7).padding(.vertical, 2)
-                                    .background(.ultraThinMaterial, in: Capsule())
-                                    .overlay(
-                                        Capsule().strokeBorder(
-                                            LinearGradient(
-                                                colors: [Color.accentColor.opacity(0.6), Color.accentColor.opacity(0.2)],
-                                                startPoint: .leading, endPoint: .trailing
-                                            ),
-                                            lineWidth: 0.75
-                                        )
-                                    )
+                                    .gradientTagStyle()
                             }
                             if fragment.tags.count > 3 {
                                 Text("+\(fragment.tags.count - 3)")

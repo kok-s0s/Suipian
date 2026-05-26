@@ -10,6 +10,25 @@ extension View {
     func animeSecondaryCard(cornerRadius: CGFloat = 14) -> some View {
         modifier(AnimeCardModifier(cornerRadius: cornerRadius, secondary: true))
     }
+
+    // ⑥ Gradient border tag chip
+    func gradientTagStyle(fontSize: CGFloat = 11, paddingH: CGFloat = 7, paddingV: CGFloat = 2) -> some View {
+        self
+            .font(.system(size: fontSize, weight: .medium))
+            .foregroundStyle(Color.accentColor)
+            .padding(.horizontal, paddingH)
+            .padding(.vertical, paddingV)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(
+                Capsule().strokeBorder(
+                    LinearGradient(
+                        colors: [Color.accentColor.opacity(0.65), Color.accentColor.opacity(0.18)],
+                        startPoint: .leading, endPoint: .trailing
+                    ),
+                    lineWidth: 0.8
+                )
+            )
+    }
 }
 
 struct AnimeCardModifier: ViewModifier {

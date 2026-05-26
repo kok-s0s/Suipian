@@ -74,6 +74,8 @@ struct FragmentFeedView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
+              ZStack(alignment: .top) {
+                AppBackgroundCanvas().ignoresSafeArea().frame(maxWidth: .infinity, maxHeight: .infinity)
                 VStack(spacing: 0) {
                     // On This Day banner
                     if !onThisDayFragments.isEmpty {
@@ -132,8 +134,9 @@ struct FragmentFeedView: View {
 
                     // Fragment cards
                     if isGridView {
-                        let leftItems = filteredFragments.enumerated().filter { $0.offset % 2 == 0 }.map(\.element)
-                        let rightItems = filteredFragments.enumerated().filter { $0.offset % 2 == 1 }.map(\.element)
+                        let enumerated = Array(filteredFragments.enumerated())
+                        let leftItems = enumerated.filter { $0.offset % 2 == 0 }.map(\.element)
+                        let rightItems = enumerated.filter { $0.offset % 2 == 1 }.map(\.element)
                         HStack(alignment: .top, spacing: 12) {
                             LazyVStack(spacing: 12) {
                                 ForEach(leftItems) { fragment in
@@ -160,26 +163,30 @@ struct FragmentFeedView: View {
                         .padding(.bottom, 100)
                     } else {
                         LazyVStack(spacing: 14) {
-                            ForEach(filteredFragments) { fragment in
+                            ForEach(Array(filteredFragments.enumerated()), id: \.element.id) { index, fragment in
                                 NavigationLink {
                                     FragmentDetailView(fragment: fragment)
                                 } label: {
                                     FragmentCardView(fragment: fragment)
                                 }
                                 .buttonStyle(.plain)
-                                // ④ 滚动进场动画
-                                .scrollTransition(.animated(.spring(response: 0.4, dampingFraction: 0.85))) { content, phase in
+                                // ④ 错位出场：偶数从左侧滑入，奇数从右侧滑入
+                                .scrollTransition(.animated(.spring(response: 0.42, dampingFraction: 0.82))) { content, phase in
                                     content
                                         .opacity(phase.isIdentity ? 1 : 0)
-                                        .scaleEffect(phase.isIdentity ? 1 : 0.94)
-                                        .offset(y: phase.isIdentity ? 0 : 18)
+                                        .scaleEffect(phase.isIdentity ? 1 : 0.93)
+                                        .offset(
+                                            x: phase.isIdentity ? 0 : (index.isMultiple(of: 2) ? -26 : 26),
+                                            y: phase.isIdentity ? 0 : 14
+                                        )
                                 }
                             }
                         }
                         .padding(.horizontal, 16)
                         .padding(.bottom, 100)
                     }
-                }
+                } // VStack
+              } // ZStack
             }
             .navigationTitle(selectedTag.map { "#\($0)" } ?? "")
             .navigationBarTitleDisplayMode(.inline)
@@ -241,7 +248,11 @@ struct FragmentFeedView: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                Button { showingCreate = true } label: {
+                // ③ FAB with pulse rings
+                ZStack(alignment: .center) {
+                    FABPulseRing(delay: 0).allowsHitTesting(false)
+                    FABPulseRing(delay: 1.0).allowsHitTesting(false)
+                    Button { showingCreate = true } label: {
                         Image(systemName: "plus")
                             .font(.title2).fontWeight(.semibold)
                             .foregroundStyle(.white)
@@ -249,16 +260,17 @@ struct FragmentFeedView: View {
                             .background(Color.accentColor)
                             .clipShape(Circle())
                             .shadow(color: Color.accentColor.opacity(0.4), radius: 8, y: 4)
-                }
-                .contextMenu {
-                    Button { showingCreate = true } label: {
-                        Label("纯文字", systemImage: "text.alignleft")
                     }
-                    Button { showingQuickPicker = true } label: {
-                        Label("从相册选", systemImage: "photo.on.rectangle")
-                    }
-                    Button { showingCamera = true } label: {
-                        Label("直接拍照", systemImage: "camera")
+                    .contextMenu {
+                        Button { showingCreate = true } label: {
+                            Label("纯文字", systemImage: "text.alignleft")
+                        }
+                        Button { showingQuickPicker = true } label: {
+                            Label("从相册选", systemImage: "photo.on.rectangle")
+                        }
+                        Button { showingCamera = true } label: {
+                            Label("直接拍照", systemImage: "camera")
+                        }
                     }
                 }
                 .padding(.trailing, 20).padding(.bottom, 24)
@@ -298,6 +310,28 @@ struct FragmentFeedView: View {
         .sheet(isPresented: $showingCreateWithMedia, onDismiss: { quickMediaIDs = [] }) {
             FragmentEditView(preloadedMediaIDs: quickMediaIDs)
         }
+    }
+}
+
+// MARK: - FAB pulse ring
+
+private struct FABPulseRing: View {
+    let delay: Double
+    @State private var pulsing = false
+
+    var body: some View {
+        Circle()
+            .stroke(Color.accentColor.opacity(pulsing ? 0 : 0.45), lineWidth: 2)
+            .frame(width: 58, height: 58)
+            .scaleEffect(pulsing ? 1.75 : 1.0)
+            .onAppear {
+                withAnimation(
+                    .easeOut(duration: 2.0)
+                    .repeatForever(autoreverses: false)
+                    .delay(delay)
+                ) { pulsing = true }
+            }
+            .onDisappear { pulsing = false }
     }
 }
 
@@ -413,8 +447,7 @@ private struct FragmentGridCellView: View {
                     HStack(spacing: 4) {
                         ForEach(fragment.tags.prefix(2), id: \.self) { tag in
                             Text("#\(tag)")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundStyle(Color.accentColor)
+                                .gradientTagStyle(fontSize: 9, paddingH: 5, paddingV: 2)
                                 .lineLimit(1)
                         }
                         if fragment.tags.count > 2 {
@@ -639,14 +672,10 @@ private struct RandomReviewSheet: View {
 
                     // Tags
                     if !fragment.tags.isEmpty {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             ForEach(fragment.tags, id: \.self) { tag in
                                 Text("#\(tag)")
-                                    .font(.caption)
-                                    .foregroundStyle(Color.accentColor)
-                                    .padding(.horizontal, 10).padding(.vertical, 4)
-                                    .background(Color.accentColor.opacity(0.1))
-                                    .clipShape(Capsule())
+                                    .gradientTagStyle(fontSize: 12, paddingH: 10, paddingV: 4)
                             }
                         }
                     }

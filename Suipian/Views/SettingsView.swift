@@ -5,6 +5,7 @@ struct SettingsView: View {
     @AppStorage("reminderEnabled") private var reminderEnabled = false
     @AppStorage("reminderHour") private var reminderHour = 21
     @AppStorage("reminderMinute") private var reminderMinute = 0
+    @AppStorage("backgroundStyle") private var backgroundStyle = 0
     @Environment(\.dismiss) private var dismiss
 
     @State private var reminderTime = Date()
@@ -13,6 +14,16 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("外观") {
+                    Picker("背景纹理", selection: $backgroundStyle) {
+                        Text("无").tag(0)
+                        Text("点阵").tag(1)
+                        Text("斜纹").tag(2)
+                        Text("方格").tag(3)
+                    }
+                    .pickerStyle(.segmented)
+                }
+
                 Section {
                     Toggle(isOn: Binding(
                         get: { reminderEnabled },
