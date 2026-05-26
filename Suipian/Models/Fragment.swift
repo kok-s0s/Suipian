@@ -13,6 +13,7 @@ final class Fragment {
     var locationName: String = ""
     var coverIdentifier: String?
     var isPrivate: Bool = false
+    var isPinned: Bool = false
     var audioFileNames: [String] = []
     var mood: String = ""
     var storyName: String = ""

@@ -53,10 +53,16 @@ struct FragmentFeedView: View {
             result = result.filter {
                 $0.content.lowercased().contains(q) ||
                 $0.tags.contains { $0.lowercased().contains(q) } ||
-                $0.locationName.lowercased().contains(q)
+                $0.locationName.lowercased().contains(q) ||
+                $0.storyName.lowercased().contains(q) ||
+                $0.mood.contains(q)
             }
         }
-        return sortAscending ? result.reversed() : result
+        let sorted = sortAscending ? result.reversed() : result
+        // Pinned fragments float to top regardless of sort order
+        let pinned = sorted.filter { $0.isPinned }
+        let rest   = sorted.filter { !$0.isPinned }
+        return pinned + rest
     }
 
     // Fragments older than 7 days, for random review
@@ -144,6 +150,15 @@ struct FragmentFeedView: View {
                                         FragmentGridCellView(fragment: fragment)
                                     }
                                     .buttonStyle(.plain)
+                                    .contextMenu {
+                                        Button {
+                                            fragment.isPinned.toggle()
+                                            HapticFeedback.impact(.light)
+                                        } label: {
+                                            Label(fragment.isPinned ? "取消置顶" : "置顶",
+                                                  systemImage: fragment.isPinned ? "pin.slash" : "pin")
+                                        }
+                                    }
                                 }
                             }
                             LazyVStack(spacing: 12) {
@@ -154,6 +169,15 @@ struct FragmentFeedView: View {
                                         FragmentGridCellView(fragment: fragment)
                                     }
                                     .buttonStyle(.plain)
+                                    .contextMenu {
+                                        Button {
+                                            fragment.isPinned.toggle()
+                                            HapticFeedback.impact(.light)
+                                        } label: {
+                                            Label(fragment.isPinned ? "取消置顶" : "置顶",
+                                                  systemImage: fragment.isPinned ? "pin.slash" : "pin")
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -168,7 +192,16 @@ struct FragmentFeedView: View {
                                     FragmentCardView(fragment: fragment)
                                 }
                                 .buttonStyle(.plain)
-                                // ④ 错位出场：偶数从左侧滑入，奇数从右侧滑入
+                                .contextMenu {
+                                    Button {
+                                        fragment.isPinned.toggle()
+                                        HapticFeedback.impact(.light)
+                                    } label: {
+                                        Label(fragment.isPinned ? "取消置顶" : "置顶",
+                                              systemImage: fragment.isPinned ? "pin.slash" : "pin")
+                                    }
+                                }
+                                // 错位出场：偶数从左侧滑入，奇数从右侧滑入
                                 .scrollTransition(.animated(.spring(response: 0.42, dampingFraction: 0.82))) { content, phase in
                                     content
                                         .opacity(phase.isIdentity ? 1 : 0)

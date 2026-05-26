@@ -106,6 +106,15 @@ struct FragmentCardView: View {
             .padding(.vertical, 12)
         }
         .animeCard(cornerRadius: 16)
+        .overlay(alignment: .topTrailing) {
+            if fragment.isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.caption2)
+                    .foregroundStyle(Color.accentColor)
+                    .padding(8)
+                    .accessibilityLabel("已置顶")
+            }
+        }
     }
 }
 
@@ -128,6 +137,7 @@ private struct CardCoverView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(maxWidth: .infinity)
+                        .accessibilityLabel(isVideo ? "视频封面" : "图片封面")
                 } else {
                     Color(.systemGray5)
                         .frame(maxWidth: .infinity, minHeight: 180)

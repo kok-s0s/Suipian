@@ -8,6 +8,13 @@ struct MediaThumbnailView: View {
     @State private var thumbnail: UIImage?
     @State private var isVideo = false
 
+    private static let imageCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 200
+        cache.totalCostLimit = 100 * 1024 * 1024 // 100 MB
+        return cache
+    }()
+
     var body: some View {
         ZStack {
             Color(.systemGray5)
@@ -34,6 +41,12 @@ struct MediaThumbnailView: View {
     }
 
     private func load() async {
+        let cacheKey = "\(identifier)_\(Int(size.width))x\(Int(size.height))" as NSString
+        if let cached = Self.imageCache.object(forKey: cacheKey) {
+            thumbnail = cached
+            return
+        }
+
         await requestPermissionIfNeeded()
 
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
@@ -46,7 +59,7 @@ struct MediaThumbnailView: View {
         opts.deliveryMode = .highQualityFormat
         opts.resizeMode = .exact
 
-        thumbnail = await withCheckedContinuation { cont in
+        let img = await withCheckedContinuation { (cont: CheckedContinuation<UIImage?, Never>) in
             PHImageManager.default().requestImage(
                 for: asset,
                 targetSize: size,
@@ -56,6 +69,11 @@ struct MediaThumbnailView: View {
                 cont.resume(returning: img)
             }
         }
+        if let img {
+            let cost = Int(size.width * size.height * 4)
+            Self.imageCache.setObject(img, forKey: cacheKey, cost: cost)
+        }
+        thumbnail = img
     }
 }
 

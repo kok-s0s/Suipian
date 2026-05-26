@@ -9,15 +9,12 @@ struct SuipianApp: App {
         do {
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
-            // Schema incompatible with on-disk store — delete only the specific store files.
-            let fm = FileManager.default
-            let storeURL = config.url
-            for url in [storeURL,
-                        URL(fileURLWithPath: storeURL.path + "-wal"),
-                        URL(fileURLWithPath: storeURL.path + "-shm")] {
-                try? fm.removeItem(at: url)
-            }
-            return try! ModelContainer(for: schema, configurations: [config])
+            // Migration failed — log and attempt in-memory fallback so the app
+            // stays usable rather than crashing. Data loss is preferable to a
+            // crash only as an absolute last resort, so we never delete the store.
+            print("[SuipianApp] ModelContainer error: \(error)")
+            let fallback = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            return try! ModelContainer(for: schema, configurations: [fallback])
         }
     }()
 

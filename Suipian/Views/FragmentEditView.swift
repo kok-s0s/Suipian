@@ -22,8 +22,7 @@ struct FragmentEditView: View {
     @State private var longitude: Double = 0
     @State private var locationName = ""
     @State private var locationSearch = ""
-    @State private var searchResults: [FragmentLocationResult] = []
-    @State private var isSearching = false
+    @State private var locationSuggestions: [NominatimResult] = []
     @State private var isPrivate = false
     @State private var audioFileNames: [String] = []
     @State private var mood: String = ""
@@ -74,12 +73,48 @@ struct FragmentEditView: View {
         for f in allFragments {
             for t in f.tags { freq[t, default: 0] += 1 }
         }
-        return freq.sorted { $0.value > $1.value }
-            .prefix(12)
-            .map { $0.key }
-            .filter { !tags.contains($0) }
+        return freq.sorted {
+            if $0.value != $1.value { return $0.value > $1.value }
+            return $0.key < $1.key  // stable tie-break so order is deterministic across re-renders
+        }
+        .prefix(12)
+        .map { $0.key }
+        .filter { !tags.contains($0) }
     }
     @State private var cameraPosition: MapCameraPosition = .automatic
+
+    // MARK: - Draft
+    private static let draftKey = "fragmentDraft_new"
+
+    private struct FragmentDraft: Codable {
+        var content: String
+        var tags: [String]
+        var mood: String
+        var storyName: String
+    }
+
+    private func saveDraft() {
+        guard !isEditing else { return }
+        guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !tags.isEmpty else {
+            UserDefaults.standard.removeObject(forKey: Self.draftKey)
+            return
+        }
+        let draft = FragmentDraft(content: content, tags: tags, mood: mood, storyName: storyName)
+        UserDefaults.standard.set(try? JSONEncoder().encode(draft), forKey: Self.draftKey)
+    }
+
+    private func restoreDraftIfNeeded() {
+        guard let data = UserDefaults.standard.data(forKey: Self.draftKey),
+              let draft = try? JSONDecoder().decode(FragmentDraft.self, from: data) else { return }
+        content = draft.content
+        tags = draft.tags
+        mood = draft.mood
+        storyName = draft.storyName
+    }
+
+    private func clearDraft() {
+        UserDefaults.standard.removeObject(forKey: Self.draftKey)
+    }
 
     var isEditing: Bool { fragment != nil }
     var hasLocation: Bool { latitude != 0 || longitude != 0 }
@@ -199,6 +234,7 @@ struct FragmentEditView: View {
                                 .foregroundStyle(.secondary)
                                 .font(.subheadline)
                             TextField("添加主题标签", text: $tagInput)
+                                .id("tagInput")
                                 .submitLabel(.done)
                                 .onSubmit { commitTag() }
                             if !tagInput.isEmpty {
@@ -372,15 +408,24 @@ struct FragmentEditView: View {
                                     .font(.subheadline)
 
                                 TextField("搜索地点（选填）", text: $locationSearch)
+                                    .id("locationSearch")
                                     .submitLabel(.search)
-                                    .onSubmit { performSearch() }
+                                    .onChange(of: locationSearch) { _, v in
+                                        if v.isEmpty { locationSuggestions = [] }
+                                    }
+                                    .onSubmit {
+                                        if let first = locationSuggestions.first {
+                                            selectNominatimResult(first)
+                                        }
+                                    }
+                                    .task(id: locationSearch) {
+                                        guard !locationSearch.trimmingCharacters(in: .whitespaces).isEmpty,
+                                              !hasLocation else { return }
+                                        try? await Task.sleep(nanoseconds: 400_000_000)
+                                        guard !Task.isCancelled else { return }
+                                        locationSuggestions = await searchNominatim(query: locationSearch)
+                                    }
 
-                                if isSearching {
-                                    ProgressView().scaleEffect(0.8)
-                                } else if !locationSearch.isEmpty && !hasLocation {
-                                    Button("搜索") { performSearch() }
-                                        .font(.subheadline)
-                                }
                                 if hasLocation {
                                     Button { clearLocation() } label: {
                                         Image(systemName: "xmark.circle.fill")
@@ -434,16 +479,18 @@ struct FragmentEditView: View {
                                 }
                             }
 
-                            if !searchResults.isEmpty {
+                            if !locationSuggestions.isEmpty && !hasLocation {
                                 VStack(alignment: .leading, spacing: 0) {
-                                    ForEach(searchResults) { result in
-                                        Button { selectLocation(result) } label: {
+                                    ForEach(Array(locationSuggestions.enumerated()), id: \.offset) { index, result in
+                                        Button {
+                                            selectNominatimResult(result)
+                                        } label: {
                                             VStack(alignment: .leading, spacing: 2) {
-                                                Text(result.name)
+                                                Text(result.title)
                                                     .font(.subheadline)
                                                     .foregroundStyle(.primary)
-                                                if let sub = result.subtitle {
-                                                    Text(sub)
+                                                if !result.subtitle.isEmpty {
+                                                    Text(result.subtitle)
                                                         .font(.caption)
                                                         .foregroundStyle(.secondary)
                                                         .lineLimit(1)
@@ -453,7 +500,9 @@ struct FragmentEditView: View {
                                             .padding(.horizontal, 16)
                                             .padding(.vertical, 10)
                                         }
-                                        Divider().padding(.leading, 16)
+                                        if index < locationSuggestions.count - 1 {
+                                            Divider().padding(.leading, 16)
+                                        }
                                     }
                                 }
                                 .background(Color(.systemGroupedBackground))
@@ -484,7 +533,10 @@ struct FragmentEditView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button("取消") {
+                        saveDraft()
+                        dismiss()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") { save() }
@@ -508,6 +560,7 @@ struct FragmentEditView: View {
     private func loadExisting() {
         guard let fragment else {
             if !preloadedMediaIDs.isEmpty { mediaIdentifiers = preloadedMediaIDs }
+            restoreDraftIfNeeded()
             return
         }
         isPrivate = fragment.isPrivate
@@ -546,33 +599,38 @@ struct FragmentEditView: View {
         tagInput = ""
     }
 
-    private func performSearch() {
-        guard !locationSearch.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        isSearching = true
-        searchResults = []
-        let request = MKLocalSearch.Request()
-        request.naturalLanguageQuery = locationSearch
-        Task {
-            do {
-                let response = try await MKLocalSearch(request: request).start()
-                searchResults = response.mapItems.prefix(5).map { FragmentLocationResult(mapItem: $0) }
-            } catch {
-                searchResults = []
-            }
-            isSearching = false
-        }
-    }
-
-    private func selectLocation(_ result: FragmentLocationResult) {
-        locationName = result.name
-        locationSearch = result.name
-        latitude = result.coordinate.latitude
-        longitude = result.coordinate.longitude
-        searchResults = []
+    private func selectNominatimResult(_ result: NominatimResult) {
+        locationName = result.title
+        locationSearch = result.title
+        latitude = result.latitude
+        longitude = result.longitude
+        locationSuggestions = []
         cameraPosition = .region(MKCoordinateRegion(
-            center: result.coordinate,
+            center: CLLocationCoordinate2D(latitude: result.latitude, longitude: result.longitude),
             span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
         ))
+    }
+
+    private func searchNominatim(query: String) async -> [NominatimResult] {
+        guard let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://nominatim.openstreetmap.org/search?q=\(encoded)&format=json&limit=5&accept-language=zh,ja,en") else {
+            return []
+        }
+        var req = URLRequest(url: url)
+        req.setValue("SuipianApp/1.0", forHTTPHeaderField: "User-Agent")
+        req.timeoutInterval = 8
+        guard let (data, _) = try? await URLSession.shared.data(for: req),
+              let items = try? JSONDecoder().decode([NominatimItem].self, from: data) else {
+            return []
+        }
+        return items.map { item in
+            let parts = item.displayName.components(separatedBy: ", ")
+            let title = item.name ?? parts.first ?? item.displayName
+            let sub = parts.dropFirst().prefix(2).joined(separator: ", ")
+            return NominatimResult(title: title, subtitle: sub,
+                                   latitude: Double(item.lat) ?? 0,
+                                   longitude: Double(item.lon) ?? 0)
+        }
     }
 
     private func useCurrentLocation() async {
@@ -607,6 +665,7 @@ struct FragmentEditView: View {
     private func clearLocation() {
         latitude = 0; longitude = 0
         locationName = ""; locationSearch = ""
+        locationSuggestions = []
         cameraPosition = .automatic
     }
 
@@ -629,6 +688,7 @@ struct FragmentEditView: View {
             fragment.longitude = longitude
             fragment.locationName = locationName
             fragment.isPrivate = isPrivate
+            SpotlightManager.index(fragment)
         } else {
             let f = Fragment(
                 content: content,
@@ -650,8 +710,10 @@ struct FragmentEditView: View {
             f.musicArtworkData = musicArtworkData
             f.musicStoreID = musicStoreID
             modelContext.insert(f)
+            SpotlightManager.index(f)
         }
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        clearDraft()
+        HapticFeedback.success()
         dismiss()
     }
 }
@@ -711,10 +773,23 @@ private struct MoodPickerRow: View {
     }
 }
 
-struct FragmentLocationResult: Identifiable {
-    let id = UUID()
-    let mapItem: MKMapItem
-    var name: String { mapItem.name ?? "未知地点" }
-    var subtitle: String? { mapItem.address?.shortAddress ?? mapItem.address?.fullAddress }
-    var coordinate: CLLocationCoordinate2D { mapItem.location.coordinate }
+// MARK: - Nominatim (OpenStreetMap) location search — global coverage, no region lock
+
+private struct NominatimResult {
+    let title: String
+    let subtitle: String
+    let latitude: Double
+    let longitude: Double
+}
+
+private struct NominatimItem: Decodable {
+    let displayName: String
+    let lat: String
+    let lon: String
+    let name: String?
+
+    enum CodingKeys: String, CodingKey {
+        case displayName = "display_name"
+        case lat, lon, name
+    }
 }
