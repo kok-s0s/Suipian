@@ -17,22 +17,10 @@ struct AnimeCardModifier: ViewModifier {
     let secondary: Bool
     @Environment(\.colorScheme) private var colorScheme
 
-    private var cardBackground: Color {
-        if colorScheme == .dark {
-            return secondary
-                ? Color(red: 0.10, green: 0.13, blue: 0.20)
-                : Color(red: 0.07, green: 0.09, blue: 0.16)
-        } else {
-            return secondary
-                ? Color(red: 0.95, green: 0.96, blue: 0.98)
-                : Color(red: 1.00, green: 1.00, blue: 1.00)
-        }
-    }
-
     private var borderColor: Color {
         colorScheme == .dark
-            ? Color.accentColor.opacity(0.50)
-            : Color.accentColor.opacity(0.20)
+            ? Color.accentColor.opacity(secondary ? 0.35 : 0.45)
+            : Color.accentColor.opacity(secondary ? 0.14 : 0.20)
     }
 
     private var borderWidth: CGFloat {
@@ -43,9 +31,21 @@ struct AnimeCardModifier: ViewModifier {
         colorScheme == .dark ? .clear : Color.accentColor.opacity(0.10)
     }
 
+    // Tint overlay for secondary cards to visually separate from primary
+    private var tintOverlay: Color {
+        secondary
+            ? Color.accentColor.opacity(colorScheme == .dark ? 0.04 : 0.03)
+            : .clear
+    }
+
     func body(content: Content) -> some View {
         content
-            .background(cardBackground)
+            // ② Glassmorphism: ultraThinMaterial lets the gradient background show through
+            .background {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(.ultraThinMaterial)
+                    .overlay(tintOverlay, in: RoundedRectangle(cornerRadius: cornerRadius))
+            }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius)
