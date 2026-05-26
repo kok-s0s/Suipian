@@ -366,7 +366,7 @@ private struct MoodTrendSection: View {
     }
 }
 
-// MARK: - Mood stats
+// MARK: - Mood stats (compact horizontal bubbles with arc)
 
 private struct MoodStatsSection: View {
     let fragments: [Fragment]
@@ -383,38 +383,40 @@ private struct MoodStatsSection: View {
 
     var body: some View {
         if moodGroups.isEmpty { EmptyView() } else {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text("情绪分布")
                     .font(.subheadline).fontWeight(.semibold)
 
-                let maxCount = moodGroups.first?.fragments.count ?? 1
-                ForEach(moodGroups, id: \.emoji) { item in
-                    Button {
-                        onDrillDown(FragmentDrillDown(title: "\(item.emoji) 的碎片", fragments: item.fragments))
-                    } label: {
-                        HStack(spacing: 10) {
-                            Text(item.emoji).font(.title3).frame(width: 32)
+                let maxCount = Double(moodGroups.first?.fragments.count ?? 1)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(moodGroups, id: \.emoji) { item in
+                            Button {
+                                onDrillDown(FragmentDrillDown(title: "\(item.emoji) 的碎片", fragments: item.fragments))
+                            } label: {
+                                VStack(spacing: 5) {
+                                    ZStack {
+                                        Circle()
+                                            .stroke(Color.accentColor.opacity(0.12), lineWidth: 3.5)
+                                        Circle()
+                                            .trim(from: 0, to: CGFloat(item.fragments.count) / maxCount)
+                                            .stroke(Color.accentColor.opacity(0.72),
+                                                    style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
+                                            .rotationEffect(.degrees(-90))
+                                        Text(item.emoji).font(.title3)
+                                    }
+                                    .frame(width: 50, height: 50)
 
-                            GeometryReader { geo in
-                                ZStack(alignment: .leading) {
-                                    Capsule().fill(Color.accentColor.opacity(0.1))
-                                    Capsule()
-                                        .fill(Color.accentColor.opacity(0.6))
-                                        .frame(width: geo.size.width * CGFloat(item.fragments.count) / CGFloat(maxCount))
+                                    Text("\(item.fragments.count)")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundStyle(.secondary)
                                 }
                             }
-                            .frame(height: 8)
-
-                            Text("\(item.fragments.count)")
-                                .font(.caption).foregroundStyle(.secondary)
-                                .frame(width: 28, alignment: .trailing)
-
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 10))
-                                .foregroundStyle(.tertiary)
+                            .buttonStyle(.plain)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 4)
                 }
             }
             .padding(16)
@@ -423,7 +425,7 @@ private struct MoodStatsSection: View {
     }
 }
 
-// MARK: - Top tags
+// MARK: - Top tags (flow wrap chips)
 
 private struct TopTagsSection: View {
     let fragments: [Fragment]
@@ -435,52 +437,85 @@ private struct TopTagsSection: View {
             for t in f.tags { groups[t, default: []].append(f) }
         }
         return groups.sorted { $0.value.count > $1.value.count }
-            .prefix(8)
+            .prefix(12)
             .map { (tag: $0.key, fragments: $0.value) }
     }
 
     var body: some View {
         if topTags.isEmpty { EmptyView() } else {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text("常用标签")
                     .font(.subheadline).fontWeight(.semibold)
 
-                let maxCount = topTags.first?.fragments.count ?? 1
-                ForEach(topTags, id: \.tag) { item in
-                    Button {
-                        onDrillDown(FragmentDrillDown(title: "#\(item.tag)", fragments: item.fragments))
-                    } label: {
-                        HStack(spacing: 10) {
-                            Text("#\(item.tag)")
-                                .font(.subheadline)
-                                .foregroundStyle(Color.accentColor)
-                                .frame(width: 100, alignment: .leading)
-                                .lineLimit(1)
-
-                            GeometryReader { geo in
-                                ZStack(alignment: .leading) {
-                                    Capsule().fill(Color.accentColor.opacity(0.1))
-                                    Capsule()
-                                        .fill(Color.accentColor.opacity(0.7))
-                                        .frame(width: geo.size.width * CGFloat(item.fragments.count) / CGFloat(maxCount))
-                                }
+                FlowLayout(spacing: 8) {
+                    ForEach(topTags, id: \.tag) { item in
+                        Button {
+                            onDrillDown(FragmentDrillDown(title: "#\(item.tag)", fragments: item.fragments))
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("#\(item.tag)")
+                                    .font(.caption).fontWeight(.medium)
+                                    .foregroundStyle(Color.accentColor)
+                                    .lineLimit(1)
+                                Text("\(item.fragments.count)")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.tertiary)
                             }
-                            .frame(height: 8)
-
-                            Text("\(item.fragments.count)")
-                                .font(.caption).foregroundStyle(.secondary)
-                                .frame(width: 28, alignment: .trailing)
-
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 10))
-                                .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 10).padding(.vertical, 6)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .overlay(Capsule().strokeBorder(
+                                LinearGradient(
+                                    colors: [Color.accentColor.opacity(0.55), Color.accentColor.opacity(0.15)],
+                                    startPoint: .leading, endPoint: .trailing
+                                ), lineWidth: 0.8))
                         }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .padding(16)
             .animeSecondaryCard(cornerRadius: 14)
+        }
+    }
+}
+
+// MARK: - Flow layout (iOS 16+)
+
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxW = proposal.width ?? .infinity
+        var rowW: CGFloat = 0
+        var rowH: CGFloat = 0
+        var totalH: CGFloat = 0
+
+        for subview in subviews {
+            let sz = subview.sizeThatFits(.unspecified)
+            if rowW > 0, rowW + spacing + sz.width > maxW {
+                totalH += rowH + spacing
+                rowW = 0; rowH = 0
+            }
+            rowW += (rowW > 0 ? spacing : 0) + sz.width
+            rowH = max(rowH, sz.height)
+        }
+        return CGSize(width: maxW, height: totalH + rowH)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowH: CGFloat = 0
+
+        for subview in subviews {
+            let sz = subview.sizeThatFits(.unspecified)
+            if x > bounds.minX, x + spacing + sz.width > bounds.maxX {
+                x = bounds.minX; y += rowH + spacing; rowH = 0
+            }
+            let px = x > bounds.minX ? x + spacing : x
+            subview.place(at: CGPoint(x: px, y: y), proposal: .unspecified)
+            x = px + sz.width
+            rowH = max(rowH, sz.height)
         }
     }
 }
