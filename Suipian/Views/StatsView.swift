@@ -16,7 +16,8 @@ struct StatsView: View {
     @State private var drillDown: FragmentDrillDown?
 
     var body: some View {
-        Group {
+        NavigationStack {
+          Group {
             if fragments.isEmpty {
                 ContentUnavailableView(
                     "还没有任何碎片",
@@ -38,6 +39,8 @@ struct StatsView: View {
                     .padding(.bottom, 40)
                 }
             }
+          }
+          .toolbar(.hidden, for: .navigationBar)
         }
         .sheet(item: $drillDown) { item in
             FragmentListSheet(title: item.title, fragments: item.fragments)

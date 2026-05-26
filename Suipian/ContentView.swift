@@ -6,7 +6,6 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            // ⑤ 全局渐变背景
             appBackground.ignoresSafeArea()
 
             TabView(selection: $selectedTab) {
@@ -44,7 +43,7 @@ struct ContentView: View {
     }
 }
 
-// MARK: - ① 浮动 Tab Bar
+// MARK: - Floating Tab Bar
 
 struct FloatingTabBar: View {
     @Binding var selectedTab: Int
@@ -70,13 +69,13 @@ struct FloatingTabBar: View {
                 }
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.28), lineWidth: 0.75))
-        .shadow(color: Color.accentColor.opacity(0.18), radius: 18, y: 5)
-        .padding(.horizontal, 28)
-        .padding(.bottom, 20)
+        .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.22), lineWidth: 0.75))
+        .shadow(color: Color.accentColor.opacity(0.15), radius: 14, y: 4)
+        .padding(.horizontal, 40)
+        .padding(.bottom, 16)
     }
 }
 
@@ -91,18 +90,19 @@ private struct FloatingTabItem: View {
             VStack(spacing: 3) {
                 Image(systemName: icon)
                     .font(.system(size: 17, weight: isSelected ? .semibold : .regular))
-                    .scaleEffect(isSelected ? 1.12 : 1.0)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                    .scaleEffect(isSelected ? 1.1 : 1.0)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.65), value: isSelected)
                 Text(label)
-                    .font(.system(size: 10, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: 10, weight: isSelected ? .medium : .regular))
+                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                // 小圆点选中指示器
+                Circle()
+                    .fill(isSelected ? Color.accentColor : Color.clear)
+                    .frame(width: 4, height: 4)
             }
-            .foregroundStyle(isSelected ? Color.accentColor : .secondary)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(
-                isSelected ? Color.accentColor.opacity(0.13) : Color.clear,
-                in: RoundedRectangle(cornerRadius: 10)
-            )
+            .padding(.vertical, 7)
         }
         .buttonStyle(.plain)
     }

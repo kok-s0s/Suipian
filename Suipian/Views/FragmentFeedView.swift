@@ -22,7 +22,6 @@ struct FragmentFeedView: View {
     @State private var showingSettings = false
     @State private var showingRandomReview = false
     @State private var randomFragment: Fragment? = nil
-    @State private var fabPulse = false
 
     var onThisDayFragments: [Fragment] {
         let cal = Calendar.current
@@ -242,19 +241,7 @@ struct FragmentFeedView: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                ZStack {
-                    // ③ 脉冲呼吸环
-                    Circle()
-                        .stroke(Color.accentColor.opacity(0.45), lineWidth: 1.5)
-                        .frame(width: 58, height: 58)
-                        .scaleEffect(fabPulse ? 1.6 : 1.0)
-                        .opacity(fabPulse ? 0 : 0.7)
-                        .animation(
-                            .easeOut(duration: 1.5).repeatForever(autoreverses: false),
-                            value: fabPulse
-                        )
-
-                    Button { showingCreate = true } label: {
+                Button { showingCreate = true } label: {
                         Image(systemName: "plus")
                             .font(.title2).fontWeight(.semibold)
                             .foregroundStyle(.white)
@@ -275,8 +262,6 @@ struct FragmentFeedView: View {
                     }
                 }
                 .padding(.trailing, 20).padding(.bottom, 24)
-                } // ZStack
-                .onAppear { fabPulse = true }
             }
         }
         .sheet(isPresented: $showingCreate) {
