@@ -174,26 +174,51 @@ struct FragmentFeedView: View {
                     }
                 }
             }
-            .navigationTitle(selectedTag.map { "#\($0)" } ?? "碎片")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle(selectedTag.map { "#\($0)" } ?? "")
+            .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, prompt: "搜索内容、标签、地点")
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    if let tag = selectedTag {
+                        HStack(spacing: 4) {
+                            Image(systemName: "tag.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color.accentColor)
+                            Text("#\(tag)")
+                                .font(.subheadline).fontWeight(.semibold)
+                                .foregroundStyle(Color.accentColor)
+                        }
+                    } else {
+                        HStack(spacing: 5) {
+                            Image(systemName: "square.on.square.fill")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color.accentColor)
+                            Text("碎片")
+                                .font(.subheadline).fontWeight(.semibold)
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                }
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         showingSettings = true
                     } label: {
                         Image(systemName: "gearshape")
+                            .font(.system(size: 15))
                             .foregroundStyle(.secondary)
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if !reviewableFragments.isEmpty {
                         Button { pickRandomFragment() } label: {
-                            Image(systemName: "dice").foregroundStyle(.secondary)
+                            Image(systemName: "dice")
+                                .font(.system(size: 15))
+                                .foregroundStyle(.secondary)
                         }
                     }
                     Button { isGridView.toggle() } label: {
                         Image(systemName: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
+                            .font(.system(size: 15))
                             .foregroundStyle(.secondary)
                             .contentTransition(.symbolEffect(.replace))
                     }

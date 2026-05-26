@@ -27,7 +27,7 @@ struct StoryListView: View {
                     )
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: 16) {
+                        LazyVStack(spacing: 14) {
                             ForEach(stories, id: \.name) { story in
                                 NavigationLink {
                                     StoryDetailView(name: story.name, fragments: story.fragments)
@@ -42,76 +42,124 @@ struct StoryListView: View {
                     }
                 }
             }
-            .navigationTitle("故事线")
-            .navigationBarTitleDisplayMode(.large)
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 }
 
-// MARK: - Story card
+// MARK: - Story card (hero poster style)
 
 private struct StoryCard: View {
     let name: String
     let fragments: [Fragment]
 
+    private var coverIDs: [String] {
+        Array(fragments.compactMap { $0.coverMediaID }.prefix(4))
+    }
+
     private var dateRange: String {
         guard let first = fragments.last?.date, let last = fragments.first?.date else { return "" }
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy.MM.dd"
-        if Calendar.current.isDate(first, inSameDayAs: last) {
-            return fmt.string(from: first)
-        }
+        if Calendar.current.isDate(first, inSameDayAs: last) { return fmt.string(from: first) }
         return "\(fmt.string(from: first)) – \(fmt.string(from: last))"
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(name)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    Text("\(fragments.count) 条碎片 · \(dateRange)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+        ZStack(alignment: .bottomLeading) {
+            // Background: mosaic or gradient fallback
+            if coverIDs.isEmpty {
+                LinearGradient(
+                    colors: [Color.accentColor.opacity(0.25), Color.accentColor.opacity(0.55)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+            } else {
+                StoryMosaicBackground(ids: coverIDs)
             }
 
-            // Cover thumbnails (up to 4)
-            HStack(spacing: 8) {
-                ForEach(Array(fragments.prefix(4).enumerated()), id: \.offset) { _, f in
-                    if let id = f.coverMediaID {
-                        MediaThumbnailView(identifier: id, size: CGSize(width: 120, height: 120))
-                            .frame(width: 64, height: 64)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                    } else {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.accentColor.opacity(0.1))
-                            .frame(width: 64, height: 64)
-                            .overlay(
-                                Text(f.mood.isEmpty ? "📝" : f.mood)
-                                    .font(.title3)
-                            )
+            // Bottom scrim for text readability
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.62)],
+                startPoint: .center, endPoint: .bottom
+            )
+
+            // Text overlay
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(fragments.count) 条碎片  ·  \(dateRange)")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.72))
+                Text(name)
+                    .font(.title3).fontWeight(.bold)
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 14)
+
+            // Top-right chevron badge
+            Image(systemName: "chevron.right")
+                .font(.caption).fontWeight(.semibold)
+                .foregroundStyle(.white.opacity(0.7))
+                .padding(10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+        }
+        .frame(maxWidth: .infinity, minHeight: 180)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Color.accentColor.opacity(0.28), lineWidth: 0.75)
+        )
+        .shadow(color: .black.opacity(0.10), radius: 6, y: 3)
+    }
+}
+
+// MARK: - Thumbnail mosaic background
+
+private struct StoryMosaicBackground: View {
+    let ids: [String]
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            let gap: CGFloat = 1.5
+
+            switch ids.count {
+            case 1:
+                tile(ids[0], w: w, h: h)
+            case 2:
+                HStack(spacing: gap) {
+                    tile(ids[0], w: (w - gap) / 2, h: h)
+                    tile(ids[1], w: (w - gap) / 2, h: h)
+                }
+            case 3:
+                HStack(spacing: gap) {
+                    tile(ids[0], w: (w - gap) / 2, h: h)
+                    VStack(spacing: gap) {
+                        tile(ids[1], w: (w - gap) / 2, h: (h - gap) / 2)
+                        tile(ids[2], w: (w - gap) / 2, h: (h - gap) / 2)
                     }
                 }
-                if fragments.count > 4 {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color(.systemGray5))
-                        .frame(width: 64, height: 64)
-                        .overlay(
-                            Text("+\(fragments.count - 4)")
-                                .font(.subheadline).fontWeight(.medium)
-                                .foregroundStyle(.secondary)
-                        )
+            default:
+                VStack(spacing: gap) {
+                    HStack(spacing: gap) {
+                        tile(ids[0], w: (w - gap) / 2, h: (h - gap) / 2)
+                        tile(ids[1], w: (w - gap) / 2, h: (h - gap) / 2)
+                    }
+                    HStack(spacing: gap) {
+                        tile(ids[2], w: (w - gap) / 2, h: (h - gap) / 2)
+                        tile(ids[3], w: (w - gap) / 2, h: (h - gap) / 2)
+                    }
                 }
             }
         }
-        .padding(16)
-        .animeCard(cornerRadius: 16)
+    }
+
+    @ViewBuilder
+    private func tile(_ id: String, w: CGFloat, h: CGFloat) -> some View {
+        MediaThumbnailView(identifier: id, size: CGSize(width: w * 2, height: h * 2))
+            .frame(width: w, height: h)
+            .clipped()
     }
 }
 
