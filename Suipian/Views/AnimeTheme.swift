@@ -14,20 +14,10 @@ extension View {
     // Frosted glass disc for toolbar icon buttons — matches FAB material
     func glassToolbarIcon(active: Bool = false) -> some View {
         self
-            .font(.system(size: 14, weight: .medium))
+            .font(.system(size: 15, weight: .medium))
             .foregroundStyle(active ? Color.accentColor : .secondary)
-            .padding(8)
-            .background(.ultraThinMaterial, in: Circle())
-            .overlay(
-                Circle().strokeBorder(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.55), Color.white.opacity(0.08)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 0.8
-                )
-            )
-            .shadow(color: .black.opacity(0.10), radius: 4, y: 2)
+            .frame(width: 34, height: 34)
+            .background(Circle().fill(.ultraThinMaterial))
     }
 
     // Tag chip — accent text on frosted material, neutral border

@@ -232,6 +232,7 @@ struct FragmentFeedView: View {
             .background { AppBackgroundCanvas().ignoresSafeArea() }
             .navigationTitle(selectedTag.map { "#\($0)" } ?? "")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .searchable(text: $searchText, prompt: "搜索内容、标签、地点")
             .toolbar {
                 ToolbarItem(placement: .principal) {
