@@ -139,6 +139,12 @@ struct FragmentEditView: View {
         UserDefaults.standard.removeObject(forKey: Self.draftKey)
     }
 
+    private func discardDraft() {
+        clearDraft()
+        content = ""; tags = []; mood = ""; storyName = ""; mediaIdentifiers = []
+        withAnimation { showDraftRestoredBanner = false }
+    }
+
     var isEditing: Bool { fragment != nil }
     var hasLocation: Bool { latitude != 0 || longitude != 0 }
     var canSave: Bool {
@@ -154,24 +160,36 @@ struct FragmentEditView: View {
 
                     // ── 草稿恢复提示 ──────────────────────────────
                     if showDraftRestoredBanner {
-                        HStack(spacing: 8) {
-                            Image(systemName: "doc.text.fill")
-                            Text("已恢复上次未保存的草稿")
-                                .font(.subheadline)
-                            Spacer()
-                            Button {
-                                withAnimation { showDraftRestoredBanner = false }
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "doc.text.fill")
+                                Text("已恢复上次草稿")
+                                    .font(.subheadline).fontWeight(.medium)
+                                Spacer()
+                                Button {
+                                    withAnimation { showDraftRestoredBanner = false }
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(Color.accentColor.opacity(0.6))
+                                }
+                            }
+                            HStack(spacing: 12) {
+                                Text("继续编辑或直接保存即可")
+                                    .font(.caption)
+                                    .foregroundStyle(Color.accentColor.opacity(0.75))
+                                Spacer()
+                                Button("丢弃草稿") { discardDraft() }
+                                    .font(.caption).fontWeight(.medium)
+                                    .foregroundStyle(.orange)
                             }
                         }
                         .foregroundStyle(Color.accentColor)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
-                        .background(Color.accentColor.opacity(0.1))
+                        .background(Color.accentColor.opacity(0.08))
                         .transition(.move(edge: .top).combined(with: .opacity))
                         .task {
-                            try? await Task.sleep(nanoseconds: 3_500_000_000)
+                            try? await Task.sleep(nanoseconds: 5_000_000_000)
                             withAnimation { showDraftRestoredBanner = false }
                         }
                     }

@@ -22,6 +22,12 @@ struct FragmentFeedView: View {
     @State private var showingSettings = false
     @State private var showingRandomReview = false
     @State private var randomFragment: Fragment? = nil
+    @State private var hasDraft = false
+
+    private static let draftKey = "fragmentDraft_new"
+    private func refreshDraftStatus() {
+        hasDraft = UserDefaults.standard.data(forKey: Self.draftKey) != nil
+    }
 
     var onThisDayFragments: [Fragment] {
         let cal = Calendar.current
@@ -279,7 +285,7 @@ struct FragmentFeedView: View {
                     )
                 }
             }
-        .onAppear { cachedSortedTags = buildSortedTags() }
+        .onAppear { cachedSortedTags = buildSortedTags(); refreshDraftStatus() }
         .onChange(of: fragments) { _, _ in cachedSortedTags = buildSortedTags() }
         .overlay(alignment: .bottomTrailing) {
                 // ③ FAB with pulse rings
@@ -294,6 +300,16 @@ struct FragmentFeedView: View {
                             .background(Color.accentColor)
                             .clipShape(Circle())
                             .shadow(color: Color.accentColor.opacity(0.4), radius: 8, y: 4)
+                            .overlay(alignment: .topTrailing) {
+                                if hasDraft {
+                                    Circle()
+                                        .fill(.orange)
+                                        .frame(width: 14, height: 14)
+                                        .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                                        .offset(x: 2, y: -2)
+                                        .transition(.scale.combined(with: .opacity))
+                                }
+                            }
                     }
                     .contextMenu {
                         Button { showingCreate = true } label: {
@@ -310,7 +326,7 @@ struct FragmentFeedView: View {
                 .padding(.trailing, 20).padding(.bottom, 24)
             }
         }
-        .sheet(isPresented: $showingCreate) {
+        .sheet(isPresented: $showingCreate, onDismiss: { refreshDraftStatus() }) {
             FragmentEditView()
         }
         .sheet(isPresented: $showingSettings) {
@@ -341,7 +357,7 @@ struct FragmentFeedView: View {
             CameraPickerView(capturedID: $cameraID)
                 .ignoresSafeArea()
         }
-        .sheet(isPresented: $showingCreateWithMedia, onDismiss: { quickMediaIDs = [] }) {
+        .sheet(isPresented: $showingCreateWithMedia, onDismiss: { quickMediaIDs = []; refreshDraftStatus() }) {
             FragmentEditView(preloadedMediaIDs: quickMediaIDs)
         }
     }
