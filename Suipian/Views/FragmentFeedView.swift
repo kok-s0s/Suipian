@@ -256,28 +256,26 @@ struct FragmentFeedView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        showingSettings = true
-                    } label: {
+                    Button { showingSettings = true } label: {
                         Image(systemName: "gearshape")
-                            .font(.system(size: 15))
-                            .foregroundStyle(.secondary)
+                            .glassToolbarIcon()
                     }
+                    .buttonStyle(.plain)
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if !reviewableFragments.isEmpty {
                         Button { pickRandomFragment() } label: {
                             Image(systemName: "dice")
-                                .font(.system(size: 15))
-                                .foregroundStyle(.secondary)
+                                .glassToolbarIcon()
                         }
+                        .buttonStyle(.plain)
                     }
                     Button { isGridView.toggle() } label: {
                         Image(systemName: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
-                            .font(.system(size: 15))
-                            .foregroundStyle(.secondary)
                             .contentTransition(.symbolEffect(.replace))
+                            .glassToolbarIcon(active: isGridView)
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .overlay {
