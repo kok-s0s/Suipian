@@ -81,6 +81,16 @@ struct FragmentDetailView: View {
                             .lineSpacing(6)
                     }
 
+                    // Link preview
+                    if !fragment.linkURL.isEmpty {
+                        LinkPreviewCard(
+                            linkURL: fragment.linkURL,
+                            linkTitle: fragment.linkTitle,
+                            linkDescription: fragment.linkDescription,
+                            linkImageURL: fragment.linkImageURL
+                        )
+                    }
+
                     // Music
                     if !fragment.musicTitle.isEmpty {
                         MusicDetailCard(

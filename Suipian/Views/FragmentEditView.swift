@@ -33,6 +33,10 @@ struct FragmentEditView: View {
     @State private var musicAlbum: String = ""
     @State private var musicArtworkData: Data = Data()
     @State private var musicStoreID: String = ""
+    @State private var linkURL: String = ""
+    @State private var linkTitle: String = ""
+    @State private var linkDescription: String = ""
+    @State private var linkImageURL: String = ""
     @State private var isFetchingLocation = false
     @State private var showDraftRestoredBanner = false
 
@@ -377,6 +381,16 @@ struct FragmentEditView: View {
 
                     Divider().padding(.vertical, 12)
 
+                    // ── 链接预览 ──────────────────────────────────
+                    LinkPreviewRow(
+                        linkURL: $linkURL,
+                        linkTitle: $linkTitle,
+                        linkDescription: $linkDescription,
+                        linkImageURL: $linkImageURL
+                    )
+
+                    Divider().padding(.vertical, 12)
+
                     // ── 故事线 ────────────────────────────────────
                     VStack(alignment: .leading, spacing: 0) {
                         HStack {
@@ -636,6 +650,10 @@ struct FragmentEditView: View {
         musicAlbum = fragment.musicAlbum
         musicArtworkData = fragment.musicArtworkData
         musicStoreID = fragment.musicStoreID
+        linkURL = fragment.linkURL
+        linkTitle = fragment.linkTitle
+        linkDescription = fragment.linkDescription
+        linkImageURL = fragment.linkImageURL
         content = fragment.content
         mediaIdentifiers = fragment.mediaIdentifiers
         coverIdentifier = fragment.coverIdentifier
@@ -747,6 +765,10 @@ struct FragmentEditView: View {
             fragment.musicAlbum = musicAlbum
             fragment.musicArtworkData = musicArtworkData
             fragment.musicStoreID = musicStoreID
+            fragment.linkURL = linkURL
+            fragment.linkTitle = linkTitle
+            fragment.linkDescription = linkDescription
+            fragment.linkImageURL = linkImageURL
             fragment.tags = tags
             fragment.date = date
             fragment.latitude = latitude
@@ -774,6 +796,10 @@ struct FragmentEditView: View {
             f.musicAlbum = musicAlbum
             f.musicArtworkData = musicArtworkData
             f.musicStoreID = musicStoreID
+            f.linkURL = linkURL
+            f.linkTitle = linkTitle
+            f.linkDescription = linkDescription
+            f.linkImageURL = linkImageURL
             modelContext.insert(f)
             SpotlightManager.index(f)
         }

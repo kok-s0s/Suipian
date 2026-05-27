@@ -22,6 +22,10 @@ final class Fragment {
     var musicAlbum: String = ""
     var musicArtworkData: Data = Data()
     var musicStoreID: String = ""
+    var linkURL: String = ""
+    var linkTitle: String = ""
+    var linkDescription: String = ""
+    var linkImageURL: String = ""
 
     var hasLocation: Bool { latitude != 0 || longitude != 0 }
     var hasMedia: Bool { !mediaIdentifiers.isEmpty }

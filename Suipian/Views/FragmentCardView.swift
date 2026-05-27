@@ -72,6 +72,10 @@ struct FragmentCardView: View {
                     Spacer()
 
                     HStack(spacing: 4) {
+                        if !fragment.linkURL.isEmpty {
+                            LinkBadge(linkURL: fragment.linkURL)
+                            Text("·").font(.caption).foregroundStyle(.tertiary)
+                        }
                         if !fragment.musicTitle.isEmpty {
                             MusicBadge(title: fragment.musicTitle, artworkData: fragment.musicArtworkData)
                             Text("·").font(.caption).foregroundStyle(.tertiary)
