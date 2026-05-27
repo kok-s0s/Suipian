@@ -288,6 +288,7 @@
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "用于解锁碎片，保护你的隐私";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于在碎片中标注位置";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于录制语音碎片";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "用于将语音转换为文字，快速创建碎片";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "用于读取您选择关联到碎片的照片和视频";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -327,6 +328,7 @@
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "用于解锁碎片，保护你的隐私";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于在碎片中标注位置";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于录制语音碎片";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "用于将语音转换为文字，快速创建碎片";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "用于读取您选择关联到碎片的照片和视频";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

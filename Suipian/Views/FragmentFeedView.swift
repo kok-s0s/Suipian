@@ -24,6 +24,8 @@ struct FragmentFeedView: View {
     @State private var randomFragment: Fragment? = nil
     @State private var hasDraft = false
     @State private var fabExpanded = false
+    @State private var showingVoiceInput = false
+    @State private var voicePrefilledContent = ""
 
     private static let draftKey = "fragmentDraft_new"
     private func refreshDraftStatus() {
@@ -209,14 +211,15 @@ struct FragmentFeedView: View {
                                               systemImage: fragment.isPinned ? "pin.slash" : "pin")
                                     }
                                 }
-                                // 错位出场：偶数从左侧滑入，奇数从右侧滑入
-                                .scrollTransition(.animated(.spring(response: 0.42, dampingFraction: 0.82))) { content, phase in
+                                .scrollTransition(.animated(.spring(response: 0.5, dampingFraction: 0.88))) { content, phase in
                                     content
-                                        .opacity(phase.isIdentity ? 1 : 0)
-                                        .scaleEffect(phase.isIdentity ? 1 : 0.93)
-                                        .offset(
-                                            x: phase.isIdentity ? 0 : (index.isMultiple(of: 2) ? -26 : 26),
-                                            y: phase.isIdentity ? 0 : 14
+                                        .opacity(phase.isIdentity ? 1 : max(0, 1 - abs(phase.value) * 0.72))
+                                        .scaleEffect(phase.isIdentity ? 1 : max(0.88, 1 - abs(phase.value) * 0.1))
+                                        .rotation3DEffect(
+                                            .degrees(phase.value * 12),
+                                            axis: (x: 1, y: 0, z: 0),
+                                            anchor: .center,
+                                            perspective: 0.35
                                         )
                                 }
                             }
@@ -302,13 +305,11 @@ struct FragmentFeedView: View {
                     hasDraft: hasDraft,
                     onText:   { fabExpanded = false; showingCreate = true },
                     onPhoto:  { fabExpanded = false; showingQuickPicker = true },
-                    onCamera: { fabExpanded = false; showingCamera = true }
+                    onCamera: { fabExpanded = false; showingCamera = true },
+                    onVoice:  { fabExpanded = false; showingVoiceInput = true }
                 )
                 .padding(.trailing, 20).padding(.bottom, 24)
             }
-        }
-        .sheet(isPresented: $showingCreate, onDismiss: { refreshDraftStatus() }) {
-            FragmentEditView()
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
@@ -341,6 +342,17 @@ struct FragmentFeedView: View {
         .sheet(isPresented: $showingCreateWithMedia, onDismiss: { quickMediaIDs = []; refreshDraftStatus() }) {
             FragmentEditView(preloadedMediaIDs: quickMediaIDs)
         }
+        .sheet(isPresented: $showingVoiceInput) {
+            VoiceInputView { transcript in
+                voicePrefilledContent = transcript
+                showingCreate = true
+            }
+            .presentationDetents([.fraction(0.65)])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showingCreate, onDismiss: { refreshDraftStatus(); voicePrefilledContent = "" }) {
+            FragmentEditView(preloadedContent: voicePrefilledContent)
+        }
     }
 }
 
@@ -352,24 +364,21 @@ private struct SpeedDialFAB: View {
     let onText: () -> Void
     let onPhoto: () -> Void
     let onCamera: () -> Void
+    let onVoice: () -> Void
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            // Sub-action buttons (appear above main FAB)
             VStack(alignment: .trailing, spacing: 14) {
-                fabAction(icon: "camera.fill",          label: "拍照",    color: Color(red: 0.45, green: 0.55, blue: 0.72), action: onCamera)
-                    .offset(y: isExpanded ? 0 : 40)
-                    .opacity(isExpanded ? 1 : 0)
+                fabAction(icon: "camera.fill",             label: "拍照",  color: Color(red: 0.45, green: 0.55, blue: 0.72), action: onCamera)
+                    .offset(y: isExpanded ? 0 : 40).opacity(isExpanded ? 1 : 0)
                     .animation(.spring(response: 0.38, dampingFraction: 0.72).delay(0.0), value: isExpanded)
 
-                fabAction(icon: "photo.on.rectangle.fill", label: "相册", color: Color(red: 0.42, green: 0.62, blue: 0.55), action: onPhoto)
-                    .offset(y: isExpanded ? 0 : 40)
-                    .opacity(isExpanded ? 1 : 0)
+                fabAction(icon: "photo.on.rectangle.fill", label: "相册",  color: Color(red: 0.42, green: 0.62, blue: 0.55), action: onPhoto)
+                    .offset(y: isExpanded ? 0 : 40).opacity(isExpanded ? 1 : 0)
                     .animation(.spring(response: 0.38, dampingFraction: 0.72).delay(0.06), value: isExpanded)
 
-                fabAction(icon: "text.alignleft",       label: "文字",    color: Color(red: 0.36, green: 0.44, blue: 0.64), action: onText)
-                    .offset(y: isExpanded ? 0 : 40)
-                    .opacity(isExpanded ? 1 : 0)
+                fabAction(icon: "text.alignleft",          label: "文字",  color: Color(red: 0.36, green: 0.44, blue: 0.64), action: onText)
+                    .offset(y: isExpanded ? 0 : 40).opacity(isExpanded ? 1 : 0)
                     .animation(.spring(response: 0.38, dampingFraction: 0.72).delay(0.12), value: isExpanded)
 
                 // Main FAB
@@ -428,6 +437,14 @@ private struct SpeedDialFAB: View {
             }
         }
         .buttonStyle(.plain)
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.55)
+                .onEnded { _ in
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                    withAnimation(.spring(response: 0.3)) { isExpanded = false }
+                    onVoice()
+                }
+        )
     }
 
     @ViewBuilder

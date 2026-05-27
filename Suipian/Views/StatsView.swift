@@ -14,38 +14,82 @@ struct FragmentDrillDown: Identifiable {
 struct StatsView: View {
     @Query(sort: \Fragment.date, order: .reverse) private var fragments: [Fragment]
     @State private var drillDown: FragmentDrillDown?
+    @State private var showingWrapped = false
 
     var body: some View {
         NavigationStack {
-          Group {
-            if fragments.isEmpty {
-                ContentUnavailableView(
-                    "还没有任何碎片",
-                    systemImage: "chart.bar.xaxis",
-                    description: Text("开始记录碎片后，这里会展示你的统计数据")
-                )
-            } else {
-                ScrollView {
-                    VStack(spacing: 20) {
-                        SummaryCardsSection(fragments: fragments, onDrillDown: { drillDown = $0 })
-                        StreakSection(fragments: fragments, onDrillDown: { drillDown = $0 })
-                        HeatmapSection(fragments: fragments, onDrillDown: { drillDown = $0 })
-                        MoodTrendSection(fragments: fragments, onDrillDown: { drillDown = $0 })
-                        MoodStatsSection(fragments: fragments, onDrillDown: { drillDown = $0 })
-                        TopTagsSection(fragments: fragments, onDrillDown: { drillDown = $0 })
+            Group {
+                if fragments.isEmpty {
+                    ContentUnavailableView(
+                        "还没有任何碎片",
+                        systemImage: "chart.bar.xaxis",
+                        description: Text("开始记录碎片后，这里会展示你的统计数据")
+                    )
+                } else {
+                    ScrollView {
+                        VStack(spacing: 14) {
+                            WrappedBannerCard { showingWrapped = true }
+                            SummaryCardsSection(fragments: fragments, onDrillDown: { drillDown = $0 })
+                            StreakSection(fragments: fragments, onDrillDown: { drillDown = $0 })
+                            HeatmapSection(fragments: fragments, onDrillDown: { drillDown = $0 })
+                            MoodCurveSection(fragments: fragments, onDrillDown: { drillDown = $0 })
+                            MoodStatsSection(fragments: fragments, onDrillDown: { drillDown = $0 })
+                            TopTagsSection(fragments: fragments, onDrillDown: { drillDown = $0 })
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .padding(.bottom, 100)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 100)
+                    .background { AppBackgroundCanvas().ignoresSafeArea() }
                 }
-                .background { AppBackgroundCanvas().ignoresSafeArea() }
             }
-          }
-          .toolbar(.hidden, for: .navigationBar)
+            .toolbar(.hidden, for: .navigationBar)
         }
         .sheet(item: $drillDown) { item in
             FragmentListSheet(title: item.title, fragments: item.fragments)
         }
+        .fullScreenCover(isPresented: $showingWrapped) {
+            WrappedView(fragments: Array(fragments))
+        }
+    }
+}
+
+// MARK: - Wrapped banner
+
+private struct WrappedBannerCard: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(
+                            colors: [.purple.opacity(0.75), .pink.opacity(0.7)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        ))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.white)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("年度 / 月度回放")
+                        .font(.subheadline).fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                    Text("回顾你的碎片故事")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(14)
+            .animeCard(cornerRadius: 16)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -90,6 +134,20 @@ private struct FragmentListSheet: View {
     }
 }
 
+// MARK: - Section header helper
+
+@ViewBuilder
+private func statSectionHeader(_ title: String, icon: String) -> some View {
+    HStack(spacing: 6) {
+        Image(systemName: icon)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(Color.accentColor.opacity(0.8))
+        Text(title)
+            .font(.subheadline).fontWeight(.semibold)
+            .foregroundStyle(.primary)
+    }
+}
+
 // MARK: - Summary cards
 
 private struct SummaryCardsSection: View {
@@ -108,14 +166,14 @@ private struct SummaryCardsSection: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            StatCard(value: "\(fragments.count)", label: "总碎片", hint: "查看全部") {
+        HStack(spacing: 10) {
+            StatCard(icon: "square.on.square.fill", value: "\(fragments.count)", label: "总碎片") {
                 onDrillDown(FragmentDrillDown(title: "全部碎片", fragments: fragments))
             }
-            StatCard(value: "\(monthFragments.count)", label: "本月新增", hint: "查看本月") {
+            StatCard(icon: "calendar.badge.plus", value: "\(monthFragments.count)", label: "本月新增") {
                 onDrillDown(FragmentDrillDown(title: "本月碎片", fragments: monthFragments))
             }
-            StatCard(value: "\(weekFragments.count)", label: "近 7 天", hint: "查看近期") {
+            StatCard(icon: "clock.arrow.circlepath", value: "\(weekFragments.count)", label: "近 7 天") {
                 onDrillDown(FragmentDrillDown(title: "最近 7 天", fragments: weekFragments))
             }
         }
@@ -123,27 +181,29 @@ private struct SummaryCardsSection: View {
 }
 
 private struct StatCard: View {
+    let icon: String
     let value: String
     let label: String
-    let hint: String
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.accentColor.opacity(0.7))
                 Text(value)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.accentColor)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
                 Text(label)
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
-                Text(hint)
-                    .font(.system(size: 9))
-                    .foregroundStyle(Color.accentColor.opacity(0.6))
-                    .padding(.top, 2)
+                    .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .padding(.vertical, 16)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
@@ -185,15 +245,24 @@ private struct StreakSection: View {
             onDrillDown(FragmentDrillDown(title: "连续 \(streak) 天", fragments: streakFragments))
         } label: {
             HStack(spacing: 14) {
-                Image(systemName: streak > 0 ? "flame.fill" : "flame")
-                    .font(.system(size: 32))
-                    .foregroundStyle(streak > 0 ? .orange : .secondary)
+                ZStack {
+                    Circle()
+                        .fill(streak > 0
+                              ? LinearGradient(colors: [.orange.opacity(0.8), .red.opacity(0.6)],
+                                               startPoint: .topLeading, endPoint: .bottomTrailing)
+                              : LinearGradient(colors: [Color(.systemGray4), Color(.systemGray4)],
+                                               startPoint: .top, endPoint: .bottom))
+                        .frame(width: 46, height: 46)
+                    Image(systemName: streak > 0 ? "flame.fill" : "flame")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.white)
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("连续记录")
-                        .font(.subheadline)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                     Text("\(streak) 天")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
                 }
                 Spacer()
@@ -203,14 +272,14 @@ private struct StreakSection: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            .padding(16)
+            .padding(14)
             .animeSecondaryCard(cornerRadius: 14)
         }
         .buttonStyle(.plain)
     }
 }
 
-// MARK: - Heatmap
+// MARK: - Heatmap (GitHub style)
 
 private struct HeatmapSection: View {
     let fragments: [Fragment]
@@ -218,6 +287,8 @@ private struct HeatmapSection: View {
 
     private let columns = 13
     private let rows = 7
+    private let cellSize: CGFloat = 17
+    private let gap: CGFloat = 3
 
     private var fragmentsByDay: [Date: [Fragment]] {
         let cal = Calendar.current
@@ -238,54 +309,88 @@ private struct HeatmapSection: View {
         return cal.date(byAdding: .day, value: -(columns * 7 - 1), to: endOfThisWeek)!
     }
 
+    private func monthLabel(for col: Int, start: Date, cal: Calendar) -> String? {
+        guard let day = cal.date(byAdding: .day, value: col * 7, to: start) else { return nil }
+        let dayOfMonth = cal.component(.day, from: day)
+        guard dayOfMonth <= 7 else { return nil }
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MMM"
+        return fmt.string(from: day)
+    }
+
+    private let dayLabels = ["一", "", "三", "", "五", "", "日"]
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("记录热力图")
-                .font(.subheadline).fontWeight(.semibold)
+            statSectionHeader("记录热力图", icon: "calendar.badge.clock")
 
             let byDay = fragmentsByDay
             let start = startDate
             let cal = Calendar.current
             let maxCount = max(1, byDay.values.map(\.count).max() ?? 1)
 
-            HStack(alignment: .top, spacing: 4) {
-                ForEach(0..<columns, id: \.self) { col in
-                    VStack(spacing: 4) {
-                        ForEach(0..<rows, id: \.self) { row in
-                            let day = cal.date(byAdding: .day, value: col * 7 + row, to: start)!
-                            let dayFragments = byDay[day] ?? []
-                            let count = dayFragments.count
-                            let isFuture = day > Date()
+            VStack(alignment: .leading, spacing: gap) {
+                // Month labels row
+                HStack(spacing: gap) {
+                    Text("").frame(width: 14)
+                    ForEach(0..<columns, id: \.self) { col in
+                        Text(monthLabel(for: col, start: start, cal: cal) ?? "")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                            .frame(width: cellSize, alignment: .leading)
+                    }
+                }
 
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(isFuture
-                                      ? Color.clear
-                                      : count == 0
-                                        ? Color.accentColor.opacity(0.08)
-                                        : Color.accentColor.opacity(0.2 + 0.8 * Double(count) / Double(maxCount)))
-                                .frame(width: 18, height: 18)
-                                .onTapGesture {
-                                    guard !isFuture, count > 0 else { return }
-                                    let label = day.formatted(date: .abbreviated, time: .omitted)
-                                    onDrillDown(FragmentDrillDown(title: label, fragments: dayFragments))
+                // Day labels + grid
+                HStack(alignment: .top, spacing: gap) {
+                    VStack(spacing: gap) {
+                        ForEach(0..<rows, id: \.self) { row in
+                            Text(dayLabels[row])
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                                .frame(width: 14, height: cellSize, alignment: .trailing)
+                        }
+                    }
+
+                    HStack(alignment: .top, spacing: gap) {
+                        ForEach(0..<columns, id: \.self) { col in
+                            VStack(spacing: gap) {
+                                ForEach(0..<rows, id: \.self) { row in
+                                    let day = cal.date(byAdding: .day, value: col * 7 + row, to: start)!
+                                    let dayFragments = byDay[day] ?? []
+                                    let count = dayFragments.count
+                                    let isFuture = day > Date()
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(isFuture
+                                              ? Color.clear
+                                              : count == 0
+                                                ? Color.accentColor.opacity(0.08)
+                                                : Color.accentColor.opacity(0.18 + 0.82 * Double(count) / Double(maxCount)))
+                                        .frame(width: cellSize, height: cellSize)
+                                        .onTapGesture {
+                                            guard !isFuture, count > 0 else { return }
+                                            let label = day.formatted(date: .abbreviated, time: .omitted)
+                                            onDrillDown(FragmentDrillDown(title: label, fragments: dayFragments))
+                                        }
                                 }
+                            }
                         }
                     }
                 }
             }
 
-            HStack {
+            HStack(spacing: 4) {
                 Text("少").font(.caption2).foregroundStyle(.tertiary)
                 HStack(spacing: 3) {
                     ForEach([0.08, 0.3, 0.55, 0.8, 1.0], id: \.self) { opacity in
                         RoundedRectangle(cornerRadius: 2)
                             .fill(Color.accentColor.opacity(opacity))
-                            .frame(width: 12, height: 12)
+                            .frame(width: 11, height: 11)
                     }
                 }
                 Text("多").font(.caption2).foregroundStyle(.tertiary)
                 Spacer()
-                Text("点击格子可查看当天碎片")
+                Text("点击格子查看当日碎片")
                     .font(.system(size: 9))
                     .foregroundStyle(.tertiary)
             }
@@ -295,69 +400,36 @@ private struct HeatmapSection: View {
     }
 }
 
-// MARK: - Mood trend
+// MARK: - Mood bezier curve chart
 
-private struct MoodTrendSection: View {
+private struct MoodCurveSection: View {
     let fragments: [Fragment]
     let onDrillDown: (FragmentDrillDown) -> Void
 
-    private var last14Days: [(date: Date, mood: String?, dayFragments: [Fragment])] {
+    private var data: [(date: Date, count: Int, mood: String?, dayFragments: [Fragment])] {
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         var byDay: [Date: [Fragment]] = [:]
+        var dayMoods: [Date: String] = [:]
         for f in fragments {
             let d = cal.startOfDay(for: f.date)
             byDay[d, default: []].append(f)
-        }
-        var dayMoods: [Date: String] = [:]
-        for f in fragments where !f.mood.isEmpty {
-            let d = cal.startOfDay(for: f.date)
-            if dayMoods[d] == nil { dayMoods[d] = f.mood }
+            if !f.mood.isEmpty && dayMoods[d] == nil { dayMoods[d] = f.mood }
         }
         return (0..<14).compactMap { offset in
-            guard let d = cal.date(byAdding: .day, value: -offset, to: today) else { return nil }
-            return (date: d, mood: dayMoods[d], dayFragments: byDay[d] ?? [])
+            guard let d = cal.date(byAdding: .day, value: -(13 - offset), to: today) else { return nil }
+            let dayF = byDay[d] ?? []
+            return (date: d, count: dayF.count, mood: dayMoods[d], dayFragments: dayF)
         }
     }
 
-    private var hasMoodData: Bool { last14Days.contains { $0.mood != nil } }
+    private var hasData: Bool { data.contains { $0.count > 0 } }
 
     var body: some View {
-        if hasMoodData {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("近 14 天情绪")
-                    .font(.subheadline).fontWeight(.semibold)
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
-                        ForEach(last14Days, id: \.date) { item in
-                            Button {
-                                guard !item.dayFragments.isEmpty else { return }
-                                let label = item.date.formatted(date: .abbreviated, time: .omitted)
-                                onDrillDown(FragmentDrillDown(title: label, fragments: item.dayFragments))
-                            } label: {
-                                VStack(spacing: 4) {
-                                    if let mood = item.mood {
-                                        Text(mood)
-                                            .font(.title3)
-                                            .frame(width: 34, height: 34)
-                                            .background(Color.accentColor.opacity(0.08))
-                                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                                    } else {
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color(UIColor.systemGray5))
-                                            .frame(width: 34, height: 34)
-                                    }
-                                    Text(item.date, format: .dateTime.month(.twoDigits).day())
-                                        .font(.system(size: 9))
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .opacity(item.dayFragments.isEmpty ? 0.4 : 1)
-                        }
-                    }
-                }
+        if hasData {
+            VStack(alignment: .leading, spacing: 10) {
+                statSectionHeader("近 14 天趋势", icon: "chart.xyaxis.line")
+                MoodCurveChart(data: data, onDrillDown: onDrillDown)
             }
             .padding(16)
             .animeSecondaryCard(cornerRadius: 14)
@@ -365,7 +437,123 @@ private struct MoodTrendSection: View {
     }
 }
 
-// MARK: - Mood stats (compact horizontal bubbles with arc)
+private struct MoodCurveChart: View {
+    let data: [(date: Date, count: Int, mood: String?, dayFragments: [Fragment])]
+    let onDrillDown: (FragmentDrillDown) -> Void
+
+    private let chartH: CGFloat = 80
+    private let topPad: CGFloat = 22
+    private let bottomPad: CGFloat = 20
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let maxCount = max(1, data.map(\.count).max() ?? 1)
+            let pts = chartPoints(width: w, max: maxCount)
+            let cps = controlPoints(pts)
+
+            ZStack(alignment: .topLeading) {
+                // Fill
+                fillPath(pts: pts, cps: cps)
+                    .fill(LinearGradient(
+                        colors: [Color.accentColor.opacity(0.22), Color.accentColor.opacity(0.02)],
+                        startPoint: .top, endPoint: .bottom
+                    ))
+
+                // Line
+                curvePath(pts: pts, cps: cps)
+                    .stroke(Color.accentColor.opacity(0.65),
+                            style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+
+                // Data points + mood emoji
+                ForEach(0..<min(data.count, pts.count), id: \.self) { i in
+                    let item = data[i]
+                    let pt = pts[i]
+                    Button {
+                        guard !item.dayFragments.isEmpty else { return }
+                        onDrillDown(FragmentDrillDown(
+                            title: item.date.formatted(date: .abbreviated, time: .omitted),
+                            fragments: item.dayFragments
+                        ))
+                    } label: {
+                        VStack(spacing: 1) {
+                            if let mood = item.mood {
+                                Text(mood).font(.system(size: 11))
+                            }
+                            Circle()
+                                .fill(item.count > 0 ? Color.accentColor : Color(.systemGray4))
+                                .overlay(Circle().strokeBorder(.white.opacity(0.7), lineWidth: 1))
+                                .frame(width: 6, height: 6)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .position(x: pt.x, y: pt.y - (item.mood != nil ? 10 : 0))
+                }
+
+                // Date labels
+                ForEach(0..<data.count, id: \.self) { i in
+                    if i % 3 == 0 {
+                        let x = pts.indices.contains(i) ? pts[i].x : 0
+                        Text(data[i].date, format: .dateTime.month(.twoDigits).day())
+                            .font(.system(size: 8))
+                            .foregroundStyle(.tertiary)
+                            .position(x: x, y: chartH + topPad + 10)
+                    }
+                }
+            }
+        }
+        .frame(height: chartH + topPad + bottomPad)
+    }
+
+    private func chartPoints(width: CGFloat, max: Int) -> [CGPoint] {
+        guard data.count > 1 else { return [] }
+        let step = width / CGFloat(data.count - 1)
+        let usableH = chartH * 0.82
+        return data.enumerated().map { i, item in
+            let x = CGFloat(i) * step
+            let norm = CGFloat(item.count) / CGFloat(max)
+            let y = topPad + usableH * (1 - norm)
+            return CGPoint(x: x, y: y)
+        }
+    }
+
+    private func controlPoints(_ pts: [CGPoint]) -> [(CGPoint, CGPoint)] {
+        let alpha: CGFloat = 0.35
+        return (0..<max(0, pts.count - 1)).map { i in
+            let p0 = i > 0 ? pts[i-1] : pts[i]
+            let p1 = pts[i]
+            let p2 = pts[i+1]
+            let p3 = i < pts.count - 2 ? pts[i+2] : p2
+            let cp1 = CGPoint(x: p1.x + (p2.x - p0.x) * alpha,
+                              y: p1.y + (p2.y - p0.y) * alpha)
+            let cp2 = CGPoint(x: p2.x - (p3.x - p1.x) * alpha,
+                              y: p2.y - (p3.y - p1.y) * alpha)
+            return (cp1, cp2)
+        }
+    }
+
+    private func curvePath(pts: [CGPoint], cps: [(CGPoint, CGPoint)]) -> Path {
+        var path = Path()
+        guard pts.count >= 2 else { return path }
+        path.move(to: pts[0])
+        for i in 0..<pts.count - 1 {
+            path.addCurve(to: pts[i+1], control1: cps[i].0, control2: cps[i].1)
+        }
+        return path
+    }
+
+    private func fillPath(pts: [CGPoint], cps: [(CGPoint, CGPoint)]) -> Path {
+        var path = curvePath(pts: pts, cps: cps)
+        if let last = pts.last, let first = pts.first {
+            path.addLine(to: CGPoint(x: last.x, y: chartH + topPad))
+            path.addLine(to: CGPoint(x: first.x, y: chartH + topPad))
+            path.closeSubpath()
+        }
+        return path
+    }
+}
+
+// MARK: - Mood stats
 
 private struct MoodStatsSection: View {
     let fragments: [Fragment]
@@ -383,15 +571,15 @@ private struct MoodStatsSection: View {
     var body: some View {
         if moodGroups.isEmpty { EmptyView() } else {
             VStack(alignment: .leading, spacing: 10) {
-                Text("情绪分布")
-                    .font(.subheadline).fontWeight(.semibold)
+                statSectionHeader("情绪分布", icon: "face.smiling")
 
                 let maxCount = Double(moodGroups.first?.fragments.count ?? 1)
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
+                    HStack(spacing: 14) {
                         ForEach(moodGroups, id: \.emoji) { item in
                             Button {
-                                onDrillDown(FragmentDrillDown(title: "\(item.emoji) 的碎片", fragments: item.fragments))
+                                onDrillDown(FragmentDrillDown(title: "\(item.emoji) 的碎片",
+                                                              fragments: item.fragments))
                             } label: {
                                 VStack(spacing: 5) {
                                     ZStack {
@@ -405,7 +593,6 @@ private struct MoodStatsSection: View {
                                         Text(item.emoji).font(.title3)
                                     }
                                     .frame(width: 50, height: 50)
-
                                     Text("\(item.fragments.count)")
                                         .font(.system(size: 10, weight: .medium))
                                         .foregroundStyle(.secondary)
@@ -414,8 +601,7 @@ private struct MoodStatsSection: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, 2)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 2).padding(.vertical, 4)
                 }
             }
             .padding(16)
@@ -424,7 +610,7 @@ private struct MoodStatsSection: View {
     }
 }
 
-// MARK: - Top tags (flow wrap chips)
+// MARK: - Top tags (readable chips, no gradient border)
 
 private struct TopTagsSection: View {
     let fragments: [Fragment]
@@ -436,37 +622,32 @@ private struct TopTagsSection: View {
             for t in f.tags { groups[t, default: []].append(f) }
         }
         return groups.sorted { $0.value.count > $1.value.count }
-            .prefix(12)
+            .prefix(14)
             .map { (tag: $0.key, fragments: $0.value) }
     }
 
     var body: some View {
         if topTags.isEmpty { EmptyView() } else {
             VStack(alignment: .leading, spacing: 10) {
-                Text("常用标签")
-                    .font(.subheadline).fontWeight(.semibold)
+                statSectionHeader("常用标签", icon: "tag")
 
                 FlowLayout(spacing: 8) {
                     ForEach(topTags, id: \.tag) { item in
                         Button {
                             onDrillDown(FragmentDrillDown(title: "#\(item.tag)", fragments: item.fragments))
                         } label: {
-                            HStack(spacing: 4) {
+                            HStack(spacing: 5) {
                                 Text("#\(item.tag)")
                                     .font(.caption).fontWeight(.medium)
                                     .foregroundStyle(Color.accentColor)
                                     .lineLimit(1)
                                 Text("\(item.fragments.count)")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(.tertiary)
+                                    .font(.system(size: 10, weight: .regular))
+                                    .foregroundStyle(Color.accentColor.opacity(0.55))
                             }
-                            .padding(.horizontal, 10).padding(.vertical, 6)
-                            .background(.ultraThinMaterial, in: Capsule())
-                            .overlay(Capsule().strokeBorder(
-                                LinearGradient(
-                                    colors: [Color.accentColor.opacity(0.55), Color.accentColor.opacity(0.15)],
-                                    startPoint: .leading, endPoint: .trailing
-                                ), lineWidth: 0.8))
+                            .padding(.horizontal, 11).padding(.vertical, 6)
+                            .background(Color.accentColor.opacity(0.10), in: Capsule())
+                            .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.28), lineWidth: 0.8))
                         }
                         .buttonStyle(.plain)
                     }
@@ -478,22 +659,18 @@ private struct TopTagsSection: View {
     }
 }
 
-// MARK: - Flow layout (iOS 16+)
+// MARK: - Flow layout
 
 private struct FlowLayout: Layout {
     var spacing: CGFloat = 8
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let maxW = proposal.width ?? .infinity
-        var rowW: CGFloat = 0
-        var rowH: CGFloat = 0
-        var totalH: CGFloat = 0
-
+        var rowW: CGFloat = 0, rowH: CGFloat = 0, totalH: CGFloat = 0
         for subview in subviews {
             let sz = subview.sizeThatFits(.unspecified)
             if rowW > 0, rowW + spacing + sz.width > maxW {
-                totalH += rowH + spacing
-                rowW = 0; rowH = 0
+                totalH += rowH + spacing; rowW = 0; rowH = 0
             }
             rowW += (rowW > 0 ? spacing : 0) + sz.width
             rowH = max(rowH, sz.height)
@@ -502,10 +679,7 @@ private struct FlowLayout: Layout {
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX
-        var y = bounds.minY
-        var rowH: CGFloat = 0
-
+        var x = bounds.minX, y = bounds.minY, rowH: CGFloat = 0
         for subview in subviews {
             let sz = subview.sizeThatFits(.unspecified)
             if x > bounds.minX, x + spacing + sz.width > bounds.maxX {

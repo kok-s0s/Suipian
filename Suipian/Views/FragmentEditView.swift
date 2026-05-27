@@ -10,6 +10,7 @@ struct FragmentEditView: View {
 
     var fragment: Fragment?
     var preloadedMediaIDs: [String] = []
+    var preloadedContent: String = ""
 
     @State private var content = ""
     @State private var mediaIdentifiers: [String] = []
@@ -639,7 +640,8 @@ struct FragmentEditView: View {
     private func loadExisting() {
         guard let fragment else {
             if !preloadedMediaIDs.isEmpty { mediaIdentifiers = preloadedMediaIDs }
-            restoreDraftIfNeeded()
+            if !preloadedContent.isEmpty { content = preloadedContent }
+            else { restoreDraftIfNeeded() }
             return
         }
         isPrivate = fragment.isPrivate
