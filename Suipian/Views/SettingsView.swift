@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @AppStorage("reminderEnabled") private var reminderEnabled = false
@@ -9,24 +10,35 @@ struct SettingsView: View {
     @AppStorage("backgroundStyle") private var backgroundStyle = 0
     @AppStorage("appLockEnabled") private var appLockEnabled = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @Query private var fragments: [Fragment]
 
     @State private var reminderTime = Date()
     @State private var showingPermissionAlert = false
     @State private var exportItem: ExportFile?
+    @State private var showingImporter = false
+    @State private var importResult: ImportResult?
 
     var body: some View {
         NavigationStack {
             List {
                 // MARK: 外观
-                Section("外观") {
-                    Picker("背景纹理", selection: $backgroundStyle) {
-                        Text("无").tag(0)
-                        Text("点阵").tag(1)
-                        Text("斜纹").tag(2)
-                        Text("方格").tag(3)
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("背景纹理")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Picker("背景纹理", selection: $backgroundStyle) {
+                            Text("无").tag(0)
+                            Text("点阵").tag(1)
+                            Text("斜纹").tag(2)
+                            Text("方格").tag(3)
+                        }
+                        .pickerStyle(.segmented)
                     }
-                    .pickerStyle(.segmented)
+                    .padding(.vertical, 4)
+                } header: {
+                    Label("外观", systemImage: "paintbrush.pointed")
                 }
 
                 // MARK: 安全
@@ -38,12 +50,12 @@ struct SettingsView: View {
                         if on { HapticFeedback.impact(.light) }
                     }
                 } header: {
-                    Text("安全")
+                    Label("安全", systemImage: "lock")
                 } footer: {
-                    Text("开启后，每次离开应用需要 Face ID / 密码才能继续。")
+                    Text("开启后每次离开应用需要 Face ID / 密码才能继续")
                 }
 
-                // MARK: 提醒
+                // MARK: 通知
                 Section {
                     Toggle(isOn: Binding(
                         get: { reminderEnabled },
@@ -74,25 +86,39 @@ struct SettingsView: View {
                             scheduleNotification()
                         }
                     }
+                } header: {
+                    Label("通知", systemImage: "bell")
                 } footer: {
-                    if reminderEnabled {
-                        Text("每天 \(formattedTime) 提醒你记录今天的碎片")
-                    } else {
-                        Text("开启后每天定时提醒你记录碎片，帮助养成习惯")
-                    }
+                    Text(reminderEnabled
+                         ? "每天 \(formattedTime) 提醒你记录今天的碎片"
+                         : "开启后每天定时提醒，帮助养成记录习惯")
                 }
 
-                // MARK: 数据
+                // MARK: 数据管理
                 Section {
+                    HStack {
+                        Label("已记录碎片", systemImage: "square.on.square")
+                        Spacer()
+                        Text("\(fragments.count) 条")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+
                     Button {
                         exportJSON()
                     } label: {
-                        Label("导出所有碎片（JSON）", systemImage: "square.and.arrow.up")
+                        Label("导出数据（JSON）", systemImage: "square.and.arrow.up")
+                    }
+
+                    Button {
+                        showingImporter = true
+                    } label: {
+                        Label("导入数据（JSON）", systemImage: "square.and.arrow.down")
                     }
                 } header: {
-                    Text("数据")
+                    Label("数据管理", systemImage: "externaldrive")
                 } footer: {
-                    Text("导出包含文字、标签、情绪、地点等元数据。媒体文件不包含在导出内。")
+                    Text("导出 / 导入包含文字、标签、情绪、地点等元数据，媒体文件不包含在内")
                 }
             }
             .navigationTitle("设置")
@@ -116,14 +142,28 @@ struct SettingsView: View {
             .sheet(item: $exportItem) { file in
                 ShareSheet(items: [file.url])
             }
+            .fileImporter(
+                isPresented: $showingImporter,
+                allowedContentTypes: [.json],
+                allowsMultipleSelection: false
+            ) { result in
+                Task { await handleImport(result: result) }
+            }
+            .alert(item: $importResult) { r in
+                Alert(
+                    title: Text(r.success ? "导入成功" : "导入失败"),
+                    message: Text(r.message),
+                    dismissButton: .default(Text("好"))
+                )
+            }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
 
-    // MARK: - Export
+    // MARK: - Data model (encode + decode)
 
-    private struct FragmentExportRecord: Encodable {
+    private struct FragmentRecord: Codable {
         let date: String
         let content: String
         let tags: [String]
@@ -137,11 +177,13 @@ struct SettingsView: View {
         let mediaCount: Int
     }
 
+    // MARK: - Export
+
     private func exportJSON() {
         HapticFeedback.impact(.light)
         let fmt = ISO8601DateFormatter()
         let records = fragments.map { f in
-            FragmentExportRecord(
+            FragmentRecord(
                 date: fmt.string(from: f.date),
                 content: f.content,
                 tags: f.tags,
@@ -163,6 +205,49 @@ struct SettingsView: View {
             .appendingPathComponent("suipian-export-\(Int(Date().timeIntervalSince1970)).json")
         try? data.write(to: url)
         exportItem = ExportFile(url: url)
+    }
+
+    // MARK: - Import
+
+    private func handleImport(result: Result<[URL], Error>) async {
+        switch result {
+        case .failure:
+            importResult = ImportResult(success: false, message: "无法读取文件，请选择碎片导出的 JSON 文件。")
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            guard url.startAccessingSecurityScopedResource() else {
+                importResult = ImportResult(success: false, message: "无法访问所选文件。")
+                return
+            }
+            defer { url.stopAccessingSecurityScopedResource() }
+
+            guard let data = try? Data(contentsOf: url),
+                  let records = try? JSONDecoder().decode([FragmentRecord].self, from: data) else {
+                importResult = ImportResult(success: false, message: "JSON 格式不匹配，请使用碎片导出的文件。")
+                return
+            }
+
+            let fmt = ISO8601DateFormatter()
+            for record in records {
+                let fragment = Fragment(
+                    content: record.content,
+                    date: fmt.date(from: record.date) ?? Date(),
+                    tags: record.tags,
+                    latitude: record.latitude,
+                    longitude: record.longitude,
+                    locationName: record.locationName
+                )
+                fragment.mood = record.mood
+                fragment.storyName = record.storyName
+                fragment.isPrivate = record.isPrivate
+                fragment.isPinned = record.isPinned
+                modelContext.insert(fragment)
+            }
+
+            try? modelContext.save()
+            HapticFeedback.success()
+            importResult = ImportResult(success: true, message: "成功导入 \(records.count) 条碎片。")
+        }
     }
 
     // MARK: - Notification helpers
@@ -212,3 +297,8 @@ private struct ExportFile: Identifiable {
     let url: URL
 }
 
+private struct ImportResult: Identifiable {
+    let id = UUID()
+    let success: Bool
+    let message: String
+}
