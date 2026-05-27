@@ -160,6 +160,7 @@ struct FragmentEditView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
 
@@ -443,6 +444,7 @@ struct FragmentEditView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                             .padding(.horizontal, 16)
                             .padding(.top, 6)
+                            .id("storyDropdown")
                         }
                     }
 
@@ -609,6 +611,24 @@ struct FragmentEditView: View {
                 .padding(.bottom, 20)
             }
             .scrollDismissesKeyboard(.interactively)
+            .onChange(of: storyFieldFocused) { _, focused in
+                if focused && !storySuggestions.isEmpty {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            proxy.scrollTo("storyDropdown", anchor: .bottom)
+                        }
+                    }
+                }
+            }
+            .onChange(of: storySuggestions.isEmpty) { _, isEmpty in
+                if !isEmpty && storyFieldFocused {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            proxy.scrollTo("storyDropdown", anchor: .bottom)
+                        }
+                    }
+                }
+            }
             .navigationTitle(isEditing ? "编辑碎片" : "新建碎片")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -632,6 +652,7 @@ struct FragmentEditView: View {
                 }
                 selectedItems = []
             }
+        } // ScrollViewReader
         }
     }
 
