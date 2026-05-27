@@ -127,10 +127,12 @@ private struct CardCoverView: View {
     let identifier: String
     let count: Int
 
-    @Environment(\.displayScale) private var displayScale
     @State private var thumbnail: UIImage?
     @State private var isVideo = false
-    @State private var cardWidth: CGFloat = 300
+    @State private var requestID: PHImageRequestID = PHInvalidImageRequestID
+
+    // Fixed portrait target — enough detail on any phone, cache-friendly.
+    private static let targetSize = CGSize(width: 600, height: 900)
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -168,35 +170,47 @@ private struct CardCoverView: View {
                     .padding(10)
             }
         }
-        .background(GeometryReader { geo in
-            Color.clear.onAppear { cardWidth = geo.size.width }
-        })
-        .task(id: identifier) { await load(scale: displayScale) }
+        .task(id: identifier) { await load() }
+        .onDisappear { cancelPendingRequest() }
     }
 
-    private func load(scale: CGFloat) async {
+    private func cancelPendingRequest() {
+        guard requestID != PHInvalidImageRequestID else { return }
+        PHImageManager.default().cancelImageRequest(requestID)
+        requestID = PHInvalidImageRequestID
+    }
+
+    private func load() async {
+        cancelPendingRequest()
+        let key = "\(identifier)_card" as NSString
+        if let cached = sharedThumbnailCache.object(forKey: key) {
+            thumbnail = cached
+            return
+        }
+
         await requestPermissionIfNeeded()
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
-        guard let asset = assets.firstObject else { return }
+        guard let asset = assets.firstObject, !Task.isCancelled else { return }
         isVideo = asset.mediaType == .video
-
-        let targetWidth = cardWidth * scale
-        let targetSize = CGSize(width: targetWidth, height: targetWidth * 2)
 
         let opts = PHImageRequestOptions()
         opts.isNetworkAccessAllowed = true
         opts.deliveryMode = .highQualityFormat
         opts.resizeMode = .exact
 
-        thumbnail = await withCheckedContinuation { cont in
-            PHImageManager.default().requestImage(
+        let img: UIImage? = await withCheckedContinuation { cont in
+            requestID = PHImageManager.default().requestImage(
                 for: asset,
-                targetSize: targetSize,
+                targetSize: Self.targetSize,
                 contentMode: .aspectFit,
                 options: opts
-            ) { img, _ in
-                cont.resume(returning: img)
-            }
+            ) { image, _ in cont.resume(returning: image) }
         }
+
+        guard !Task.isCancelled, let img else { return }
+        let target = Self.targetSize
+        sharedThumbnailCache.setObject(img, forKey: key,
+                                       cost: Int(target.width * target.height * 4))
+        thumbnail = img
     }
 }

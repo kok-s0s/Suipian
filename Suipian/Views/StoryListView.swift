@@ -80,18 +80,21 @@ private struct StoryCard: View {
 
             // Bottom scrim for text readability
             LinearGradient(
-                colors: [.clear, .black.opacity(0.62)],
-                startPoint: .center, endPoint: .bottom
+                colors: [.clear, .black.opacity(0.72)],
+                startPoint: .top, endPoint: .bottom
             )
+            .frame(maxHeight: .infinity, alignment: .bottom)
 
             // Text overlay
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(fragments.count) 条碎片  ·  \(dateRange)")
                     .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .shadow(color: .black.opacity(0.6), radius: 2, x: 0, y: 1)
                 Text(name)
                     .font(.title3).fontWeight(.bold)
                     .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.4), radius: 3, x: 0, y: 1)
                     .lineLimit(2)
             }
             .padding(.horizontal, 14)

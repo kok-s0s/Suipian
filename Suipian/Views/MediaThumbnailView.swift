@@ -1,24 +1,42 @@
 import SwiftUI
 import Photos
+import AVKit
+
+// Module-level cache shared across all callsites.
+// 60 entries × ~256KB avg cost ≈ 15 MB typical; hard cap at 40 MB.
+let sharedThumbnailCache: NSCache<NSString, UIImage> = {
+    let c = NSCache<NSString, UIImage>()
+    c.countLimit = 60
+    c.totalCostLimit = 40 * 1024 * 1024
+    return c
+}()
+
+// Snap requested size to a few standard buckets so the same asset
+// shares a single cache entry across different callsites.
+func standardThumbnailSize(_ size: CGSize) -> CGSize {
+    let dim = max(size.width, size.height)
+    let bucket: CGFloat
+    switch dim {
+    case ..<100:  bucket = 80
+    case ..<160:  bucket = 120
+    case ..<260:  bucket = 200
+    case ..<400:  bucket = 300
+    default:      bucket = 480
+    }
+    return CGSize(width: bucket, height: bucket)
+}
 
 struct MediaThumbnailView: View {
     let identifier: String
-    var size: CGSize = CGSize(width: 400, height: 400)
+    var size: CGSize = CGSize(width: 300, height: 300)
 
     @State private var thumbnail: UIImage?
     @State private var isVideo = false
-
-    private static let imageCache: NSCache<NSString, UIImage> = {
-        let cache = NSCache<NSString, UIImage>()
-        cache.countLimit = 200
-        cache.totalCostLimit = 100 * 1024 * 1024 // 100 MB
-        return cache
-    }()
+    @State private var requestID: PHImageRequestID = PHInvalidImageRequestID
 
     var body: some View {
         ZStack {
             Color(.systemGray5)
-
             if let thumbnail {
                 Image(uiImage: thumbnail)
                     .resizable()
@@ -31,26 +49,32 @@ struct MediaThumbnailView: View {
                         .shadow(color: .black.opacity(0.4), radius: 4)
                 }
             } else {
-                ProgressView()
-                    .tint(.secondary)
+                ProgressView().tint(.secondary)
             }
         }
-        .task(id: identifier) {
-            await load()
-        }
+        .task(id: identifier) { await loadThumbnail() }
+        .onDisappear { cancelPendingRequest() }
     }
 
-    private func load() async {
-        let cacheKey = "\(identifier)_\(Int(size.width))x\(Int(size.height))" as NSString
-        if let cached = Self.imageCache.object(forKey: cacheKey) {
+    private func cancelPendingRequest() {
+        guard requestID != PHInvalidImageRequestID else { return }
+        PHImageManager.default().cancelImageRequest(requestID)
+        requestID = PHInvalidImageRequestID
+    }
+
+    private func loadThumbnail() async {
+        cancelPendingRequest()
+        let target = standardThumbnailSize(size)
+        let key = "\(identifier)_\(Int(target.width))" as NSString
+
+        if let cached = sharedThumbnailCache.object(forKey: key) {
             thumbnail = cached
             return
         }
 
         await requestPermissionIfNeeded()
-
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
-        guard let asset = assets.firstObject else { return }
+        guard let asset = assets.firstObject, !Task.isCancelled else { return }
 
         isVideo = asset.mediaType == .video
 
@@ -59,27 +83,23 @@ struct MediaThumbnailView: View {
         opts.deliveryMode = .highQualityFormat
         opts.resizeMode = .exact
 
-        let img = await withCheckedContinuation { (cont: CheckedContinuation<UIImage?, Never>) in
-            PHImageManager.default().requestImage(
+        let img: UIImage? = await withCheckedContinuation { cont in
+            requestID = PHImageManager.default().requestImage(
                 for: asset,
-                targetSize: size,
+                targetSize: target,
                 contentMode: .aspectFill,
                 options: opts
-            ) { img, _ in
-                cont.resume(returning: img)
-            }
+            ) { image, _ in cont.resume(returning: image) }
         }
-        if let img {
-            let cost = Int(size.width * size.height * 4)
-            Self.imageCache.setObject(img, forKey: cacheKey, cost: cost)
-        }
+
+        guard !Task.isCancelled, let img else { return }
+        sharedThumbnailCache.setObject(img, forKey: key,
+                                       cost: Int(target.width * target.height * 4))
         thumbnail = img
     }
 }
 
 // MARK: - Full-screen media (photo or video)
-
-import AVKit
 
 struct MediaDetailView: View {
     let identifier: String
@@ -89,6 +109,14 @@ struct MediaDetailView: View {
     @State private var isVideo = false
     @State private var loaded = false
     @State private var downloadProgress: Double = 0
+
+    // Cap at a generous but bounded size: enough for any screen at 2–3×,
+    // avoiding decoding 48 MB+ originals just to fill a phone display.
+    private static let maxDetailSize: CGSize = {
+        let s = UIScreen.main.bounds.size
+        let scale = min(UIScreen.main.scale, 2)
+        return CGSize(width: s.width * scale * 1.5, height: s.height * scale * 1.5)
+    }()
 
     var body: some View {
         ZStack {
@@ -120,12 +148,8 @@ struct MediaDetailView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .task(id: identifier) {
-            await load()
-        }
-        .onDisappear {
-            player?.pause()
-        }
+        .task(id: identifier) { await load() }
+        .onDisappear { player?.pause() }
     }
 
     private func load() async {
@@ -156,16 +180,17 @@ struct MediaDetailView: View {
             let opts = PHImageRequestOptions()
             opts.deliveryMode = .highQualityFormat
             opts.isNetworkAccessAllowed = true
+            opts.progressHandler = { progress, _, _, _ in
+                DispatchQueue.main.async { downloadProgress = progress }
+            }
 
             image = await withCheckedContinuation { cont in
                 PHImageManager.default().requestImage(
                     for: asset,
-                    targetSize: PHImageManagerMaximumSize,
+                    targetSize: Self.maxDetailSize,
                     contentMode: .aspectFit,
                     options: opts
-                ) { img, _ in
-                    cont.resume(returning: img)
-                }
+                ) { img, _ in cont.resume(returning: img) }
             }
         }
         loaded = true

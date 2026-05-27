@@ -607,6 +607,16 @@ private struct FragmentGridCellView: View {
         }
         .frame(maxWidth: .infinity)
         .animeCard(cornerRadius: 12)
+        .overlay(alignment: .topLeading) {
+            if fragment.isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5).padding(.vertical, 4)
+                    .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 6))
+                    .padding(6)
+            }
+        }
     }
 }
 
