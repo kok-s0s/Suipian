@@ -660,9 +660,12 @@ struct FragmentEditView: View {
 
     private func loadExisting() {
         guard let fragment else {
-            if !preloadedMediaIDs.isEmpty { mediaIdentifiers = preloadedMediaIDs }
-            if !preloadedContent.isEmpty { content = preloadedContent }
-            else { restoreDraftIfNeeded() }
+            if !preloadedMediaIDs.isEmpty || !preloadedContent.isEmpty {
+                if !preloadedMediaIDs.isEmpty { mediaIdentifiers = preloadedMediaIDs }
+                if !preloadedContent.isEmpty { content = preloadedContent }
+            } else {
+                restoreDraftIfNeeded()
+            }
             return
         }
         isPrivate = fragment.isPrivate
