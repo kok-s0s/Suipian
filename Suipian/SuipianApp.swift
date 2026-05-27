@@ -21,6 +21,7 @@ struct SuipianApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .tint(Color(red: 0.36, green: 0.44, blue: 0.64))
         }
         .modelContainer(sharedModelContainer)
     }

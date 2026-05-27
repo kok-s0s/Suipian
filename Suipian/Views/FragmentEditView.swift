@@ -186,7 +186,7 @@ struct FragmentEditView: View {
                         .foregroundStyle(Color.accentColor)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
-                        .background(Color.accentColor.opacity(0.08))
+                        .background(.regularMaterial)
                         .transition(.move(edge: .top).combined(with: .opacity))
                         .task {
                             try? await Task.sleep(nanoseconds: 5_000_000_000)
@@ -321,9 +321,9 @@ struct FragmentEditView: View {
                                                 .font(.subheadline)
                                                 .padding(.horizontal, 12)
                                                 .padding(.vertical, 7)
-                                                .background(Color.accentColor.opacity(0.08))
+                                                .background(.ultraThinMaterial, in: Capsule())
+                                                .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.3), lineWidth: 0.5))
                                                 .foregroundStyle(Color.accentColor)
-                                                .clipShape(Capsule())
                                         }
                                     }
                                 }
@@ -348,9 +348,9 @@ struct FragmentEditView: View {
                                         }
                                         .padding(.horizontal, 10)
                                         .padding(.vertical, 6)
-                                        .background(Color.accentColor.opacity(0.1))
+                                        .background(.ultraThinMaterial, in: Capsule())
+                                        .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 0.5))
                                         .foregroundStyle(Color.accentColor)
-                                        .clipShape(Capsule())
                                     }
                                 }
                                 .padding(.horizontal, 16)

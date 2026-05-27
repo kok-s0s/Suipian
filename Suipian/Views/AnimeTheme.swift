@@ -11,7 +11,7 @@ extension View {
         modifier(AnimeCardModifier(cornerRadius: cornerRadius, secondary: true))
     }
 
-    // ⑥ Gradient border tag chip
+    // Tag chip — accent text on frosted material, neutral border
     func gradientTagStyle(fontSize: CGFloat = 11, paddingH: CGFloat = 7, paddingV: CGFloat = 2) -> some View {
         self
             .font(.system(size: fontSize, weight: .medium))
@@ -19,15 +19,7 @@ extension View {
             .padding(.horizontal, paddingH)
             .padding(.vertical, paddingV)
             .background(.ultraThinMaterial, in: Capsule())
-            .overlay(
-                Capsule().strokeBorder(
-                    LinearGradient(
-                        colors: [Color.accentColor.opacity(0.65), Color.accentColor.opacity(0.18)],
-                        startPoint: .leading, endPoint: .trailing
-                    ),
-                    lineWidth: 0.8
-                )
-            )
+            .overlay(Capsule().strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5))
     }
 }
 
@@ -36,40 +28,17 @@ struct AnimeCardModifier: ViewModifier {
     let secondary: Bool
     @Environment(\.colorScheme) private var colorScheme
 
-    private var borderColor: Color {
-        colorScheme == .dark
-            ? Color.accentColor.opacity(secondary ? 0.35 : 0.45)
-            : Color.accentColor.opacity(secondary ? 0.14 : 0.20)
-    }
-
-    private var borderWidth: CGFloat {
-        colorScheme == .dark ? 1.0 : 0.5
-    }
-
-    private var shadowColor: Color {
-        colorScheme == .dark ? .clear : Color.accentColor.opacity(0.10)
-    }
-
-    // Tint overlay for secondary cards to visually separate from primary
-    private var tintOverlay: Color {
-        secondary
-            ? Color.accentColor.opacity(colorScheme == .dark ? 0.04 : 0.03)
-            : .clear
-    }
-
     func body(content: Content) -> some View {
         content
-            // ② Glassmorphism: ultraThinMaterial lets the gradient background show through
-            .background {
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .fill(.ultraThinMaterial)
-                    .overlay(tintOverlay, in: RoundedRectangle(cornerRadius: cornerRadius))
-            }
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .strokeBorder(borderColor, lineWidth: borderWidth)
+                    .strokeBorder(
+                        Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.08),
+                        lineWidth: 0.5
+                    )
             )
-            .shadow(color: shadowColor, radius: 8, y: 3)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 6, y: 2)
     }
 }

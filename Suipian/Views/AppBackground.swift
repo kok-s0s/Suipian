@@ -7,21 +7,22 @@ struct AppBackgroundCanvas: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let opacity: Double = colorScheme == .dark ? 0.09 : 0.06
+        // Use primary color at low opacity — adapts to dark/light naturally
+        let opacity: Double = colorScheme == .dark ? 0.16 : 0.10
         switch styleRaw {
         case 1:
             Canvas { ctx, size in dotPattern(ctx: ctx, size: size) }
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Color.primary)
                 .opacity(opacity)
                 .allowsHitTesting(false)
         case 2:
             Canvas { ctx, size in diagonalPattern(ctx: ctx, size: size) }
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Color.primary)
                 .opacity(opacity)
                 .allowsHitTesting(false)
         case 3:
             Canvas { ctx, size in gridPattern(ctx: ctx, size: size) }
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Color.primary)
                 .opacity(opacity)
                 .allowsHitTesting(false)
         default:

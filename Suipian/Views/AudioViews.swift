@@ -30,8 +30,7 @@ struct AudioRecorderRow: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(Color.accentColor.opacity(0.07))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                 .padding(.horizontal, 16)
             }
 
@@ -122,8 +121,7 @@ struct AudioPlayerCard: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(Color.accentColor.opacity(0.07))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .onAppear { player.load(fileName: fileName) }
         .onDisappear { player.stop() }
     }

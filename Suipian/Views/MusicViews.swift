@@ -193,11 +193,10 @@ struct MusicDetailCard: View {
                     .foregroundStyle(Color.accentColor)
             }
             .padding(14)
-            .background(Color.accentColor.opacity(0.07))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(Color.accentColor.opacity(0.15), lineWidth: 1)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)

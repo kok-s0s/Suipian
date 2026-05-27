@@ -144,11 +144,10 @@ private struct StatCard: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(Color.accentColor.opacity(0.07))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(Color.accentColor.opacity(0.3), lineWidth: 0.75)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)

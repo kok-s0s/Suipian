@@ -112,8 +112,8 @@ struct FragmentDetailView: View {
                                         .foregroundStyle(Color.accentColor)
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 5)
-                                        .background(Color.accentColor.opacity(0.1))
-                                        .clipShape(Capsule())
+                                        .background(.ultraThinMaterial, in: Capsule())
+                                        .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.3), lineWidth: 0.5))
                                 }
                             }
                         }
@@ -156,7 +156,7 @@ struct FragmentDetailView: View {
                                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                                         } else {
                                             RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color.accentColor.opacity(0.1))
+                                                .fill(.regularMaterial)
                                                 .frame(width: 44, height: 44)
                                                 .overlay(Image(systemName: "square.on.square").foregroundStyle(Color.accentColor).font(.caption))
                                         }

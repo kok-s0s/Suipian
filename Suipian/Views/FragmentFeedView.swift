@@ -110,8 +110,8 @@ struct FragmentFeedView: View {
                                 }
                             }
                             .padding(.horizontal, 12).padding(.vertical, 6)
-                            .background(Color.accentColor.opacity(0.1))
-                            .clipShape(Capsule())
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 0.7))
                         } else {
                             Text("全部 · \(fragments.count) 条碎片")
                                 .font(.subheadline)
@@ -430,8 +430,8 @@ private struct OnThisDayBanner: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-            .background(Color.accentColor.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
         }
         .buttonStyle(.plain)
         .navigationDestination(isPresented: $showingDetail) {

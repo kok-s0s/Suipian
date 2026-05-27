@@ -18,8 +18,7 @@ struct FragmentCardView: View {
                 .font(.title2)
                 .foregroundStyle(Color.accentColor)
                 .frame(width: 44, height: 44)
-                .background(Color.accentColor.opacity(0.1))
-                .clipShape(Circle())
+                .background(.regularMaterial, in: Circle())
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("私密碎片")

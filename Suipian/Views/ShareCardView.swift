@@ -54,8 +54,8 @@ struct ShareCardView: View {
                                 .font(.caption2).fontWeight(.medium)
                                 .foregroundStyle(Color.accentColor)
                                 .padding(.horizontal, 8).padding(.vertical, 3)
-                                .background(Color.accentColor.opacity(0.1))
-                                .clipShape(Capsule())
+                                .background(Color.accentColor.opacity(0.08), in: Capsule())
+                                .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.25), lineWidth: 0.5))
                         }
                         if fragment.hasLocation && !fragment.locationName.isEmpty {
                             Spacer()

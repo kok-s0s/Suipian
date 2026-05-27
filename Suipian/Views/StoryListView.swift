@@ -108,7 +108,7 @@ private struct StoryCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color.accentColor.opacity(0.28), lineWidth: 0.75)
+                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5)
         )
         .shadow(color: .black.opacity(0.10), radius: 6, y: 3)
     }
