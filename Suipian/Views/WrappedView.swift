@@ -116,15 +116,6 @@ struct WrappedView: View {
             ))
         }
 
-        let streak = computeStreak()
-        if streak > 1 {
-            result.append(WrappedCardData(
-                gradient: [Color(red: 0.65, green: 0.2, blue: 0.05), .orange.opacity(0.75)],
-                icon: "flame.fill", highlight: "\(streak)",
-                title: "天连续记录", subtitle: "你的坚持，值得被铭记"
-            ))
-        }
-
         result.append(WrappedCardData(
             gradient: [Color(red: 0.4, green: 0.15, blue: 0.6), Color(red: 0.6, green: 0.25, blue: 0.5)],
             icon: "star.fill", highlight: "🌟",
@@ -165,17 +156,6 @@ struct WrappedView: View {
         return (tag: top.key, count: top.value)
     }
 
-    private func computeStreak() -> Int {
-        let cal = Calendar.current
-        var day = cal.startOfDay(for: Date())
-        var count = 0
-        let daySet = Set(fragments.map { cal.startOfDay(for: $0.date) })
-        while daySet.contains(day) {
-            count += 1
-            day = cal.date(byAdding: .day, value: -1, to: day)!
-        }
-        return count
-    }
 }
 
 // MARK: - Card data

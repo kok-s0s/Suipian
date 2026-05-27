@@ -30,7 +30,6 @@ struct StatsView: View {
                         VStack(spacing: 14) {
                             WrappedBannerCard { showingWrapped = true }
                             SummaryCardsSection(fragments: fragments, onDrillDown: { drillDown = $0 })
-                            StreakSection(fragments: fragments, onDrillDown: { drillDown = $0 })
                             HeatmapSection(fragments: fragments, onDrillDown: { drillDown = $0 })
                             MoodCurveSection(fragments: fragments, onDrillDown: { drillDown = $0 })
                             MoodStatsSection(fragments: fragments, onDrillDown: { drillDown = $0 })
@@ -209,71 +208,6 @@ private struct StatCard: View {
                 RoundedRectangle(cornerRadius: 14)
                     .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
             )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Streak
-
-private struct StreakSection: View {
-    let fragments: [Fragment]
-    let onDrillDown: (FragmentDrillDown) -> Void
-
-    private var streak: Int {
-        let cal = Calendar.current
-        var day = cal.startOfDay(for: Date())
-        var count = 0
-        let daySet = Set(fragments.map { cal.startOfDay(for: $0.date) })
-        while daySet.contains(day) {
-            count += 1
-            day = cal.date(byAdding: .day, value: -1, to: day)!
-        }
-        return count
-    }
-
-    private var streakFragments: [Fragment] {
-        guard streak > 0 else { return [] }
-        let cal = Calendar.current
-        let cutoff = cal.date(byAdding: .day, value: -(streak - 1), to: cal.startOfDay(for: Date()))!
-        return fragments.filter { $0.date >= cutoff }
-    }
-
-    var body: some View {
-        Button {
-            guard streak > 0 else { return }
-            onDrillDown(FragmentDrillDown(title: "连续 \(streak) 天", fragments: streakFragments))
-        } label: {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(streak > 0
-                              ? LinearGradient(colors: [.orange.opacity(0.8), .red.opacity(0.6)],
-                                               startPoint: .topLeading, endPoint: .bottomTrailing)
-                              : LinearGradient(colors: [Color(.systemGray4), Color(.systemGray4)],
-                                               startPoint: .top, endPoint: .bottom))
-                        .frame(width: 46, height: 46)
-                    Image(systemName: streak > 0 ? "flame.fill" : "flame")
-                        .font(.system(size: 20))
-                        .foregroundStyle(.white)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("连续记录")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("\(streak) 天")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)
-                }
-                Spacer()
-                if streak > 0 {
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .padding(14)
-            .animeSecondaryCard(cornerRadius: 14)
         }
         .buttonStyle(.plain)
     }
