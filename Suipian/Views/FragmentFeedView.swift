@@ -23,6 +23,7 @@ struct FragmentFeedView: View {
     @State private var showingRandomReview = false
     @State private var randomFragment: Fragment? = nil
     @State private var hasDraft = false
+    @State private var fabExpanded = false
 
     private static let draftKey = "fragmentDraft_new"
     private func refreshDraftStatus() {
@@ -287,42 +288,22 @@ struct FragmentFeedView: View {
             }
         .onAppear { cachedSortedTags = buildSortedTags(); refreshDraftStatus() }
         .onChange(of: fragments) { _, _ in cachedSortedTags = buildSortedTags() }
-        .overlay(alignment: .bottomTrailing) {
-                // ③ FAB with pulse rings
-                ZStack(alignment: .center) {
-                    FABPulseRing(delay: 0).allowsHitTesting(false)
-                    FABPulseRing(delay: 1.0).allowsHitTesting(false)
-                    Button { showingCreate = true } label: {
-                        Image(systemName: "plus")
-                            .font(.title2).fontWeight(.semibold)
-                            .foregroundStyle(.white)
-                            .frame(width: 58, height: 58)
-                            .background(Color.accentColor)
-                            .clipShape(Circle())
-                            .shadow(color: Color.accentColor.opacity(0.4), radius: 8, y: 4)
-                            .overlay(alignment: .topTrailing) {
-                                if hasDraft {
-                                    Circle()
-                                        .fill(.orange)
-                                        .frame(width: 14, height: 14)
-                                        .overlay(Circle().strokeBorder(.white, lineWidth: 2))
-                                        .offset(x: 2, y: -2)
-                                        .transition(.scale.combined(with: .opacity))
-                                }
-                            }
-                    }
-                    .contextMenu {
-                        Button { showingCreate = true } label: {
-                            Label("纯文字", systemImage: "text.alignleft")
-                        }
-                        Button { showingQuickPicker = true } label: {
-                            Label("从相册选", systemImage: "photo.on.rectangle")
-                        }
-                        Button { showingCamera = true } label: {
-                            Label("直接拍照", systemImage: "camera")
-                        }
-                    }
+        .overlay {
+                if fabExpanded {
+                    Color.black.opacity(0.25)
+                        .ignoresSafeArea()
+                        .onTapGesture { withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { fabExpanded = false } }
+                        .transition(.opacity)
                 }
+            }
+        .overlay(alignment: .bottomTrailing) {
+                SpeedDialFAB(
+                    isExpanded: $fabExpanded,
+                    hasDraft: hasDraft,
+                    onText:   { fabExpanded = false; showingCreate = true },
+                    onPhoto:  { fabExpanded = false; showingQuickPicker = true },
+                    onCamera: { fabExpanded = false; showingCamera = true }
+                )
                 .padding(.trailing, 20).padding(.bottom, 24)
             }
         }
@@ -363,25 +344,119 @@ struct FragmentFeedView: View {
     }
 }
 
-// MARK: - FAB pulse ring
+// MARK: - Speed-dial FAB
 
-private struct FABPulseRing: View {
-    let delay: Double
-    @State private var pulsing = false
+private struct SpeedDialFAB: View {
+    @Binding var isExpanded: Bool
+    let hasDraft: Bool
+    let onText: () -> Void
+    let onPhoto: () -> Void
+    let onCamera: () -> Void
 
     var body: some View {
-        Circle()
-            .stroke(Color.accentColor.opacity(pulsing ? 0 : 0.45), lineWidth: 2)
-            .frame(width: 58, height: 58)
-            .scaleEffect(pulsing ? 1.75 : 1.0)
-            .onAppear {
-                withAnimation(
-                    .easeOut(duration: 2.0)
-                    .repeatForever(autoreverses: false)
-                    .delay(delay)
-                ) { pulsing = true }
+        ZStack(alignment: .bottomTrailing) {
+            // Sub-action buttons (appear above main FAB)
+            VStack(alignment: .trailing, spacing: 14) {
+                fabAction(icon: "camera.fill",          label: "拍照",    color: Color(red: 0.45, green: 0.55, blue: 0.72), action: onCamera)
+                    .offset(y: isExpanded ? 0 : 40)
+                    .opacity(isExpanded ? 1 : 0)
+                    .animation(.spring(response: 0.38, dampingFraction: 0.72).delay(0.0), value: isExpanded)
+
+                fabAction(icon: "photo.on.rectangle.fill", label: "相册", color: Color(red: 0.42, green: 0.62, blue: 0.55), action: onPhoto)
+                    .offset(y: isExpanded ? 0 : 40)
+                    .opacity(isExpanded ? 1 : 0)
+                    .animation(.spring(response: 0.38, dampingFraction: 0.72).delay(0.06), value: isExpanded)
+
+                fabAction(icon: "text.alignleft",       label: "文字",    color: Color(red: 0.36, green: 0.44, blue: 0.64), action: onText)
+                    .offset(y: isExpanded ? 0 : 40)
+                    .opacity(isExpanded ? 1 : 0)
+                    .animation(.spring(response: 0.38, dampingFraction: 0.72).delay(0.12), value: isExpanded)
+
+                // Main FAB
+                mainFAB
             }
-            .onDisappear { pulsing = false }
+        }
+    }
+
+    private var mainFAB: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.72)) {
+                isExpanded.toggle()
+            }
+        } label: {
+            ZStack {
+                // Glow ring (only when collapsed)
+                if !isExpanded {
+                    Circle()
+                        .fill(Color.accentColor.opacity(0.2))
+                        .frame(width: 72, height: 72)
+                        .blur(radius: 8)
+                }
+
+                // Glass disc
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 58, height: 58)
+                    .overlay(
+                        Circle().strokeBorder(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.6), Color.white.opacity(0.1)],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                    )
+                    .shadow(color: Color.black.opacity(0.18), radius: 10, y: 5)
+
+                // Icon
+                Image(systemName: "plus")
+                    .font(.title2).fontWeight(.semibold)
+                    .foregroundStyle(Color.accentColor)
+                    .rotationEffect(.degrees(isExpanded ? 45 : 0))
+                    .animation(.spring(response: 0.3, dampingFraction: 0.65), value: isExpanded)
+            }
+            .overlay(alignment: .topTrailing) {
+                if hasDraft && !isExpanded {
+                    Circle()
+                        .fill(.orange)
+                        .frame(width: 14, height: 14)
+                        .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                        .offset(x: 2, y: -2)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func fabAction(icon: String, label: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        }) {
+            HStack(spacing: 10) {
+                Text(label)
+                    .font(.subheadline).fontWeight(.medium)
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 12).padding(.vertical, 7)
+                    .background(.regularMaterial, in: Capsule())
+                    .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+                    .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
+
+                Circle()
+                    .fill(color)
+                    .frame(width: 44, height: 44)
+                    .overlay(
+                        Image(systemName: icon)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                    )
+                    .shadow(color: color.opacity(0.35), radius: 6, y: 3)
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
 
