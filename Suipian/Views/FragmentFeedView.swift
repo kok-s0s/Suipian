@@ -577,6 +577,8 @@ private struct OnThisDayBanner: View {
 
 private struct FragmentGridCellView: View {
     let fragment: Fragment
+    // h/w ratio fetched from PHAsset; default 1.0 until resolved
+    @State private var imageRatio: CGFloat = 1.0
 
     var body: some View {
         if fragment.isPrivate {
@@ -603,10 +605,19 @@ private struct FragmentGridCellView: View {
     private var normalCell: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let coverID = fragment.coverMediaID {
-                MediaThumbnailView(identifier: coverID, size: CGSize(width: 400, height: 400))
+                // Clamp h/w: min 0.7 (mild landscape) – max 1.6 (tall portrait)
+                let displayRatio = 1.0 / min(max(imageRatio, 0.7), 1.6)
+                MediaThumbnailView(identifier: coverID, size: CGSize(width: 400, height: 650))
                     .frame(maxWidth: .infinity)
-                    .aspectRatio(1, contentMode: .fill)
+                    .aspectRatio(displayRatio, contentMode: .fill)
                     .clipped()
+                    .task(id: coverID) {
+                        let assets = PHAsset.fetchAssets(
+                            withLocalIdentifiers: [coverID], options: nil)
+                        if let asset = assets.firstObject, asset.pixelWidth > 0 {
+                            imageRatio = CGFloat(asset.pixelHeight) / CGFloat(asset.pixelWidth)
+                        }
+                    }
             } else {
                 // Text-only: tinted header strip
                 Color.accentColor.opacity(0.08)
