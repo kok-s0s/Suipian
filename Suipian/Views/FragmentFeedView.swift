@@ -605,11 +605,12 @@ private struct FragmentGridCellView: View {
     private var normalCell: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let coverID = fragment.coverMediaID {
-                // Clamp h/w: min 0.7 (mild landscape) – max 1.6 (tall portrait)
-                let displayRatio = 1.0 / min(max(imageRatio, 0.7), 1.6)
+                // h/w clamped: 0.7 (mild landscape) – 1.5 (tall portrait)
+                // Use .fit so height = width÷ratio stays bounded in the ScrollView.
+                let displayRatio = 1.0 / min(max(imageRatio, 0.7), 1.5)
                 MediaThumbnailView(identifier: coverID, size: CGSize(width: 400, height: 650))
                     .frame(maxWidth: .infinity)
-                    .aspectRatio(displayRatio, contentMode: .fill)
+                    .aspectRatio(displayRatio, contentMode: .fit)
                     .clipped()
                     .task(id: coverID) {
                         let assets = PHAsset.fetchAssets(
