@@ -31,4 +31,41 @@ enum WidgetDataStore {
         UserDefaults(suiteName: kAppGroupID)?.removeObject(forKey: kLatestFragmentKey)
         WidgetCenter.shared.reloadAllTimelines()
     }
+
+    // Writes tag-grouped fragment data for the TagFeedWidget.
+    // Called whenever the fragment list changes.
+    static func updateTagFragments(_ fragments: [Fragment]) {
+        guard let defaults = UserDefaults(suiteName: kAppGroupID) else { return }
+
+        let public_ = fragments.filter { !$0.isPrivate }
+
+        // All fragments (capped at 50 for storage size)
+        let allPayloads = public_.prefix(50).map {
+            WidgetFragmentData(content: $0.content, date: $0.date,
+                               locationName: $0.locationName, tags: $0.tags)
+        }
+        if let data = try? JSONEncoder().encode(Array(allPayloads)) {
+            defaults.set(data, forKey: "tagFragments_all")
+        }
+
+        // Per-tag map (max 20 fragments per tag)
+        var tagMap: [String: [WidgetFragmentData]] = [:]
+        for fragment in public_ {
+            for tag in fragment.tags {
+                var list = tagMap[tag, default: []]
+                guard list.count < 20 else { continue }
+                list.append(WidgetFragmentData(content: fragment.content, date: fragment.date,
+                                               locationName: fragment.locationName, tags: fragment.tags))
+                tagMap[tag] = list
+            }
+        }
+        if let data = try? JSONEncoder().encode(tagMap) {
+            defaults.set(data, forKey: "tagFragmentsMap")
+        }
+
+        // Available tag list (for widget configuration hint)
+        defaults.set(Array(tagMap.keys.sorted()), forKey: "widgetAvailableTags")
+
+        WidgetCenter.shared.reloadTimelines(ofKind: "com.kok-s0s.Suipian.tagFeed")
+    }
 }

@@ -5,5 +5,6 @@ import SwiftUI
 struct SuipianWidgetBundle: WidgetBundle {
     var body: some Widget {
         SuipianWidget()
+        TagFeedWidget()
     }
 }

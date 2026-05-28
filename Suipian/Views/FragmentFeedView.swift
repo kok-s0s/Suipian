@@ -301,8 +301,15 @@ struct FragmentFeedView: View {
                     )
                 }
             }
-        .onAppear { cachedSortedTags = buildSortedTags(); refreshDraftStatus() }
-        .onChange(of: fragments) { _, _ in cachedSortedTags = buildSortedTags() }
+        .onAppear {
+            cachedSortedTags = buildSortedTags()
+            refreshDraftStatus()
+            WidgetDataStore.updateTagFragments(fragments)
+        }
+        .onChange(of: fragments) { _, newFragments in
+            cachedSortedTags = buildSortedTags()
+            WidgetDataStore.updateTagFragments(newFragments)
+        }
         .overlay {
                 if fabExpanded {
                     Color.black.opacity(0.25)
