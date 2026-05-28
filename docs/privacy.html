@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>碎片 · 隐私政策</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      line-height: 1.8;
+    }
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e5e5e5;
+      padding: 24px 0;
+      text-align: center;
+    }
+    header h1 { font-size: 24px; font-weight: 700; }
+    header p  { font-size: 14px; color: #6e6e73; margin-top: 4px; }
+    main {
+      max-width: 720px;
+      margin: 40px auto;
+      padding: 0 24px 80px;
+    }
+    h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 36px 0 12px;
+      color: #1d1d1f;
+    }
+    p, li { font-size: 15px; color: #3a3a3c; }
+    ul { padding-left: 20px; }
+    li { margin: 6px 0; }
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 24px 28px;
+      margin-top: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; padding: 10px 14px; font-size: 14px; border-bottom: 1px solid #f0f0f0; }
+    th { color: #6e6e73; font-weight: 500; }
+    footer { text-align: center; color: #aaa; font-size: 13px; padding: 32px 0; }
+    a { color: #5865a2; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>碎片 隐私政策</h1>
+  <p>最后更新：2026 年 5 月 28 日</p>
+</header>
+
+<main>
+
+  <div class="card">
+    <p>
+      碎片（Suipian）是一款个人日记与碎片记录工具。
+      我们非常重视你的隐私——<strong>我们不收集、不出售、不共享你的任何个人数据。</strong>
+      你所记录的一切内容仅保存在你的设备本地，并可选择通过 Apple iCloud 在你自己的账号下同步。
+    </p>
+  </div>
+
+  <h2>我们访问哪些权限</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th>权限</th><th>用途</th><th>数据去向</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>相机</td>
+          <td>拍摄照片并附加到碎片</td>
+          <td>仅保存在你的相册和设备本地</td>
+        </tr>
+        <tr>
+          <td>麦克风</td>
+          <td>录制语音备忘</td>
+          <td>仅保存在设备本地</td>
+        </tr>
+        <tr>
+          <td>照片库</td>
+          <td>从相册选取图片或视频附加到碎片</td>
+          <td>仅保存在设备本地</td>
+        </tr>
+        <tr>
+          <td>位置</td>
+          <td>记录碎片的拍摄地点（可选）</td>
+          <td>仅保存在设备本地，不上传至任何服务器</td>
+        </tr>
+        <tr>
+          <td>语音识别</td>
+          <td>将语音转换为文字快速输入</td>
+          <td>由 Apple 系统 API 处理，受 Apple 隐私政策约束</td>
+        </tr>
+        <tr>
+          <td>Face ID / Touch ID</td>
+          <td>解锁私密碎片，保护隐私内容</td>
+          <td>仅在设备本地验证，我们无法访问生物识别数据</td>
+        </tr>
+        <tr>
+          <td>Apple Music</td>
+          <td>读取当前正在播放的歌曲信息（可选附加）</td>
+          <td>仅保存在设备本地</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>iCloud 同步</h2>
+  <div class="card">
+    <p>
+      碎片支持通过 Apple iCloud（CloudKit）在你的多台设备之间同步数据。
+      同步功能<strong>完全在你的 Apple 账号私有数据库</strong>中进行，
+      我们的开发者无法访问你的 iCloud 内容。
+      你可以随时在「设置 → Apple ID → iCloud → 管理账户存储」中关闭或删除碎片的 iCloud 数据。
+    </p>
+  </div>
+
+  <h2>我们不做的事</h2>
+  <div class="card">
+    <ul>
+      <li>不注册账号，不需要填写任何个人信息</li>
+      <li>不收集使用行为数据或统计分析数据</li>
+      <li>不接入任何第三方广告 SDK</li>
+      <li>不将你的任何数据上传到我们的服务器（我们没有服务器）</li>
+      <li>不出售或共享你的数据给任何第三方</li>
+    </ul>
+  </div>
+
+  <h2>第三方服务</h2>
+  <div class="card">
+    <p>
+      碎片仅使用 Apple 官方框架（SwiftData、CloudKit、Speech Framework、PhotosUI 等），
+      不集成任何其他第三方 SDK 或服务。
+      Apple 相关服务的隐私政策请参阅
+      <a href="https://www.apple.com/legal/privacy/cn/" target="_blank">Apple 隐私政策</a>。
+    </p>
+  </div>
+
+  <h2>儿童隐私</h2>
+  <div class="card">
+    <p>碎片不专门面向 13 岁以下儿童，也不主动收集任何用户数据，因此对所有年龄层用户同等适用上述政策。</p>
+  </div>
+
+  <h2>政策变更</h2>
+  <div class="card">
+    <p>
+      如果本政策发生重大变化，我们会在应用更新说明中注明，并更新本页面顶部的日期。
+      继续使用碎片即表示你接受更新后的政策。
+    </p>
+  </div>
+
+  <h2>联系我们</h2>
+  <div class="card">
+    <p>如对本隐私政策有任何疑问，请联系：<a href="mailto:sushen0219@gmail.com">sushen0219@gmail.com</a></p>
+  </div>
+
+</main>
+
+<footer>© 2026 碎片 · Suipian. All rights reserved.</footer>
+
+</body>
+</html>
