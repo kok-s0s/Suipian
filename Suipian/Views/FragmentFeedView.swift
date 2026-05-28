@@ -577,8 +577,21 @@ private struct OnThisDayBanner: View {
 
 private struct FragmentGridCellView: View {
     let fragment: Fragment
-    // h/w ratio fetched from PHAsset; default 1.0 until resolved
-    @State private var imageRatio: CGFloat = 1.0
+    @State private var imageRatio: CGFloat
+
+    // Process-lifetime cache: avoids layout jump on re-appearance
+    private static var ratioCache: [String: CGFloat] = [:]
+
+    // (screen - 16*2 padding - 12 gap) / 2 columns
+    private static var columnWidth: CGFloat {
+        (UIScreen.main.bounds.width - 44) / 2
+    }
+
+    init(fragment: Fragment) {
+        self.fragment = fragment
+        let cached = fragment.coverMediaID.flatMap { FragmentGridCellView.ratioCache[$0] }
+        _imageRatio = State(initialValue: cached ?? 1.0)
+    }
 
     var body: some View {
         if fragment.isPrivate {
@@ -605,18 +618,20 @@ private struct FragmentGridCellView: View {
     private var normalCell: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let coverID = fragment.coverMediaID {
-                // h/w clamped: 0.7 (mild landscape) – 1.5 (tall portrait)
-                // Use .fit so height = width÷ratio stays bounded in the ScrollView.
-                let displayRatio = 1.0 / min(max(imageRatio, 0.7), 1.5)
+                // Clamp h/w: 0.6 (landscape) – 1.6 (tall portrait)
+                // height = fixed pixels, never affected by ScrollView's ∞ proposal
+                let imgHeight = Self.columnWidth * min(max(imageRatio, 0.6), 1.6)
                 MediaThumbnailView(identifier: coverID, size: CGSize(width: 400, height: 650))
-                    .frame(maxWidth: .infinity)
-                    .aspectRatio(displayRatio, contentMode: .fit)
+                    .frame(width: Self.columnWidth, height: imgHeight)
                     .clipped()
                     .task(id: coverID) {
+                        guard Self.ratioCache[coverID] == nil else { return }
                         let assets = PHAsset.fetchAssets(
                             withLocalIdentifiers: [coverID], options: nil)
                         if let asset = assets.firstObject, asset.pixelWidth > 0 {
-                            imageRatio = CGFloat(asset.pixelHeight) / CGFloat(asset.pixelWidth)
+                            let r = CGFloat(asset.pixelHeight) / CGFloat(asset.pixelWidth)
+                            Self.ratioCache[coverID] = r
+                            imageRatio = r
                         }
                     }
             } else {
