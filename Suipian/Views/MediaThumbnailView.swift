@@ -29,6 +29,10 @@ func standardThumbnailSize(_ size: CGSize) -> CGSize {
 struct MediaThumbnailView: View {
     let identifier: String
     var size: CGSize = CGSize(width: 300, height: 300)
+    /// When true: requests the full uncroped image (.aspectFit) and displays
+    /// with .scaledToFit so no content is lost. Caller is responsible for
+    /// sizing the frame to match the image's natural aspect ratio.
+    var fitContent: Bool = false
 
     @State private var thumbnail: UIImage?
     @State private var isVideo = false
@@ -38,9 +42,11 @@ struct MediaThumbnailView: View {
         ZStack {
             Color(.systemGray5)
             if let thumbnail {
-                Image(uiImage: thumbnail)
-                    .resizable()
-                    .scaledToFill()
+                if fitContent {
+                    Image(uiImage: thumbnail).resizable().scaledToFit()
+                } else {
+                    Image(uiImage: thumbnail).resizable().scaledToFill()
+                }
                 if isVideo {
                     Color.black.opacity(0.15)
                     Image(systemName: "play.circle.fill")
@@ -64,10 +70,22 @@ struct MediaThumbnailView: View {
 
     private func loadThumbnail() async {
         cancelPendingRequest()
-        let target = standardThumbnailSize(size)
-        let key = "\(identifier)_\(Int(target.width))" as NSString
 
-        if let cached = sharedThumbnailCache.object(forKey: key) {
+        // fitContent: request uncroped image in a tall envelope; fill: square crop as before
+        let target: CGSize
+        let phMode: PHImageContentMode
+        let cacheKey: NSString
+        if fitContent {
+            target = CGSize(width: 480, height: 960)
+            phMode = .aspectFit
+            cacheKey = "\(identifier)_fit" as NSString
+        } else {
+            target = standardThumbnailSize(size)
+            phMode = .aspectFill
+            cacheKey = "\(identifier)_\(Int(target.width))" as NSString
+        }
+
+        if let cached = sharedThumbnailCache.object(forKey: cacheKey) {
             thumbnail = cached
             return
         }
@@ -87,13 +105,13 @@ struct MediaThumbnailView: View {
             requestID = PHImageManager.default().requestImage(
                 for: asset,
                 targetSize: target,
-                contentMode: .aspectFill,
+                contentMode: phMode,
                 options: opts
             ) { image, _ in cont.resume(returning: image) }
         }
 
         guard !Task.isCancelled, let img else { return }
-        sharedThumbnailCache.setObject(img, forKey: key,
+        sharedThumbnailCache.setObject(img, forKey: cacheKey,
                                        cost: Int(target.width * target.height * 4))
         thumbnail = img
     }

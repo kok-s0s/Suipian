@@ -618,22 +618,26 @@ private struct FragmentGridCellView: View {
     private var normalCell: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let coverID = fragment.coverMediaID {
-                // Clamp h/w: 0.6 (landscape) – 1.6 (tall portrait)
-                // height = fixed pixels, never affected by ScrollView's ∞ proposal
-                let imgHeight = Self.columnWidth * min(max(imageRatio, 0.6), 1.6)
-                MediaThumbnailView(identifier: coverID, size: CGSize(width: 400, height: 650))
-                    .frame(width: Self.columnWidth, height: imgHeight)
-                    .clipped()
-                    .task(id: coverID) {
-                        guard Self.ratioCache[coverID] == nil else { return }
-                        let assets = PHAsset.fetchAssets(
-                            withLocalIdentifiers: [coverID], options: nil)
-                        if let asset = assets.firstObject, asset.pixelWidth > 0 {
-                            let r = CGFloat(asset.pixelHeight) / CGFloat(asset.pixelWidth)
-                            Self.ratioCache[coverID] = r
-                            imageRatio = r
-                        }
+                // Frame height = column width × actual h/w ratio so the image
+                // fills the frame exactly with no cropping (fitContent mode).
+                // Clamp: 0.4 (very wide landscape) – 2.0 (tall portrait/screenshot)
+                let imgHeight = Self.columnWidth * min(max(imageRatio, 0.4), 2.0)
+                MediaThumbnailView(
+                    identifier: coverID,
+                    size: CGSize(width: 480, height: 960),
+                    fitContent: true
+                )
+                .frame(width: Self.columnWidth, height: imgHeight)
+                .task(id: coverID) {
+                    guard Self.ratioCache[coverID] == nil else { return }
+                    let assets = PHAsset.fetchAssets(
+                        withLocalIdentifiers: [coverID], options: nil)
+                    if let asset = assets.firstObject, asset.pixelWidth > 0 {
+                        let r = CGFloat(asset.pixelHeight) / CGFloat(asset.pixelWidth)
+                        Self.ratioCache[coverID] = r
+                        imageRatio = r
                     }
+                }
             } else {
                 // Text-only: tinted header strip
                 Color.accentColor.opacity(0.08)
