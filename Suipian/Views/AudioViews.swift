@@ -5,6 +5,7 @@ import AVFoundation
 
 struct AudioRecorderRow: View {
     @Binding var audioFileNames: [String]
+    @Binding var audioData: [Data]
     @StateObject private var recorder = AudioRecorder()
     @State private var permissionDenied = false
 
@@ -20,8 +21,11 @@ struct AudioRecorderRow: View {
                         .foregroundStyle(.primary)
                     Spacer()
                     Button {
-                        AudioStore.delete(name)
-                        audioFileNames.removeAll { $0 == name }
+                        if let idx = audioFileNames.firstIndex(of: name) {
+                            AudioStore.delete(name)
+                            audioFileNames.remove(at: idx)
+                            if idx < audioData.count { audioData.remove(at: idx) }
+                        }
                     } label: {
                         Image(systemName: "trash")
                             .font(.caption)
@@ -40,6 +44,7 @@ struct AudioRecorderRow: View {
                     if recorder.isRecording {
                         if let name = recorder.stop() {
                             audioFileNames.append(name)
+                            if let data = AudioStore.data(for: name) { audioData.append(data) }
                         }
                     } else {
                         Task {
@@ -91,6 +96,7 @@ struct AudioRecorderRow: View {
 
 struct AudioPlayerCard: View {
     let fileName: String
+    var fallbackData: Data? = nil
     @StateObject private var player = AudioPlayer()
 
     var body: some View {
@@ -122,7 +128,7 @@ struct AudioPlayerCard: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .onAppear { player.load(fileName: fileName) }
+        .onAppear { player.load(fileName: fileName, fallbackData: fallbackData) }
         .onDisappear { player.stop() }
     }
 

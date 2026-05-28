@@ -11,23 +11,23 @@ struct FragmentFeedView: View {
     @AppStorage("fragmentSortAscending") private var sortAscending = false
 
     @State private var selectedTag: String? = nil
-    @State private var showingCreate = false
+    @State private var createRequest: CreateRequest? = nil
     @State private var showingTagPicker = false
     @State private var searchText = ""
     @State private var showingQuickPicker = false
     @State private var showingCamera = false
-    @State private var quickMediaIDs: [String] = []
+    @State private var pendingPickerIDs: [String] = []
     @State private var cameraID: String? = nil
-    @State private var showingCreateWithMedia = false
+    @State private var mediaEditRequest: MediaEditRequest? = nil
     @State private var showingSettings = false
     @State private var showingRandomReview = false
     @State private var randomFragment: Fragment? = nil
     @State private var hasDraft = false
     @State private var fabExpanded = false
     @State private var showingVoiceInput = false
-    @State private var voicePrefilledContent = ""
+    @State private var pendingVoiceTranscript = ""
 
-    private static let draftKey = "fragmentDraft_new"
+    static let draftKey = "fragmentDraft_new"
     private func refreshDraftStatus() {
         hasDraft = UserDefaults.standard.data(forKey: Self.draftKey) != nil
     }
@@ -91,6 +91,19 @@ struct FragmentFeedView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
+                    // Draft banner
+                    if hasDraft {
+                        DraftBanner(
+                            onResume: { createRequest = CreateRequest() },
+                            onDiscard: {
+                                UserDefaults.standard.removeObject(forKey: FragmentFeedView.draftKey)
+                                refreshDraftStatus()
+                            }
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                    }
+
                     // On This Day banner
                     if !onThisDayFragments.isEmpty {
                         OnThisDayBanner(fragments: onThisDayFragments)
@@ -302,7 +315,7 @@ struct FragmentFeedView: View {
                 SpeedDialFAB(
                     isExpanded: $fabExpanded,
                     hasDraft: hasDraft,
-                    onText:   { fabExpanded = false; showingCreate = true },
+                    onText:   { fabExpanded = false; createRequest = CreateRequest() },
                     onPhoto:  { fabExpanded = false; showingQuickPicker = true },
                     onCamera: { fabExpanded = false; showingCamera = true },
                     onVoice:  { fabExpanded = false; showingVoiceInput = true }
@@ -324,35 +337,53 @@ struct FragmentFeedView: View {
             TagPickerSheet(cachedSortedTags: cachedSortedTags, totalCount: fragments.count, selectedTag: $selectedTag)
         }
         .sheet(isPresented: $showingQuickPicker, onDismiss: {
-            if !quickMediaIDs.isEmpty { showingCreateWithMedia = true }
+            if !pendingPickerIDs.isEmpty {
+                mediaEditRequest = MediaEditRequest(mediaIDs: pendingPickerIDs)
+                pendingPickerIDs = []
+            }
         }) {
-            PhotoLibraryPicker(selectedIDs: $quickMediaIDs)
+            PhotoLibraryPicker(selectedIDs: $pendingPickerIDs)
         }
         .fullScreenCover(isPresented: $showingCamera, onDismiss: {
             if let id = cameraID {
-                quickMediaIDs = [id]
+                mediaEditRequest = MediaEditRequest(mediaIDs: [id])
                 cameraID = nil
-                showingCreateWithMedia = true
             }
         }) {
             CameraPickerView(capturedID: $cameraID)
                 .ignoresSafeArea()
         }
-        .sheet(isPresented: $showingCreateWithMedia, onDismiss: { quickMediaIDs = []; refreshDraftStatus() }) {
-            FragmentEditView(preloadedMediaIDs: quickMediaIDs)
+        .sheet(item: $mediaEditRequest, onDismiss: { refreshDraftStatus() }) { request in
+            FragmentEditView(preloadedMediaIDs: request.mediaIDs, saveDraftOnCancel: false)
         }
-        .sheet(isPresented: $showingVoiceInput) {
+        .sheet(isPresented: $showingVoiceInput, onDismiss: {
+            if !pendingVoiceTranscript.isEmpty {
+                createRequest = CreateRequest(preloadedContent: pendingVoiceTranscript)
+                pendingVoiceTranscript = ""
+            }
+        }) {
             VoiceInputView { transcript in
-                voicePrefilledContent = transcript
-                showingCreate = true
+                pendingVoiceTranscript = transcript
             }
             .presentationDetents([.fraction(0.65)])
             .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showingCreate, onDismiss: { refreshDraftStatus(); voicePrefilledContent = "" }) {
-            FragmentEditView(preloadedContent: voicePrefilledContent)
+        .sheet(item: $createRequest, onDismiss: { refreshDraftStatus() }) { req in
+            FragmentEditView(preloadedContent: req.preloadedContent)
         }
     }
+}
+
+// MARK: - Sheet request types
+
+private struct CreateRequest: Identifiable {
+    let id = UUID()
+    var preloadedContent: String = ""
+}
+
+private struct MediaEditRequest: Identifiable {
+    let id = UUID()
+    let mediaIDs: [String]
 }
 
 // MARK: - Speed-dial FAB
@@ -775,6 +806,98 @@ private struct CameraPickerView: UIViewControllerRepresentable {
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.dismiss()
         }
+    }
+}
+
+// MARK: - Draft banner
+
+private struct DraftBanner: View {
+    let onResume: () -> Void
+    let onDiscard: () -> Void
+
+    private struct DraftPreview: Codable {
+        var content: String
+        var tags: [String]
+        var mood: String
+        var mediaIdentifiers: [String]
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            content = try c.decode(String.self, forKey: .content)
+            tags = try c.decode([String].self, forKey: .tags)
+            mood = try c.decode(String.self, forKey: .mood)
+            mediaIdentifiers = (try? c.decode([String].self, forKey: .mediaIdentifiers)) ?? []
+        }
+    }
+
+    private var draft: DraftPreview? {
+        guard let data = UserDefaults.standard.data(forKey: FragmentFeedView.draftKey),
+              let d = try? JSONDecoder().decode(DraftPreview.self, from: data) else { return nil }
+        return d
+    }
+
+    var body: some View {
+        if let d = draft {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "doc.text.fill")
+                            .font(.caption2)
+                            .foregroundStyle(Color.orange)
+                        Text("草稿")
+                            .font(.caption2).fontWeight(.semibold)
+                            .foregroundStyle(Color.orange)
+                    }
+
+                    let preview = buildPreview(d)
+                    if !preview.isEmpty {
+                        Text(preview)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+
+                Spacer(minLength: 8)
+
+                HStack(spacing: 8) {
+                    Button(action: onResume) {
+                        Text("继续编辑")
+                            .font(.caption).fontWeight(.medium)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .background(Color.accentColor, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onDiscard) {
+                        Image(systemName: "xmark")
+                            .font(.caption2).fontWeight(.semibold)
+                            .foregroundStyle(.secondary)
+                            .padding(6)
+                            .background(.regularMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(Color.orange.opacity(0.3), lineWidth: 0.8)
+            )
+        }
+    }
+
+    private func buildPreview(_ d: DraftPreview) -> String {
+        var parts: [String] = []
+        if !d.mood.isEmpty { parts.append(d.mood) }
+        let text = d.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !text.isEmpty { parts.append(text) }
+        if !d.tags.isEmpty { parts.append(d.tags.map { "#\($0)" }.joined(separator: " ")) }
+        if !d.mediaIdentifiers.isEmpty { parts.append("\(d.mediaIdentifiers.count) 张照片") }
+        return parts.joined(separator: "  ")
     }
 }
 

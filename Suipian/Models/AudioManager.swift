@@ -23,6 +23,16 @@ enum AudioStore {
         let url = url(for: fileName)
         return (try? AVAudioPlayer(contentsOf: url))?.duration ?? 0
     }
+
+    static func data(for fileName: String) -> Data? {
+        try? Data(contentsOf: url(for: fileName))
+    }
+
+    static func restore(_ data: Data, as fileName: String) {
+        let dest = url(for: fileName)
+        guard !FileManager.default.fileExists(atPath: dest.path) else { return }
+        try? data.write(to: dest)
+    }
 }
 
 // MARK: - Recorder
@@ -103,10 +113,11 @@ final class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private var timer: AnyCancellable?
     private(set) var fileName: String = ""
 
-    func load(fileName: String) {
+    func load(fileName: String, fallbackData: Data? = nil) {
         guard fileName != self.fileName else { return }
         stop()
         self.fileName = fileName
+        if let data = fallbackData { AudioStore.restore(data, as: fileName) }
         let url = AudioStore.url(for: fileName)
         player = try? AVAudioPlayer(contentsOf: url)
         player?.delegate = self

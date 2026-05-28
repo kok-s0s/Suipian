@@ -105,8 +105,11 @@ struct FragmentDetailView: View {
                     // Audio clips
                     if !fragment.audioFileNames.isEmpty {
                         VStack(spacing: 8) {
-                            ForEach(fragment.audioFileNames, id: \.self) { name in
-                                AudioPlayerCard(fileName: name)
+                            ForEach(Array(fragment.audioFileNames.enumerated()), id: \.element) { idx, name in
+                                AudioPlayerCard(
+                                    fileName: name,
+                                    fallbackData: idx < fragment.audioData.count ? fragment.audioData[idx] : nil
+                                )
                             }
                         }
                     }
@@ -235,6 +238,7 @@ struct FragmentDetailView: View {
                 UINotificationFeedbackGenerator().notificationOccurred(.warning)
                 fragment.audioFileNames.forEach { AudioStore.delete($0) }
                 modelContext.delete(fragment)
+                WidgetDataStore.clear()
                 dismiss()
             }
         }

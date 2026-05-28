@@ -11,6 +11,7 @@ struct FragmentEditView: View {
     var fragment: Fragment?
     var preloadedMediaIDs: [String] = []
     var preloadedContent: String = ""
+    var saveDraftOnCancel: Bool = true
 
     @State private var content = ""
     @State private var mediaIdentifiers: [String] = []
@@ -26,6 +27,7 @@ struct FragmentEditView: View {
     @State private var locationSuggestions: [NominatimResult] = []
     @State private var isPrivate = false
     @State private var audioFileNames: [String] = []
+    @State private var audioData: [Data] = []
     @State private var mood: String = ""
     @State private var storyName: String = ""
     @State private var storyFieldFocused = false
@@ -294,7 +296,7 @@ struct FragmentEditView: View {
                     Divider().padding(.vertical, 12)
 
                     // ── 语音 ──────────────────────────────────────
-                    AudioRecorderRow(audioFileNames: $audioFileNames)
+                    AudioRecorderRow(audioFileNames: $audioFileNames, audioData: $audioData)
 
                     Divider().padding(.vertical, 12)
 
@@ -634,7 +636,7 @@ struct FragmentEditView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") {
-                        saveDraft()
+                        if saveDraftOnCancel { saveDraft() }
                         dismiss()
                     }
                 }
@@ -684,6 +686,7 @@ struct FragmentEditView: View {
         mediaIdentifiers = fragment.mediaIdentifiers
         coverIdentifier = fragment.coverIdentifier
         audioFileNames = fragment.audioFileNames
+        audioData = fragment.audioData
         tags = fragment.tags
         date = fragment.date
         latitude = fragment.latitude
@@ -784,6 +787,7 @@ struct FragmentEditView: View {
             fragment.mediaIdentifiers = mediaIdentifiers
             fragment.coverIdentifier = coverIdentifier
             fragment.audioFileNames = audioFileNames
+            fragment.audioData = audioData
             fragment.mood = mood
             fragment.storyName = storyName
             fragment.musicTitle = musicTitle
@@ -802,6 +806,7 @@ struct FragmentEditView: View {
             fragment.locationName = locationName
             fragment.isPrivate = isPrivate
             SpotlightManager.index(fragment)
+            WidgetDataStore.update(with: fragment)
         } else {
             let f = Fragment(
                 content: content,
@@ -815,6 +820,7 @@ struct FragmentEditView: View {
             f.coverIdentifier = coverIdentifier
             f.isPrivate = isPrivate
             f.audioFileNames = audioFileNames
+            f.audioData = audioData
             f.mood = mood
             f.storyName = storyName
             f.musicTitle = musicTitle
@@ -828,6 +834,7 @@ struct FragmentEditView: View {
             f.linkImageURL = linkImageURL
             modelContext.insert(f)
             SpotlightManager.index(f)
+            WidgetDataStore.update(with: f)
         }
         clearDraft()
         HapticFeedback.success()

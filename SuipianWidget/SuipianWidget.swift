@@ -40,13 +40,12 @@ struct FragmentTimelineProvider: TimelineProvider {
     }
 
     private func load() -> WidgetFragmentData? {
-        // Try App Group shared container first; fall back gracefully if not provisioned
-        if let defaults = UserDefaults(suiteName: kAppGroupID),
-           let data = defaults.data(forKey: kLatestFragmentKey),
-           let decoded = try? JSONDecoder().decode(WidgetFragmentData.self, from: data) {
-            return decoded
+        guard let defaults = UserDefaults(suiteName: kAppGroupID),
+              let data = defaults.data(forKey: kLatestFragmentKey),
+              let decoded = try? JSONDecoder().decode(WidgetFragmentData.self, from: data) else {
+            return nil
         }
-        return nil
+        return decoded
     }
 }
 

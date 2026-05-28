@@ -6,6 +6,22 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		FDA787B72FC7E5F400D8AFEE /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD7255D92FC43AD70044FDE3 /* WidgetKit.framework */; };
+		FDA787B82FC7E5F400D8AFEE /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD7255DB2FC43AD80044FDE3 /* SwiftUI.framework */; };
+		FDA787C52FC7E5F800D8AFEE /* SuipianWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FDA787B62FC7E5F400D8AFEE /* SuipianWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		FDA787C32FC7E5F800D8AFEE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FD0460352FC27EDA0037185F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FDA787B52FC7E5F400D8AFEE;
+			remoteInfo = SuipianWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		FD7255EE2FC43ADA0044FDE3 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -13,6 +29,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
+				FDA787C52FC7E5F800D8AFEE /* SuipianWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -23,12 +40,32 @@
 		FD04603D2FC27EDA0037185F /* Suipian.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Suipian.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD7255D92FC43AD70044FDE3 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		FD7255DB2FC43AD80044FDE3 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		FDA787B62FC7E5F400D8AFEE /* SuipianWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SuipianWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FDA787CA2FC7E65700D8AFEE /* SuipianWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SuipianWidgetExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		FDA787C62FC7E5F800D8AFEE /* Exceptions for "SuipianWidget" folder in "SuipianWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = FDA787B52FC7E5F400D8AFEE /* SuipianWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		FD04603F2FC27EDA0037185F /* Suipian */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Suipian;
+			sourceTree = "<group>";
+		};
+		FDA787B92FC7E5F400D8AFEE /* SuipianWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				FDA787C62FC7E5F800D8AFEE /* Exceptions for "SuipianWidget" folder in "SuipianWidgetExtension" target */,
+			);
+			path = SuipianWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -41,13 +78,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FDA787B32FC7E5F400D8AFEE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FDA787B82FC7E5F400D8AFEE /* SwiftUI.framework in Frameworks */,
+				FDA787B72FC7E5F400D8AFEE /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		FD0460342FC27EDA0037185F = {
 			isa = PBXGroup;
 			children = (
+				FDA787CA2FC7E65700D8AFEE /* SuipianWidgetExtension.entitlements */,
 				FD04603F2FC27EDA0037185F /* Suipian */,
+				FDA787B92FC7E5F400D8AFEE /* SuipianWidget */,
 				FD7255D82FC43AD70044FDE3 /* Frameworks */,
 				FD04603E2FC27EDA0037185F /* Products */,
 			);
@@ -57,6 +105,7 @@
 			isa = PBXGroup;
 			children = (
 				FD04603D2FC27EDA0037185F /* Suipian.app */,
+				FDA787B62FC7E5F400D8AFEE /* SuipianWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -85,6 +134,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				FDA787C42FC7E5F800D8AFEE /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				FD04603F2FC27EDA0037185F /* Suipian */,
@@ -95,6 +145,28 @@
 			productName = Suipian;
 			productReference = FD04603D2FC27EDA0037185F /* Suipian.app */;
 			productType = "com.apple.product-type.application";
+		};
+		FDA787B52FC7E5F400D8AFEE /* SuipianWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FDA787C72FC7E5F800D8AFEE /* Build configuration list for PBXNativeTarget "SuipianWidgetExtension" */;
+			buildPhases = (
+				FDA787B22FC7E5F400D8AFEE /* Sources */,
+				FDA787B32FC7E5F400D8AFEE /* Frameworks */,
+				FDA787B42FC7E5F400D8AFEE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				FDA787B92FC7E5F400D8AFEE /* SuipianWidget */,
+			);
+			name = SuipianWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = SuipianWidgetExtension;
+			productReference = FDA787B62FC7E5F400D8AFEE /* SuipianWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -107,6 +179,9 @@
 				LastUpgradeCheck = 2650;
 				TargetAttributes = {
 					FD04603C2FC27EDA0037185F = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					FDA787B52FC7E5F400D8AFEE = {
 						CreatedOnToolsVersion = 26.5;
 					};
 				};
@@ -126,12 +201,20 @@
 			projectRoot = "";
 			targets = (
 				FD04603C2FC27EDA0037185F /* Suipian */,
+				FDA787B52FC7E5F400D8AFEE /* SuipianWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		FD04603B2FC27EDA0037185F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FDA787B42FC7E5F400D8AFEE /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -148,7 +231,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FDA787B22FC7E5F400D8AFEE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		FDA787C42FC7E5F800D8AFEE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FDA787B52FC7E5F400D8AFEE /* SuipianWidgetExtension */;
+			targetProxy = FDA787C32FC7E5F800D8AFEE /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		FD0460482FC27EDC0037185F /* Debug */ = {
@@ -288,8 +386,8 @@
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "用于解锁碎片，保护你的隐私";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于在碎片中标注位置";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于录制语音碎片";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "用于将语音转换为文字，快速创建碎片";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "用于读取您选择关联到碎片的照片和视频";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "用于将语音转换为文字，快速创建碎片";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -328,8 +426,8 @@
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "用于解锁碎片，保护你的隐私";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于在碎片中标注位置";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于录制语音碎片";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "用于将语音转换为文字，快速创建碎片";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "用于读取您选择关联到碎片的照片和视频";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "用于将语音转换为文字，快速创建碎片";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -345,6 +443,70 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		FDA787C82FC7E5F800D8AFEE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = SuipianWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VBJ2Z8Y5RC;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SuipianWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SuipianWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.kok-s0s.Suipian.SuipianWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		FDA787C92FC7E5F800D8AFEE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = SuipianWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VBJ2Z8Y5RC;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SuipianWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SuipianWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.kok-s0s.Suipian.SuipianWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
@@ -369,6 +531,15 @@
 			buildConfigurations = (
 				FD04604B2FC27EDC0037185F /* Debug */,
 				FD04604C2FC27EDC0037185F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FDA787C72FC7E5F800D8AFEE /* Build configuration list for PBXNativeTarget "SuipianWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FDA787C82FC7E5F800D8AFEE /* Debug */,
+				FDA787C92FC7E5F800D8AFEE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

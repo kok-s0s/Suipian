@@ -15,6 +15,7 @@ final class Fragment {
     var isPrivate: Bool = false
     var isPinned: Bool = false
     var audioFileNames: [String] = []
+    var audioData: [Data] = []
     var mood: String = ""
     var storyName: String = ""
     var musicTitle: String = ""
