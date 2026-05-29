@@ -5,8 +5,10 @@ import MapKit
 // MARK: - Cluster model
 
 struct FragmentCluster: Identifiable {
-    let id = UUID()
     var fragments: [Fragment]
+    // Stable ID derived from the seed fragment so SwiftUI doesn't treat
+    // the same cluster as a new annotation on every re-render.
+    var id: String { fragments.first.map { "\($0.persistentModelID)" } ?? "" }
 
     var coordinate: CLLocationCoordinate2D {
         let lat = fragments.map { $0.latitude }.reduce(0, +) / Double(fragments.count)
@@ -23,12 +25,15 @@ struct FragmentCluster: Identifiable {
     }
 }
 
-private func makeClusters(_ fragments: [Fragment], threshold: Double = 0.012) -> [FragmentCluster] {
+private func makeClusters(_ fragments: [Fragment], threshold: Double) -> [FragmentCluster] {
     var clusters: [FragmentCluster] = []
     for f in fragments {
+        // Compare against the seed (first fragment) of each cluster, not the shifting centroid,
+        // to prevent chain-merging of distant points.
         if let i = clusters.firstIndex(where: { c in
-            abs(c.coordinate.latitude - f.latitude) < threshold &&
-            abs(c.coordinate.longitude - f.longitude) < threshold
+            guard let seed = c.fragments.first else { return false }
+            return abs(seed.latitude - f.latitude) < threshold &&
+                   abs(seed.longitude - f.longitude) < threshold
         }) {
             clusters[i].fragments.append(f)
         } else {
@@ -48,9 +53,16 @@ struct FragmentMapView: View {
     @State private var showingLocationSearch = false
     @State private var locationSearchText = ""
     @State private var locationSearchResults: [MKMapItem] = []
+    // Tracks visible region so clustering adapts to zoom level
+    @State private var mapSpan: MKCoordinateSpan = MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
 
     var located: [Fragment] { fragments.filter { $0.hasLocation } }
-    var clusters: [FragmentCluster] { makeClusters(located) }
+    var clusters: [FragmentCluster] {
+        // Scale threshold with the visible span (≈10% of screen height).
+        // Floor at 0.004° (~440 m) so nearby pins always separate when zoomed in.
+        let threshold = max(mapSpan.latitudeDelta * 0.10, 0.004)
+        return makeClusters(located, threshold: threshold)
+    }
 
     private func doLocationSearch() async {
         let query = locationSearchText.trimmingCharacters(in: .whitespaces)
@@ -98,6 +110,9 @@ struct FragmentMapView: View {
                     }
                 }
                 .ignoresSafeArea(edges: .bottom)
+                .onMapCameraChange(frequency: .onEnd) { context in
+                    mapSpan = context.region.span
+                }
                 .onTapGesture { withAnimation { selectedCluster = nil } }
 
                 // Location search overlay
