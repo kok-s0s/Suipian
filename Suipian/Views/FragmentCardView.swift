@@ -37,76 +37,84 @@ struct FragmentCardView: View {
         .animeCard(cornerRadius: 16)
     }
 
+    // Warm amber stripe — shown on left edge when a mood is recorded
+    private static let moodStripeColor = Color(red: 0.780, green: 0.624, blue: 0.384)
+
     @ViewBuilder
     private var normalCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if let coverID = fragment.coverMediaID {
-                CardCoverView(identifier: coverID, count: fragment.mediaIdentifiers.count)
+        HStack(spacing: 0) {
+            if !fragment.mood.isEmpty {
+                Self.moodStripeColor.frame(width: 3)
             }
 
-            // Text & metadata
-            VStack(alignment: .leading, spacing: 10) {
-                if !fragment.content.isEmpty {
-                    Text(fragment.content)
-                        .font(fragment.hasMedia ? .subheadline : .body)
-                        .foregroundStyle(.primary)
-                        .lineLimit(fragment.hasMedia ? 3 : 8)
-                        .multilineTextAlignment(.leading)
+            VStack(alignment: .leading, spacing: 0) {
+                if let coverID = fragment.coverMediaID {
+                    CardCoverView(identifier: coverID, count: fragment.mediaIdentifiers.count)
                 }
 
-                HStack(alignment: .center) {
-                    if !fragment.tags.isEmpty {
-                        HStack(spacing: 5) {
-                            ForEach(fragment.tags.prefix(3), id: \.self) { tag in
-                                Text("#\(tag)")
-                                    .gradientTagStyle()
-                            }
-                            if fragment.tags.count > 3 {
-                                Text("+\(fragment.tags.count - 3)")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
+                VStack(alignment: .leading, spacing: 10) {
+                    if !fragment.content.isEmpty {
+                        Text(fragment.content)
+                            .font(fragment.hasMedia ? .subheadline : .body)
+                            .foregroundStyle(.primary)
+                            .lineLimit(fragment.hasMedia ? 3 : 8)
+                            .multilineTextAlignment(.leading)
                     }
 
-                    Spacer()
+                    HStack(alignment: .center) {
+                        if !fragment.tags.isEmpty {
+                            HStack(spacing: 5) {
+                                ForEach(fragment.tags.prefix(3), id: \.self) { tag in
+                                    Text("#\(tag)")
+                                        .gradientTagStyle()
+                                }
+                                if fragment.tags.count > 3 {
+                                    Text("+\(fragment.tags.count - 3)")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                }
+                            }
+                        }
 
-                    HStack(spacing: 4) {
-                        if !fragment.linkURL.isEmpty {
-                            LinkBadge(linkURL: fragment.linkURL)
-                            Text("·").font(.caption).foregroundStyle(.tertiary)
-                        }
-                        if !fragment.musicTitle.isEmpty {
-                            MusicBadge(title: fragment.musicTitle, artworkData: fragment.musicArtworkData)
-                            Text("·").font(.caption).foregroundStyle(.tertiary)
-                        }
-                        if !fragment.mood.isEmpty {
-                            Text(fragment.mood).font(.caption)
-                            Text("·").font(.caption).foregroundStyle(.tertiary)
-                        }
-                        if fragment.hasLocation {
-                            Image(systemName: "location.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            if !fragment.locationName.isEmpty {
-                                Text(fragment.locationName)
-                                    .font(.caption)
+                        Spacer()
+
+                        HStack(spacing: 4) {
+                            if !fragment.linkURL.isEmpty {
+                                LinkBadge(linkURL: fragment.linkURL)
+                                Text("·").font(.caption).foregroundStyle(.tertiary)
+                            }
+                            if !fragment.musicTitle.isEmpty {
+                                MusicBadge(title: fragment.musicTitle, artworkData: fragment.musicArtworkData)
+                                Text("·").font(.caption).foregroundStyle(.tertiary)
+                            }
+                            if !fragment.mood.isEmpty {
+                                Text(fragment.mood).font(.caption)
+                                Text("·").font(.caption).foregroundStyle(.tertiary)
+                            }
+                            if fragment.hasLocation {
+                                Image(systemName: "location.fill")
+                                    .font(.caption2)
                                     .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                Text("·")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
+                                if !fragment.locationName.isEmpty {
+                                    Text(fragment.locationName)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                    Text("·")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                }
                             }
+                            Text(fragment.date.formatted(.relative(presentation: .named)))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
-                        Text(fragment.date.formatted(.relative(presentation: .named)))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
                 }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
         }
         .animeCard(cornerRadius: 16)
         .overlay(alignment: .topTrailing) {

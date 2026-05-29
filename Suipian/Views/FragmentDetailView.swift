@@ -78,7 +78,7 @@ struct FragmentDetailView: View {
                     if !fragment.content.isEmpty {
                         Text(fragment.content)
                             .font(.body)
-                            .lineSpacing(6)
+                            .lineSpacing(8)
                     }
 
                     // Link preview
@@ -202,6 +202,7 @@ struct FragmentDetailView: View {
                 .padding(.bottom, 20)
             }
         }
+        .background { AppBackgroundCanvas().ignoresSafeArea() }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {

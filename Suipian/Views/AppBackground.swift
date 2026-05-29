@@ -7,26 +7,30 @@ struct AppBackgroundCanvas: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        // Use primary color at low opacity — adapts to dark/light naturally
-        let opacity: Double = colorScheme == .dark ? 0.16 : 0.10
-        switch styleRaw {
-        case 1:
-            Canvas { ctx, size in dotPattern(ctx: ctx, size: size) }
-                .foregroundStyle(Color.primary)
-                .opacity(opacity)
-                .allowsHitTesting(false)
-        case 2:
-            Canvas { ctx, size in diagonalPattern(ctx: ctx, size: size) }
-                .foregroundStyle(Color.primary)
-                .opacity(opacity)
-                .allowsHitTesting(false)
-        case 3:
-            Canvas { ctx, size in gridPattern(ctx: ctx, size: size) }
-                .foregroundStyle(Color.primary)
-                .opacity(opacity)
-                .allowsHitTesting(false)
-        default:
-            Color.clear.allowsHitTesting(false)
+        let patternOpacity: Double = colorScheme == .dark ? 0.14 : 0.09
+        // Warm cream (light) / deep ink blue (dark) — replaces clinical system white
+        let base: Color = colorScheme == .dark
+            ? Color(red: 0.110, green: 0.125, blue: 0.195)
+            : Color(red: 0.969, green: 0.961, blue: 0.941)
+
+        ZStack {
+            base.allowsHitTesting(false)
+
+            Group {
+                switch styleRaw {
+                case 1:
+                    Canvas { ctx, size in dotPattern(ctx: ctx, size: size) }
+                case 2:
+                    Canvas { ctx, size in diagonalPattern(ctx: ctx, size: size) }
+                case 3:
+                    Canvas { ctx, size in gridPattern(ctx: ctx, size: size) }
+                default:
+                    Color.clear
+                }
+            }
+            .foregroundStyle(Color.primary)
+            .opacity(patternOpacity)
+            .allowsHitTesting(false)
         }
     }
 

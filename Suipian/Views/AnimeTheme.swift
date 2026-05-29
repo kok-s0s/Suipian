@@ -20,15 +20,16 @@ extension View {
             .background(Circle().fill(.ultraThinMaterial))
     }
 
-    // Tag chip — accent text on frosted material, neutral border
+    // Tag chip — secondary text, subtle material pill; accent is reserved for
+    // primary actions only so the feed doesn't drown in blue
     func gradientTagStyle(fontSize: CGFloat = 11, paddingH: CGFloat = 7, paddingV: CGFloat = 2) -> some View {
         self
             .font(.system(size: fontSize, weight: .medium))
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(.secondary)
             .padding(.horizontal, paddingH)
             .padding(.vertical, paddingV)
             .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5))
+            .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
     }
 }
 
