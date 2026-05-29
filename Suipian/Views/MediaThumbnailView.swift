@@ -1,5 +1,6 @@
 import SwiftUI
 import Photos
+import PhotosUI
 import AVKit
 
 // Module-level cache shared across all callsites.
@@ -117,14 +118,35 @@ struct MediaThumbnailView: View {
     }
 }
 
+// MARK: - Live Photo wrapper
+
+private struct LivePhotoView: UIViewRepresentable {
+    let livePhoto: PHLivePhoto
+
+    func makeUIView(context: Context) -> PHLivePhotoView {
+        let view = PHLivePhotoView()
+        view.livePhoto = livePhoto
+        view.contentMode = .scaleAspectFit
+        view.backgroundColor = .black
+        view.startPlayback(with: .hint)
+        return view
+    }
+
+    func updateUIView(_ uiView: PHLivePhotoView, context: Context) {
+        uiView.livePhoto = livePhoto
+    }
+}
+
 // MARK: - Full-screen media (photo or video)
 
 struct MediaDetailView: View {
     let identifier: String
 
     @State private var image: UIImage?
+    @State private var livePhoto: PHLivePhoto?
     @State private var player: AVPlayer?
     @State private var isVideo = false
+    @State private var isLivePhoto = false
     @State private var loaded = false
     @State private var downloadProgress: Double = 0
 
@@ -156,6 +178,9 @@ struct MediaDetailView: View {
                 }
             } else if isVideo, let player {
                 VideoPlayer(player: player)
+            } else if isLivePhoto, let livePhoto {
+                LivePhotoView(livePhoto: livePhoto)
+                    .ignoresSafeArea()
             } else if let image {
                 Image(uiImage: image)
                     .resizable()
@@ -177,6 +202,7 @@ struct MediaDetailView: View {
         guard let asset = assets.firstObject else { loaded = true; return }
 
         isVideo = asset.mediaType == .video
+        isLivePhoto = !isVideo && asset.mediaSubtype.contains(.photoLive)
 
         if isVideo {
             let opts = PHVideoRequestOptions()
@@ -193,6 +219,31 @@ struct MediaDetailView: View {
             }
             if let avAsset {
                 player = AVPlayer(playerItem: AVPlayerItem(asset: avAsset))
+            }
+        } else if isLivePhoto {
+            let opts = PHLivePhotoRequestOptions()
+            opts.deliveryMode = .highQualityFormat
+            opts.isNetworkAccessAllowed = true
+            opts.progressHandler = { progress, _, _, _ in
+                DispatchQueue.main.async { downloadProgress = progress }
+            }
+
+            livePhoto = await withCheckedContinuation { (cont: CheckedContinuation<PHLivePhoto?, Never>) in
+                var resumed = false
+                PHImageManager.default().requestLivePhoto(
+                    for: asset,
+                    targetSize: Self.maxDetailSize,
+                    contentMode: .aspectFit,
+                    options: opts
+                ) { photo, info in
+                    guard !resumed else { return }
+                    let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                    let isCancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
+                    if !isDegraded || isCancelled || info?[PHImageErrorKey] != nil {
+                        resumed = true
+                        cont.resume(returning: photo)
+                    }
+                }
             }
         } else {
             let opts = PHImageRequestOptions()
