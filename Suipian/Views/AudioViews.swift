@@ -15,7 +15,7 @@ struct AudioRecorderRow: View {
             ForEach(audioFileNames, id: \.self) { name in
                 HStack(spacing: 10) {
                     Image(systemName: "waveform")
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(.secondary)
                     Text(formatDuration(AudioStore.duration(of: name)))
                         .font(.subheadline)
                         .foregroundStyle(.primary)
@@ -119,7 +119,7 @@ struct AudioPlayerCard: View {
                         set: { player.seek(to: $0 * player.duration) }
                     )
                 )
-                .tint(Color.accentColor)
+                .tint(Color(red: 0.780, green: 0.624, blue: 0.384))
 
                 HStack {
                     Text(formatTime(player.currentTime))

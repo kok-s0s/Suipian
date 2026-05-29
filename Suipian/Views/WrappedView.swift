@@ -80,21 +80,23 @@ struct WrappedView: View {
     private func buildCards() -> [WrappedCardData] {
         var result: [WrappedCardData] = []
 
+        // Gradients use muted, warm-toned pairs — vivid system colors (.purple/.teal/.cyan)
+        // replaced with desaturated equivalents that suit the cream/ink palette.
         result.append(WrappedCardData(
-            gradient: [.purple.opacity(0.85), Color(red: 0.3, green: 0.1, blue: 0.55)],
+            gradient: [Color(red: 0.40, green: 0.28, blue: 0.52), Color(red: 0.26, green: 0.17, blue: 0.38)],
             icon: "sparkles", highlight: "✨",
             title: "你的碎片回忆", subtitle: "滑动，开始回顾"
         ))
 
         result.append(WrappedCardData(
-            gradient: [Color(red: 0.15, green: 0.35, blue: 0.75), .cyan.opacity(0.7)],
+            gradient: [Color(red: 0.22, green: 0.34, blue: 0.56), Color(red: 0.16, green: 0.26, blue: 0.46)],
             icon: "square.on.square.fill", highlight: "\(fragments.count)",
             title: "条碎片", subtitle: "每一条都是你珍贵的记忆"
         ))
 
         if let top = topMonthInfo() {
             result.append(WrappedCardData(
-                gradient: [Color(red: 0.1, green: 0.5, blue: 0.35), .teal.opacity(0.75)],
+                gradient: [Color(red: 0.20, green: 0.42, blue: 0.34), Color(red: 0.14, green: 0.32, blue: 0.26)],
                 icon: "calendar", highlight: top.label,
                 title: "月最为活跃", subtitle: "共留下了 \(top.count) 条碎片"
             ))
@@ -102,7 +104,7 @@ struct WrappedView: View {
 
         if let mood = topMoodInfo() {
             result.append(WrappedCardData(
-                gradient: [Color(red: 0.7, green: 0.4, blue: 0.1), .yellow.opacity(0.65)],
+                gradient: [Color(red: 0.62, green: 0.38, blue: 0.14), Color(red: 0.48, green: 0.28, blue: 0.10)],
                 icon: "heart.fill", highlight: mood.emoji,
                 title: "是你最常用的情绪", subtitle: "共出现了 \(mood.count) 次"
             ))
@@ -110,14 +112,14 @@ struct WrappedView: View {
 
         if let tag = topTagInfo() {
             result.append(WrappedCardData(
-                gradient: [Color(red: 0.55, green: 0.1, blue: 0.35), .pink.opacity(0.7)],
+                gradient: [Color(red: 0.50, green: 0.20, blue: 0.34), Color(red: 0.38, green: 0.14, blue: 0.26)],
                 icon: "tag.fill", highlight: "#\(tag.tag)",
                 title: "是你最常用的标签", subtitle: "关联了 \(tag.count) 条碎片"
             ))
         }
 
         result.append(WrappedCardData(
-            gradient: [Color(red: 0.4, green: 0.15, blue: 0.6), Color(red: 0.6, green: 0.25, blue: 0.5)],
+            gradient: [Color(red: 0.34, green: 0.20, blue: 0.44), Color(red: 0.46, green: 0.24, blue: 0.40)],
             icon: "star.fill", highlight: "🌟",
             title: "继续记录吧", subtitle: "每一个碎片，都是你独特的印记"
         ))

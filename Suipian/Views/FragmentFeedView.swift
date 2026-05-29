@@ -611,7 +611,7 @@ private struct FragmentGridCellView: View {
         VStack(spacing: 8) {
             Image(systemName: "lock.fill")
                 .font(.title3)
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(.tertiary)
             Text("私密碎片")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -645,8 +645,8 @@ private struct FragmentGridCellView: View {
                     }
                 }
             } else {
-                // Text-only: tinted header strip
-                Color.accentColor.opacity(0.08)
+                // Text-only: warm accent header strip
+                Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.18)
                     .frame(maxWidth: .infinity, minHeight: 6, maxHeight: 6)
             }
 

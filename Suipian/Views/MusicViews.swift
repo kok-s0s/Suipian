@@ -73,8 +73,7 @@ struct MusicNowPlayingRow: View {
                     }
                 }
                 .padding(10)
-                .background(Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, 16)
             } else {
                 // Empty state
@@ -118,9 +117,9 @@ struct MusicNowPlayingRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
         } else {
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color.accentColor.opacity(0.15))
+                .fill(.regularMaterial)
                 .frame(width: size, height: size)
-                .overlay(Image(systemName: "music.note").foregroundStyle(Color.accentColor))
+                .overlay(Image(systemName: "music.note").foregroundStyle(.secondary))
         }
     }
 
@@ -212,9 +211,9 @@ struct MusicDetailCard: View {
                 .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
         } else {
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color.accentColor.opacity(0.15))
+                .fill(.regularMaterial)
                 .frame(width: size, height: size)
-                .overlay(Image(systemName: "music.note").foregroundStyle(Color.accentColor).font(.title3))
+                .overlay(Image(systemName: "music.note").foregroundStyle(.secondary).font(.title3))
         }
     }
 
@@ -249,7 +248,7 @@ struct MusicBadge: View {
             } else {
                 Image(systemName: "music.note")
                     .font(.system(size: 9))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(.secondary)
             }
             Text(title)
                 .font(.caption2)
