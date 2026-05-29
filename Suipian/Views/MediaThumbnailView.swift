@@ -148,6 +148,7 @@ private struct LivePhotoView: UIViewRepresentable {
 
 struct MediaDetailView: View {
     let identifier: String
+    var isFullScreen: Bool = false
 
     @State private var image: UIImage?
     @State private var livePhoto: PHLivePhoto?
@@ -167,7 +168,9 @@ struct MediaDetailView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            if isFullScreen {
+                Color.black.ignoresSafeArea()
+            }
 
             if !loaded {
                 VStack(spacing: 12) {

@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import MapKit
+import Photos
 
 struct FragmentDetailView: View {
     @Environment(\.modelContext) private var modelContext
@@ -35,6 +36,7 @@ struct FragmentDetailView: View {
     @State private var showingShare = false
     @State private var shareImage: UIImage? = nil
     @State private var isRenderingShare = false
+    @State private var carouselHeight: CGFloat = 300
 
     var body: some View {
         if fragment.isPrivate && !authenticated {
@@ -54,7 +56,8 @@ struct FragmentDetailView: View {
                         }
                     }
                     .tabViewStyle(.page(indexDisplayMode: fragment.mediaIdentifiers.count > 1 ? .always : .never))
-                    .frame(height: 320)
+                    .frame(height: carouselHeight)
+                    .onAppear { computeCarouselHeight() }
                 }
 
                 VStack(alignment: .leading, spacing: 16) {
@@ -254,6 +257,15 @@ struct FragmentDetailView: View {
             )
         }
         } // end else
+    }
+
+    private func computeCarouselHeight() {
+        guard let firstID = fragment.mediaIdentifiers.first else { return }
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [firstID], options: nil)
+        guard let asset = assets.firstObject, asset.pixelWidth > 0 else { return }
+        let screenWidth = UIScreen.main.bounds.width
+        let ratio = CGFloat(asset.pixelHeight) / CGFloat(asset.pixelWidth)
+        carouselHeight = min(screenWidth * ratio, 420)
     }
 }
 

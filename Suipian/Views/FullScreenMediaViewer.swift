@@ -153,7 +153,7 @@ private struct ZoomablePhotoView: View {
     @GestureState private var dragDelta: CGSize = .zero
 
     var body: some View {
-        MediaDetailView(identifier: identifier)
+        MediaDetailView(identifier: identifier, isFullScreen: true)
             .scaleEffect(max(1.0, scale * pinchScale))
             .offset(
                 x: scale > 1 ? panOffset.width + dragDelta.width : 0,
