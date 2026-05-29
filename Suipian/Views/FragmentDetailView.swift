@@ -237,7 +237,7 @@ struct FragmentDetailView: View {
                 WidgetDataStore.clear()
                 dismiss()
             }
-            .presentationDetents([.height(180)])
+            .presentationDetents([.height(196)])
             .presentationDragIndicator(.hidden)
             .presentationCornerRadius(24)
         }
@@ -279,7 +279,7 @@ private struct DeleteConfirmSheet: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
-            .padding(.top, 8)
+            .padding(.top, 24)
 
             VStack(spacing: 10) {
                 Button {
