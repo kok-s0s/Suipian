@@ -45,7 +45,8 @@ struct VoiceInputView: View {
                         .frame(maxWidth: .infinity)
                         .animation(.easeOut, value: recorder.transcript)
                 }
-                .frame(maxHeight: 140)
+                .scrollIndicators(recorder.transcript.isEmpty ? .hidden : .visible)
+                .frame(maxHeight: 180)
                 .padding(.bottom, 36)
 
                 Spacer()

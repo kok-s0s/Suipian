@@ -24,7 +24,12 @@ struct AudioRecorderRow: View {
                         if let idx = audioFileNames.firstIndex(of: name) {
                             AudioStore.delete(name)
                             audioFileNames.remove(at: idx)
-                            if idx < audioData.count { audioData.remove(at: idx) }
+                            // audioData and audioFileNames must stay in sync; guard bounds
+                            if idx < audioData.count {
+                                audioData.remove(at: idx)
+                            } else if !audioData.isEmpty {
+                                audioData.removeLast()
+                            }
                         }
                     } label: {
                         Image(systemName: "trash")

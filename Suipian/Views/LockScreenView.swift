@@ -3,6 +3,10 @@ import LocalAuthentication
 
 struct LockScreenView: View {
     let onUnlock: () -> Void
+    @State private var biometryType: LABiometryType = .none
+
+    private var biometricIcon: String { biometryType == .faceID ? "faceid" : "touchid" }
+    private var biometricLabel: String { biometryType == .faceID ? "Face ID 解锁" : "Touch ID 解锁" }
 
     var body: some View {
         ZStack {
@@ -32,19 +36,12 @@ struct LockScreenView: View {
                 }
             }
         }
-        .onAppear { authenticate() }
-    }
-
-    private var biometricIcon: String {
-        let context = LAContext()
-        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
-        return context.biometryType == .faceID ? "faceid" : "touchid"
-    }
-
-    private var biometricLabel: String {
-        let context = LAContext()
-        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
-        return context.biometryType == .faceID ? "Face ID 解锁" : "Touch ID 解锁"
+        .onAppear {
+            let ctx = LAContext()
+            _ = ctx.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
+            biometryType = ctx.biometryType
+            authenticate()
+        }
     }
 
     private func authenticate() {

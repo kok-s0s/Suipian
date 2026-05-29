@@ -81,8 +81,11 @@ struct SettingsView: View {
                         )
                         .onChange(of: reminderTime) { _, newTime in
                             let cal = Calendar.current
-                            reminderHour = cal.component(.hour, from: newTime)
-                            reminderMinute = cal.component(.minute, from: newTime)
+                            let newHour = cal.component(.hour, from: newTime)
+                            let newMinute = cal.component(.minute, from: newTime)
+                            guard newHour != reminderHour || newMinute != reminderMinute else { return }
+                            reminderHour = newHour
+                            reminderMinute = newMinute
                             scheduleNotification()
                         }
                     }

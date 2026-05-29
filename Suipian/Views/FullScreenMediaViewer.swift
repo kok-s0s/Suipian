@@ -106,7 +106,7 @@ struct FullScreenMediaViewer: View {
                         // Direction lock: require a clearly downward-vertical start.
                         // Horizontal swipes (for TabView page changes) will never commit.
                         let isDown = value.translation.height > 0
-                        let isVertical = abs(value.translation.height) > abs(value.translation.width) * 1.5
+                        let isVertical = abs(value.translation.height) > abs(value.translation.width) * 2.0
                         guard isDown && isVertical else { return }
                         dismissGestureCommitted = true
                     }
