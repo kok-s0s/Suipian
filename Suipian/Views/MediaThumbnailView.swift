@@ -43,11 +43,14 @@ struct MediaThumbnailView: View {
         ZStack {
             Color(.systemGray5)
             if let thumbnail {
-                if fitContent {
-                    Image(uiImage: thumbnail).resizable().scaledToFit()
-                } else {
-                    Image(uiImage: thumbnail).resizable().scaledToFill()
+                Group {
+                    if fitContent {
+                        Image(uiImage: thumbnail).resizable().scaledToFit()
+                    } else {
+                        Image(uiImage: thumbnail).resizable().scaledToFill()
+                    }
                 }
+                .transition(.opacity.animation(.easeIn(duration: 0.18)))
                 if isVideo {
                     Color.black.opacity(0.15)
                     Image(systemName: "play.circle.fill")
@@ -87,7 +90,7 @@ struct MediaThumbnailView: View {
         }
 
         if let cached = sharedThumbnailCache.object(forKey: cacheKey) {
-            thumbnail = cached
+            thumbnail = cached  // no animation for cache hits — already instant
             return
         }
 
@@ -114,7 +117,7 @@ struct MediaThumbnailView: View {
         guard !Task.isCancelled, let img else { return }
         sharedThumbnailCache.setObject(img, forKey: cacheKey,
                                        cost: Int(target.width * target.height * 4))
-        thumbnail = img
+        withAnimation { thumbnail = img }
     }
 }
 

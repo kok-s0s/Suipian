@@ -115,7 +115,7 @@ struct FragmentFeedView: View {
                     HStack(spacing: 10) {
                         if let tag = selectedTag {
                             HStack(spacing: 5) {
-                                Text("#\(tag)")
+                                Text("#\(tag)  ·  \(filteredFragments.count) 条碎片")
                                     .font(.subheadline).fontWeight(.medium)
                                     .foregroundStyle(Color.accentColor)
                                     .lineLimit(1)
@@ -206,6 +206,7 @@ struct FragmentFeedView: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.bottom, 100)
+                        .transition(.opacity)
                     } else {
                         LazyVStack(spacing: 14) {
                             ForEach(Array(filteredFragments.enumerated()), id: \.element.id) { index, fragment in
@@ -239,6 +240,7 @@ struct FragmentFeedView: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.bottom, 100)
+                        .transition(.opacity)
                     }
                 } // VStack
             }
@@ -284,7 +286,9 @@ struct FragmentFeedView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    Button { isGridView.toggle() } label: {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.22)) { isGridView.toggle() }
+                    } label: {
                         Image(systemName: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
                             .contentTransition(.symbolEffect(.replace))
                             .glassToolbarIcon(active: isGridView)

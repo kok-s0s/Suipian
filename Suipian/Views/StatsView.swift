@@ -302,9 +302,13 @@ private struct HeatmapSection: View {
                                                 : Color.accentColor.opacity(0.18 + 0.82 * Double(count) / Double(maxCount)))
                                         .frame(width: cellSize, height: cellSize)
                                         .onTapGesture {
-                                            guard !isFuture, count > 0 else { return }
-                                            let label = day.formatted(date: .abbreviated, time: .omitted)
-                                            onDrillDown(FragmentDrillDown(title: label, fragments: dayFragments))
+                                            guard !isFuture else { return }
+                                            if count > 0 {
+                                                let label = day.formatted(date: .abbreviated, time: .omitted)
+                                                onDrillDown(FragmentDrillDown(title: label, fragments: dayFragments))
+                                            } else {
+                                                HapticFeedback.impact(.light)
+                                            }
                                         }
                                 }
                             }
