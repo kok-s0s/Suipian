@@ -58,25 +58,21 @@ struct FragmentDetailView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 16) {
-                    // Date stamp — date is the soul of a journal entry
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(fragment.date.formatted(.dateTime.year().month(.wide).day()))
-                                .font(.headline).fontWeight(.light)
-                                .foregroundStyle(.primary)
-                            Text(fragment.date.formatted(.dateTime.hour().minute()))
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                            if !fragment.mood.isEmpty {
-                                Text(fragment.mood).font(.subheadline)
-                            }
-                        }
+                    // Date & location & mood
+                    HStack(spacing: 12) {
+                        Label(
+                            fragment.date.formatted(date: .long, time: .shortened),
+                            systemImage: "clock"
+                        )
                         if fragment.hasLocation && !fragment.locationName.isEmpty {
                             Label(fragment.locationName, systemImage: "location.fill")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        }
+                        if !fragment.mood.isEmpty {
+                            Text(fragment.mood).font(.body)
                         }
                     }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                     // Content
                     if !fragment.content.isEmpty {

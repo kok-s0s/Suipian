@@ -136,7 +136,11 @@ private struct LivePhotoView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: PHLivePhotoView, context: Context) {
+        guard uiView.livePhoto !== livePhoto else { return }
+        uiView.stopPlayback()
         uiView.livePhoto = livePhoto
+        uiView.contentMode = .scaleAspectFit
+        uiView.startPlayback(with: .hint)
     }
 }
 
