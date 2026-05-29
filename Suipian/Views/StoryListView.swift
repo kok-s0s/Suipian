@@ -71,7 +71,7 @@ private struct StoryCard: View {
             // Background: mosaic or gradient fallback
             if coverIDs.isEmpty {
                 LinearGradient(
-                    colors: [Color.accentColor.opacity(0.25), Color.accentColor.opacity(0.55)],
+                    colors: [Color(red: 0.40, green: 0.28, blue: 0.52), Color(red: 0.26, green: 0.17, blue: 0.38)],
                     startPoint: .topLeading, endPoint: .bottomTrailing
                 )
             } else {
