@@ -178,20 +178,20 @@ struct FragmentEditView: View {
                                     withAnimation { showDraftRestoredBanner = false }
                                 } label: {
                                     Image(systemName: "xmark.circle.fill")
-                                        .foregroundStyle(Color.accentColor.opacity(0.6))
+                                        .foregroundStyle(.secondary)
                                 }
                             }
                             HStack(spacing: 12) {
                                 Text("继续编辑或直接保存即可")
                                     .font(.caption)
-                                    .foregroundStyle(Color.accentColor.opacity(0.75))
+                                    .foregroundStyle(.secondary)
                                 Spacer()
                                 Button("丢弃草稿") { discardDraft() }
                                     .font(.caption).fontWeight(.medium)
                                     .foregroundStyle(.orange)
                             }
                         }
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(.primary)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(.regularMaterial)
@@ -330,8 +330,8 @@ struct FragmentEditView: View {
                                                 .padding(.horizontal, 12)
                                                 .padding(.vertical, 7)
                                                 .background(.ultraThinMaterial, in: Capsule())
-                                                .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.3), lineWidth: 0.5))
-                                                .foregroundStyle(Color.accentColor)
+                                                .overlay(Capsule().strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5))
+                                                .foregroundStyle(.primary)
                                         }
                                     }
                                 }
@@ -357,8 +357,8 @@ struct FragmentEditView: View {
                                         .padding(.horizontal, 10)
                                         .padding(.vertical, 6)
                                         .background(.ultraThinMaterial, in: Capsule())
-                                        .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 0.5))
-                                        .foregroundStyle(Color.accentColor)
+                                        .overlay(Capsule().strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5))
+                                        .foregroundStyle(.primary)
                                     }
                                 }
                                 .padding(.horizontal, 16)
@@ -425,7 +425,7 @@ struct FragmentEditView: View {
                                         HStack(spacing: 8) {
                                             Image(systemName: "link")
                                                 .font(.caption)
-                                                .foregroundStyle(Color.accentColor)
+                                                .foregroundStyle(.secondary)
                                             Text(name)
                                                 .font(.subheadline)
                                                 .foregroundStyle(.primary)
@@ -442,8 +442,7 @@ struct FragmentEditView: View {
                                     }
                                 }
                             }
-                            .background(Color(.secondarySystemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                             .padding(.horizontal, 16)
                             .padding(.top, 6)
                             .id("storyDropdown")
@@ -552,9 +551,8 @@ struct FragmentEditView: View {
                                                     }
                                                     .padding(.horizontal, 12)
                                                     .padding(.vertical, 7)
-                                                    .background(Color.accentColor.opacity(0.08))
-                                                    .foregroundStyle(Color.accentColor)
-                                                    .clipShape(Capsule())
+                                                    .background(.ultraThinMaterial, in: Capsule())
+                                                    .foregroundStyle(.primary)
                                                 }
                                             }
                                         }
@@ -919,8 +917,7 @@ private struct MoodPickerRow: View {
                                 .foregroundStyle(.secondary)
                         }
                         .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(Color(.systemGray6))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
                     }
                 }
             }
@@ -953,7 +950,7 @@ private struct MoodPickerRow: View {
                 }
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(selected == emoji ? Color.accentColor.opacity(0.12) : Color(.systemGray6))
+            .background(selected == emoji ? Color.accentColor.opacity(0.12) : .ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
