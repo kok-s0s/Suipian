@@ -655,7 +655,7 @@ private struct FragmentGridCellView: View {
                     Text(fragment.content)
                         .font(.caption)
                         .foregroundStyle(.primary)
-                        .lineLimit(fragment.hasMedia ? 2 : 6)
+                        .lineLimit(3)
                         .multilineTextAlignment(.leading)
                 }
 
