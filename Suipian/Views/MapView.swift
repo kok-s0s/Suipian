@@ -53,6 +53,7 @@ struct FragmentMapView: View {
     @State private var showingLocationSearch = false
     @State private var locationSearchText = ""
     @State private var locationSearchResults: [MKMapItem] = []
+    @State private var isSearching = false
     // Tracks visible region so clustering adapts to zoom level
     @State private var mapSpan: MKCoordinateSpan = MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
 
@@ -67,10 +68,13 @@ struct FragmentMapView: View {
     private func doLocationSearch() async {
         let query = locationSearchText.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return }
+        isSearching = true
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
-        guard let response = try? await MKLocalSearch(request: request).start() else { return }
-        locationSearchResults = Array(response.mapItems.prefix(6))
+        if let response = try? await MKLocalSearch(request: request).start() {
+            locationSearchResults = Array(response.mapItems.prefix(6))
+        }
+        isSearching = false
     }
 
     private func selectLocationResult(_ item: MKMapItem) {
@@ -119,8 +123,12 @@ struct FragmentMapView: View {
                 if showingLocationSearch {
                     VStack(spacing: 0) {
                         HStack(spacing: 10) {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundStyle(.secondary)
+                            if isSearching {
+                                ProgressView().scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "magnifyingglass")
+                                    .foregroundStyle(.secondary)
+                            }
                             TextField("搜索地点", text: $locationSearchText)
                                 .submitLabel(.search)
                                 .onSubmit { Task { await doLocationSearch() } }
@@ -137,6 +145,7 @@ struct FragmentMapView: View {
                                 showingLocationSearch = false
                                 locationSearchText = ""
                                 locationSearchResults = []
+                                isSearching = false
                             }
                             .foregroundStyle(Color.accentColor)
                         }
@@ -209,6 +218,14 @@ struct FragmentMapView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 24)
                     .id(cluster.id)
+                    .gesture(
+                        DragGesture(minimumDistance: 20)
+                            .onEnded { value in
+                                if value.translation.height > 60 {
+                                    withAnimation(.spring(response: 0.3)) { selectedCluster = nil }
+                                }
+                            }
+                    )
                 }
             }
             .navigationTitle("地图")

@@ -173,6 +173,10 @@ struct StoryDetailView: View {
     let name: String
     let fragments: [Fragment]
 
+    @Environment(\.modelContext) private var modelContext
+    @State private var showingRename = false
+    @State private var newName = ""
+
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 14) {
@@ -191,5 +195,27 @@ struct StoryDetailView: View {
         }
         .navigationTitle(name)
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    newName = name
+                    showingRename = true
+                } label: {
+                    Image(systemName: "pencil")
+                }
+            }
+        }
+        .alert("重命名故事线", isPresented: $showingRename) {
+            TextField("故事线名称", text: $newName)
+            Button("取消", role: .cancel) {}
+            Button("确认") {
+                let trimmed = newName.trimmingCharacters(in: .whitespaces)
+                guard !trimmed.isEmpty, trimmed != name else { return }
+                fragments.forEach { $0.storyName = trimmed }
+                try? modelContext.save()
+            }
+        } message: {
+            Text("将同时更新该故事线下所有碎片的关联名称")
+        }
     }
 }
