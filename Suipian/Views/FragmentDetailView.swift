@@ -58,21 +58,25 @@ struct FragmentDetailView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 16) {
-                    // Date & location & mood
-                    HStack(spacing: 12) {
-                        Label(
-                            fragment.date.formatted(date: .long, time: .shortened),
-                            systemImage: "clock"
-                        )
+                    // Date stamp — date is the soul of a journal entry
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(fragment.date.formatted(.dateTime.year().month(.wide).day()))
+                                .font(.headline).fontWeight(.light)
+                                .foregroundStyle(.primary)
+                            Text(fragment.date.formatted(.dateTime.hour().minute()))
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                            if !fragment.mood.isEmpty {
+                                Text(fragment.mood).font(.subheadline)
+                            }
+                        }
                         if fragment.hasLocation && !fragment.locationName.isEmpty {
                             Label(fragment.locationName, systemImage: "location.fill")
-                        }
-                        if !fragment.mood.isEmpty {
-                            Text(fragment.mood).font(.body)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
 
                     // Content
                     if !fragment.content.isEmpty {
@@ -120,13 +124,7 @@ struct FragmentDetailView: View {
                             HStack(spacing: 8) {
                                 ForEach(fragment.tags, id: \.self) { tag in
                                     Text("#\(tag)")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundStyle(Color.accentColor)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 5)
-                                        .background(.ultraThinMaterial, in: Capsule())
-                                        .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.3), lineWidth: 0.5))
+                                        .gradientTagStyle(fontSize: 13, paddingH: 12, paddingV: 5)
                                 }
                             }
                         }

@@ -299,9 +299,11 @@ struct FragmentFeedView: View {
             .overlay {
                 if filteredFragments.isEmpty {
                     ContentUnavailableView(
-                        selectedTag != nil ? "这个主题还没有碎片" : "还没有任何碎片",
+                        selectedTag != nil ? "「\(selectedTag!)」下还没有碎片" : "此刻是空的",
                         systemImage: "square.on.square.dashed",
-                        description: Text(selectedTag != nil ? "切换主题，或创建一个新碎片" : "点击右下角，记录第一个碎片")
+                        description: Text(selectedTag != nil
+                            ? "换一个主题，或者去记录一条新的"
+                            : "每一个普通的瞬间，都值得被留下来")
                     )
                 }
             }
