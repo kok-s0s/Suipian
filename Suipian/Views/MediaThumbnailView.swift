@@ -41,7 +41,7 @@ struct MediaThumbnailView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemGray5)
+            Color.primary.opacity(0.08)
             if let thumbnail {
                 Group {
                     if fitContent {

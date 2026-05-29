@@ -166,7 +166,7 @@ struct FragmentDetailView: View {
                                             RoundedRectangle(cornerRadius: 8)
                                                 .fill(.regularMaterial)
                                                 .frame(width: 44, height: 44)
-                                                .overlay(Image(systemName: "square.on.square").foregroundStyle(Color.accentColor).font(.caption))
+                                                .overlay(Image(systemName: "square.on.square").foregroundStyle(.secondary).font(.caption))
                                         }
                                         VStack(alignment: .leading, spacing: 2) {
                                             if !related.mood.isEmpty {
@@ -185,8 +185,7 @@ struct FragmentDetailView: View {
                                         Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
                                     }
                                     .padding(10)
-                                    .background(Color(.secondarySystemBackground))
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                                 }
                                 .buttonStyle(.plain)
                             }

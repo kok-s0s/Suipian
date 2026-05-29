@@ -16,7 +16,7 @@ struct FragmentCardView: View {
         HStack(spacing: 12) {
             Image(systemName: "lock.fill")
                 .font(.title2)
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(.secondary)
                 .frame(width: 44, height: 44)
                 .background(.regularMaterial, in: Circle())
 
@@ -121,7 +121,7 @@ struct FragmentCardView: View {
             if fragment.isPinned {
                 Image(systemName: "pin.fill")
                     .font(.caption2)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
                     .padding(8)
                     .accessibilityLabel("已置顶")
             }
@@ -152,12 +152,12 @@ private struct CardCoverView: View {
                         .frame(maxWidth: .infinity)
                         .accessibilityLabel(isVideo ? "视频封面" : "图片封面")
                 } else {
-                    Color(.systemGray5)
+                    Color.primary.opacity(0.08)
                         .frame(maxWidth: .infinity, minHeight: 180)
                         .overlay(ProgressView().tint(.secondary))
                 }
             }
-            .background(Color(.systemGray5))
+            .background(Color.primary.opacity(0.08))
 
             if isVideo {
                 Color.black.opacity(0.15)

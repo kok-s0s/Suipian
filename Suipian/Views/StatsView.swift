@@ -298,8 +298,8 @@ private struct HeatmapSection: View {
                                         .fill(isFuture
                                               ? Color.clear
                                               : count == 0
-                                                ? Color.accentColor.opacity(0.08)
-                                                : Color.accentColor.opacity(0.18 + 0.82 * Double(count) / Double(maxCount)))
+                                                ? Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.08)
+                                                : Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.18 + 0.82 * Double(count) / Double(maxCount)))
                                         .frame(width: cellSize, height: cellSize)
                                         .onTapGesture {
                                             guard !isFuture else { return }
@@ -322,7 +322,7 @@ private struct HeatmapSection: View {
                 HStack(spacing: 3) {
                     ForEach([0.08, 0.3, 0.55, 0.8, 1.0], id: \.self) { opacity in
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(Color.accentColor.opacity(opacity))
+                            .fill(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(opacity))
                             .frame(width: 11, height: 11)
                     }
                 }
@@ -394,13 +394,13 @@ private struct MoodCurveChart: View {
                 // Fill
                 fillPath(pts: pts, cps: cps)
                     .fill(LinearGradient(
-                        colors: [Color.accentColor.opacity(0.22), Color.accentColor.opacity(0.02)],
+                        colors: [Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.22), Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.02)],
                         startPoint: .top, endPoint: .bottom
                     ))
 
                 // Line
                 curvePath(pts: pts, cps: cps)
-                    .stroke(Color.accentColor.opacity(0.65),
+                    .stroke(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.65),
                             style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
 
                 // Data points + mood emoji
@@ -419,7 +419,7 @@ private struct MoodCurveChart: View {
                                 Text(mood).font(.system(size: 11))
                             }
                             Circle()
-                                .fill(item.count > 0 ? Color.accentColor : Color(.systemGray4))
+                                .fill(item.count > 0 ? Color(red: 0.780, green: 0.624, blue: 0.384) : Color.primary.opacity(0.15))
                                 .overlay(Circle().strokeBorder(.white.opacity(0.7), lineWidth: 1))
                                 .frame(width: 6, height: 6)
                         }
@@ -522,10 +522,10 @@ private struct MoodStatsSection: View {
                                 VStack(spacing: 5) {
                                     ZStack {
                                         Circle()
-                                            .stroke(Color.accentColor.opacity(0.12), lineWidth: 3.5)
+                                            .stroke(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.12), lineWidth: 3.5)
                                         Circle()
                                             .trim(from: 0, to: CGFloat(item.fragments.count) / maxCount)
-                                            .stroke(Color.accentColor.opacity(0.72),
+                                            .stroke(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.72),
                                                     style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
                                             .rotationEffect(.degrees(-90))
                                         Text(item.emoji).font(.title3)
@@ -577,15 +577,15 @@ private struct TopTagsSection: View {
                             HStack(spacing: 5) {
                                 Text("#\(item.tag)")
                                     .font(.caption).fontWeight(.medium)
-                                    .foregroundStyle(Color.accentColor)
+                                    .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
                                     .lineLimit(1)
                                 Text("\(item.fragments.count)")
                                     .font(.system(size: 10, weight: .regular))
-                                    .foregroundStyle(Color.accentColor.opacity(0.55))
+                                    .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.55))
                             }
                             .padding(.horizontal, 11).padding(.vertical, 6)
-                            .background(Color.accentColor.opacity(0.10), in: Capsule())
-                            .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.28), lineWidth: 0.8))
+                            .background(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.10), in: Capsule())
+                            .overlay(Capsule().strokeBorder(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.28), lineWidth: 0.8))
                         }
                         .buttonStyle(.plain)
                     }

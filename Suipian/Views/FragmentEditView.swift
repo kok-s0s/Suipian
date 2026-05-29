@@ -587,8 +587,7 @@ struct FragmentEditView: View {
                                         }
                                     }
                                 }
-                                .background(Color(.systemGroupedBackground))
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                                 .padding(.horizontal, 16)
                             }
 
