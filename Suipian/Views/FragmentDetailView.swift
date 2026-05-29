@@ -269,17 +269,18 @@ private struct DeleteConfirmSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Icon + text
-            VStack(spacing: 10) {
+        VStack(spacing: 20) {
+            // Icon + text — extra top padding clears the drag indicator
+            VStack(spacing: 12) {
                 ZStack {
                     Circle()
                         .fill(Color.red.opacity(0.12))
-                        .frame(width: 52, height: 52)
+                        .frame(width: 56, height: 56)
                     Image(systemName: "trash.fill")
-                        .font(.system(size: 22))
+                        .font(.system(size: 24))
                         .foregroundStyle(.red)
                 }
+                .padding(.top, 8)
 
                 VStack(spacing: 4) {
                     Text("删除碎片")
@@ -291,10 +292,6 @@ private struct DeleteConfirmSheet: View {
                         .multilineTextAlignment(.center)
                 }
             }
-            .padding(.top, 24)
-            .padding(.horizontal, 24)
-
-            Spacer()
 
             // Buttons
             VStack(spacing: 10) {
@@ -313,16 +310,20 @@ private struct DeleteConfirmSheet: View {
 
                 Button { dismiss() } label: {
                     Text("取消")
-                        .font(.body)
+                        .font(.body).fontWeight(.medium)
                         .foregroundStyle(.primary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                        )
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 16)
         }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 20)
     }
 }
