@@ -140,7 +140,7 @@ private func statSectionHeader(_ title: String, icon: String) -> some View {
     HStack(spacing: 6) {
         Image(systemName: icon)
             .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(Color.accentColor.opacity(0.8))
+            .foregroundStyle(.secondary)
         Text(title)
             .font(.subheadline).fontWeight(.semibold)
             .foregroundStyle(.primary)
@@ -190,10 +190,10 @@ private struct StatCard: View {
             VStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.system(size: 14))
-                    .foregroundStyle(Color.accentColor.opacity(0.7))
+                    .foregroundStyle(.secondary)
                 Text(value)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.accentColor)
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(.primary)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
                 Text(label)

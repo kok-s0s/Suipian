@@ -13,7 +13,8 @@ struct VoiceInputView: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.88).ignoresSafeArea()
+            // Deep ink-blue instead of pure black — warmer and consistent with dark mode theme
+            Color(red: 0.07, green: 0.08, blue: 0.14).opacity(0.96).ignoresSafeArea()
 
             VStack(spacing: 0) {
                 Spacer()
@@ -27,7 +28,7 @@ struct VoiceInputView: View {
                 HStack(alignment: .center, spacing: 3) {
                     ForEach(barHeights.indices, id: \.self) { i in
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(Color.accentColor.opacity(0.75))
+                            .fill(Color.white.opacity(0.65))
                             .frame(width: 3, height: barHeights[i])
                             .animation(.easeInOut(duration: 0.12), value: barHeights[i])
                     }

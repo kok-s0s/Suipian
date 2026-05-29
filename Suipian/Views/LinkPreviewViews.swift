@@ -16,17 +16,17 @@ func platformInfo(for urlString: String) -> PlatformInfo {
     case host.contains("x.com") || host.contains("twitter.com"):
         return PlatformInfo(icon: "bubble.left.fill", name: "X (Twitter)", color: Color.primary)
     case host.contains("xiaohongshu.com") || host.contains("xhslink.com") || host.contains("xhs.link"):
-        return PlatformInfo(icon: "heart.fill", name: "小红书", color: Color(red: 0.92, green: 0.15, blue: 0.15))
+        return PlatformInfo(icon: "heart.fill", name: "小红书", color: Color(red: 0.82, green: 0.22, blue: 0.22))
     case host.contains("douyin.com") || host.contains("tiktok.com") || host.contains("iesdouyin.com"):
         return PlatformInfo(icon: "music.note", name: "抖音", color: Color.primary)
     case host.contains("weibo.com") || host.contains("weibo.cn"):
-        return PlatformInfo(icon: "flame.fill", name: "微博", color: Color(red: 0.90, green: 0.22, blue: 0.18))
+        return PlatformInfo(icon: "flame.fill", name: "微博", color: Color(red: 0.80, green: 0.26, blue: 0.22))
     case host.contains("instagram.com"):
-        return PlatformInfo(icon: "camera.fill", name: "Instagram", color: Color(red: 0.83, green: 0.18, blue: 0.62))
+        return PlatformInfo(icon: "camera.fill", name: "Instagram", color: Color(red: 0.75, green: 0.22, blue: 0.56))
     case host.contains("youtube.com") || host.contains("youtu.be"):
-        return PlatformInfo(icon: "play.rectangle.fill", name: "YouTube", color: Color(red: 0.90, green: 0.10, blue: 0.10))
+        return PlatformInfo(icon: "play.rectangle.fill", name: "YouTube", color: Color(red: 0.80, green: 0.15, blue: 0.15))
     case host.contains("bilibili.com") || host.contains("b23.tv"):
-        return PlatformInfo(icon: "play.circle.fill", name: "哔哩哔哩", color: Color(red: 0.0, green: 0.65, blue: 0.85))
+        return PlatformInfo(icon: "play.circle.fill", name: "哔哩哔哩", color: Color(red: 0.0, green: 0.56, blue: 0.76))
     case host.contains("github.com"):
         return PlatformInfo(icon: "chevron.left.forwardslash.chevron.right", name: "GitHub", color: Color.primary)
     default:
