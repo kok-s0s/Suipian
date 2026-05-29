@@ -229,18 +229,17 @@ struct FragmentDetailView: View {
                 }
             }
         }
-        .confirmationDialog(
-            "删除后无法恢复",
-            isPresented: $showingDeleteConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("删除碎片", role: .destructive) {
+        .sheet(isPresented: $showingDeleteConfirm) {
+            DeleteConfirmSheet {
                 UINotificationFeedbackGenerator().notificationOccurred(.warning)
                 fragment.audioFileNames.forEach { AudioStore.delete($0) }
                 modelContext.delete(fragment)
                 WidgetDataStore.clear()
                 dismiss()
             }
+            .presentationDetents([.height(220)])
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(24)
         }
         .sheet(isPresented: $showingEdit) {
             FragmentEditView(fragment: fragment)
@@ -260,5 +259,70 @@ struct FragmentDetailView: View {
             )
         }
         } // end else
+    }
+}
+
+// MARK: - Delete confirmation sheet
+
+private struct DeleteConfirmSheet: View {
+    let onDelete: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Icon + text
+            VStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color.red.opacity(0.12))
+                        .frame(width: 52, height: 52)
+                    Image(systemName: "trash.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(.red)
+                }
+
+                VStack(spacing: 4) {
+                    Text("删除碎片")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text("此操作无法撤销，碎片将被永久删除")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .padding(.top, 24)
+            .padding(.horizontal, 24)
+
+            Spacer()
+
+            // Buttons
+            VStack(spacing: 10) {
+                Button {
+                    dismiss()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { onDelete() }
+                } label: {
+                    Text("永久删除")
+                        .font(.body).fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.red, in: RoundedRectangle(cornerRadius: 14))
+                }
+                .buttonStyle(.plain)
+
+                Button { dismiss() } label: {
+                    Text("取消")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
+        }
     }
 }
