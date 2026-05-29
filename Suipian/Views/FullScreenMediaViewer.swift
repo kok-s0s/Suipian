@@ -45,7 +45,7 @@ struct FullScreenMediaViewer: View {
             TabView(selection: $currentIndex) {
                 ForEach(Array(identifiers.enumerated()), id: \.offset) { index, id in
                     if videoIDs.contains(id) {
-                        MediaDetailView(identifier: id)
+                        MediaDetailView(identifier: id, isFullScreen: true)
                             .ignoresSafeArea()
                             .tag(index)
                     } else {
@@ -56,6 +56,7 @@ struct FullScreenMediaViewer: View {
             }
             .tabViewStyle(.page(indexDisplayMode: identifiers.count > 1 ? .always : .never))
             .ignoresSafeArea()
+            .onAppear { currentIndex = startIndex }
 
             // Close button
             HStack {

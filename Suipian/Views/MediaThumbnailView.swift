@@ -125,22 +125,28 @@ struct MediaThumbnailView: View {
 
 private struct LivePhotoView: UIViewRepresentable {
     let livePhoto: PHLivePhoto
+    var playbackStyle: PHLivePhotoViewPlaybackStyle = .hint
+    // Toggle to force a playback restart (e.g. when navigating back to this slide)
+    var playTrigger: Bool = false
 
     func makeUIView(context: Context) -> PHLivePhotoView {
         let view = PHLivePhotoView()
         view.livePhoto = livePhoto
         view.contentMode = .scaleAspectFit
-        view.backgroundColor = .black
-        view.startPlayback(with: .hint)
+        view.backgroundColor = .clear
+        view.startPlayback(with: playbackStyle)
         return view
     }
 
     func updateUIView(_ uiView: PHLivePhotoView, context: Context) {
-        guard uiView.livePhoto !== livePhoto else { return }
-        uiView.stopPlayback()
-        uiView.livePhoto = livePhoto
+        if uiView.livePhoto !== livePhoto {
+            uiView.stopPlayback()
+            uiView.livePhoto = livePhoto
+        }
+        // Always reset contentMode to prevent zoom state carrying over between reuses,
+        // and always restart so swiping back to a slide replays correctly.
         uiView.contentMode = .scaleAspectFit
-        uiView.startPlayback(with: .hint)
+        uiView.startPlayback(with: playbackStyle)
     }
 }
 
@@ -157,6 +163,7 @@ struct MediaDetailView: View {
     @State private var isLivePhoto = false
     @State private var loaded = false
     @State private var downloadProgress: Double = 0
+    @State private var livePlayTrigger = false
 
     // Cap at a generous but bounded size: enough for any screen at 2–3×,
     // avoiding decoding 48 MB+ originals just to fill a phone display.
@@ -189,8 +196,12 @@ struct MediaDetailView: View {
             } else if isVideo, let player {
                 VideoPlayer(player: player)
             } else if isLivePhoto, let livePhoto {
-                LivePhotoView(livePhoto: livePhoto)
-                    .ignoresSafeArea()
+                LivePhotoView(
+                    livePhoto: livePhoto,
+                    playbackStyle: isFullScreen ? .full : .hint,
+                    playTrigger: livePlayTrigger
+                )
+                .ignoresSafeArea()
             } else if let image {
                 Image(uiImage: image)
                     .resizable()
@@ -202,6 +213,7 @@ struct MediaDetailView: View {
             }
         }
         .task(id: identifier) { await load() }
+        .onAppear { livePlayTrigger.toggle() }
         .onDisappear { player?.pause() }
     }
 

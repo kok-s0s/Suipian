@@ -950,7 +950,7 @@ private struct MoodPickerRow: View {
                 }
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(selected == emoji ? Color.accentColor.opacity(0.12) : .ultraThinMaterial)
+            .background(selected == emoji ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.06))
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
