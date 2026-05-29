@@ -30,8 +30,7 @@ struct FragmentDetailView: View {
 
     @State private var showingEdit = false
     @State private var showingDeleteConfirm = false
-    @State private var showingFullScreen = false
-    @State private var fullScreenStartIndex = 0
+    @State private var fullScreenPresentation: FullScreenPresentation? = nil
     @State private var authenticated = false
     @State private var showingShare = false
     @State private var shareImage: UIImage? = nil
@@ -50,8 +49,7 @@ struct FragmentDetailView: View {
                         ForEach(Array(fragment.mediaIdentifiers.enumerated()), id: \.offset) { index, id in
                             MediaDetailView(identifier: id)
                                 .onTapGesture {
-                                    fullScreenStartIndex = index
-                                    showingFullScreen = true
+                                    fullScreenPresentation = FullScreenPresentation(startIndex: index)
                                 }
                         }
                     }
@@ -248,10 +246,10 @@ struct FragmentDetailView: View {
                     .ignoresSafeArea()
             }
         }
-        .fullScreenCover(isPresented: $showingFullScreen) {
+        .fullScreenCover(item: $fullScreenPresentation) { pres in
             FullScreenMediaViewer(
                 identifiers: fragment.mediaIdentifiers,
-                startIndex: fullScreenStartIndex,
+                startIndex: pres.startIndex,
                 coverIdentifier: fragment.coverIdentifier,
                 onSetCover: { id in fragment.coverIdentifier = id }
             )
@@ -267,6 +265,13 @@ struct FragmentDetailView: View {
         let ratio = CGFloat(asset.pixelHeight) / CGFloat(asset.pixelWidth)
         carouselHeight = min(screenWidth * ratio, 420)
     }
+}
+
+// MARK: - Fullscreen presentation token
+
+private struct FullScreenPresentation: Identifiable {
+    let id = UUID()
+    let startIndex: Int
 }
 
 // MARK: - Delete confirmation sheet

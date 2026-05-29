@@ -56,7 +56,6 @@ struct FullScreenMediaViewer: View {
             }
             .tabViewStyle(.page(indexDisplayMode: identifiers.count > 1 ? .always : .never))
             .ignoresSafeArea()
-            .onAppear { currentIndex = startIndex }
 
             // Close button
             HStack {
