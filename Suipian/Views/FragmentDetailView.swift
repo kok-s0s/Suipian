@@ -237,8 +237,8 @@ struct FragmentDetailView: View {
                 WidgetDataStore.clear()
                 dismiss()
             }
-            .presentationDetents([.height(220)])
-            .presentationDragIndicator(.visible)
+            .presentationDetents([.height(180)])
+            .presentationDragIndicator(.hidden)
             .presentationCornerRadius(24)
         }
         .sheet(isPresented: $showingEdit) {
@@ -269,31 +269,18 @@ private struct DeleteConfirmSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(spacing: 20) {
-            // Icon + text — extra top padding clears the drag indicator
-            VStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(Color.red.opacity(0.12))
-                        .frame(width: 56, height: 56)
-                    Image(systemName: "trash.fill")
-                        .font(.system(size: 24))
-                        .foregroundStyle(.red)
-                }
-                .padding(.top, 8)
-
-                VStack(spacing: 4) {
-                    Text("删除碎片")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    Text("此操作无法撤销，碎片将被永久删除")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
+        VStack(spacing: 16) {
+            VStack(spacing: 6) {
+                Text("删除碎片")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("此操作无法撤销，碎片将被永久删除")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
+            .padding(.top, 8)
 
-            // Buttons
             VStack(spacing: 10) {
                 Button {
                     dismiss()
