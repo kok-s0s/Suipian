@@ -202,7 +202,7 @@ struct MediaDetailView: View {
         guard let asset = assets.firstObject else { loaded = true; return }
 
         isVideo = asset.mediaType == .video
-        isLivePhoto = !isVideo && asset.mediaSubtype.contains(.photoLive)
+        isLivePhoto = asset.playbackStyle == .livePhoto
 
         if isVideo {
             let opts = PHVideoRequestOptions()
