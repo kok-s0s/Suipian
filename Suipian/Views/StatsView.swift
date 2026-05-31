@@ -88,7 +88,7 @@ private struct WrappedBannerCard: View {
             .padding(14)
             .animeCard(cornerRadius: 16)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScaleButtonStyle())
     }
 }
 
@@ -185,17 +185,20 @@ private struct StatCard: View {
     let label: String
     let action: () -> Void
 
+    @State private var displayedValue = "0"
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
-                Text(value)
+                Text(displayedValue)
                     .font(.system(size: 28, weight: .semibold))
                     .foregroundStyle(.primary)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
+                    .contentTransition(.numericText())
                 Text(label)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -209,7 +212,13 @@ private struct StatCard: View {
                     .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScaleButtonStyle())
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.7).delay(0.15)) { displayedValue = value }
+        }
+        .onChange(of: value) { _, newValue in
+            withAnimation(.easeOut(duration: 0.5)) { displayedValue = newValue }
+        }
     }
 }
 
@@ -294,22 +303,14 @@ private struct HeatmapSection: View {
                                     let dayFragments = byDay[day] ?? []
                                     let count = dayFragments.count
                                     let isFuture = day > Date()
-                                    RoundedRectangle(cornerRadius: 3)
-                                        .fill(isFuture
-                                              ? Color.clear
-                                              : count == 0
-                                                ? Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.08)
-                                                : Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.18 + 0.82 * Double(count) / Double(maxCount)))
-                                        .frame(width: cellSize, height: cellSize)
-                                        .onTapGesture {
-                                            guard !isFuture else { return }
-                                            if count > 0 {
-                                                let label = day.formatted(date: .abbreviated, time: .omitted)
-                                                onDrillDown(FragmentDrillDown(title: label, fragments: dayFragments))
-                                            } else {
-                                                HapticFeedback.impact(.light)
-                                            }
+                                    HeatmapCell(count: count, isFuture: isFuture, maxCount: maxCount) {
+                                        if count > 0 {
+                                            let label = day.formatted(date: .abbreviated, time: .omitted)
+                                            onDrillDown(FragmentDrillDown(title: label, fragments: dayFragments))
+                                        } else {
+                                            HapticFeedback.impact(.light)
                                         }
+                                    }
                                 }
                             }
                         }
@@ -335,6 +336,37 @@ private struct HeatmapSection: View {
         }
         .padding(16)
         .animeSecondaryCard(cornerRadius: 14)
+    }
+}
+
+// MARK: - Heatmap cell with pop animation
+
+private struct HeatmapCell: View {
+    let count: Int
+    let isFuture: Bool
+    let maxCount: Int
+    let onTap: () -> Void
+
+    @State private var popped = false
+
+    private static let amber = Color(red: 0.780, green: 0.624, blue: 0.384)
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 3)
+            .fill(isFuture
+                  ? Color.clear
+                  : count == 0
+                    ? Self.amber.opacity(0.08)
+                    : Self.amber.opacity(0.18 + 0.82 * Double(count) / Double(maxCount)))
+            .frame(width: 17, height: 17)
+            .scaleEffect(popped ? 1.55 : 1.0)
+            .animation(.spring(response: 0.22, dampingFraction: 0.48), value: popped)
+            .onTapGesture {
+                guard !isFuture else { return }
+                popped = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { popped = false }
+                onTap()
+            }
     }
 }
 

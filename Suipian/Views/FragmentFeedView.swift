@@ -172,7 +172,7 @@ struct FragmentFeedView: View {
                                     } label: {
                                         FragmentGridCellView(fragment: fragment)
                                     }
-                                    .buttonStyle(.plain)
+                                    .buttonStyle(PressScaleButtonStyle())
                                     .contextMenu {
                                         Button {
                                             fragment.isPinned.toggle()
@@ -181,6 +181,11 @@ struct FragmentFeedView: View {
                                             Label(fragment.isPinned ? "取消置顶" : "置顶",
                                                   systemImage: fragment.isPinned ? "pin.slash" : "pin")
                                         }
+                                    }
+                                    .scrollTransition(.animated(.spring(response: 0.45, dampingFraction: 0.85))) { content, phase in
+                                        content
+                                            .opacity(phase.isIdentity ? 1 : max(0, 1 - abs(phase.value) * 0.6))
+                                            .scaleEffect(phase.isIdentity ? 1 : max(0.92, 1 - abs(phase.value) * 0.07))
                                     }
                                 }
                             }
@@ -191,7 +196,7 @@ struct FragmentFeedView: View {
                                     } label: {
                                         FragmentGridCellView(fragment: fragment)
                                     }
-                                    .buttonStyle(.plain)
+                                    .buttonStyle(PressScaleButtonStyle())
                                     .contextMenu {
                                         Button {
                                             fragment.isPinned.toggle()
@@ -200,6 +205,11 @@ struct FragmentFeedView: View {
                                             Label(fragment.isPinned ? "取消置顶" : "置顶",
                                                   systemImage: fragment.isPinned ? "pin.slash" : "pin")
                                         }
+                                    }
+                                    .scrollTransition(.animated(.spring(response: 0.45, dampingFraction: 0.85))) { content, phase in
+                                        content
+                                            .opacity(phase.isIdentity ? 1 : max(0, 1 - abs(phase.value) * 0.6))
+                                            .scaleEffect(phase.isIdentity ? 1 : max(0.92, 1 - abs(phase.value) * 0.07))
                                     }
                                 }
                             }
@@ -215,7 +225,7 @@ struct FragmentFeedView: View {
                                 } label: {
                                     FragmentCardView(fragment: fragment)
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(PressScaleButtonStyle())
                                 .contextMenu {
                                     Button {
                                         fragment.isPinned.toggle()
@@ -568,7 +578,7 @@ private struct OnThisDayBanner: View {
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScaleButtonStyle())
         .navigationDestination(isPresented: $showingDetail) {
             OnThisDayView(fragments: fragments)
         }

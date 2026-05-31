@@ -347,7 +347,10 @@ struct FragmentEditView: View {
                                             Text("#\(tag)")
                                                 .font(.subheadline)
                                             Button {
-                                                tags.removeAll { $0 == tag }
+                                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                    tags.removeAll { $0 == tag }
+                                                }
+                                                HapticFeedback.impact(.light)
                                             } label: {
                                                 Image(systemName: "xmark")
                                                     .font(.caption2)
@@ -359,9 +362,11 @@ struct FragmentEditView: View {
                                         .background(.ultraThinMaterial, in: Capsule())
                                         .overlay(Capsule().strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5))
                                         .foregroundStyle(.primary)
+                                        .transition(.scale(0.7).combined(with: .opacity))
                                     }
                                 }
                                 .padding(.horizontal, 16)
+                                .animation(.spring(response: 0.35, dampingFraction: 0.7), value: tags)
                             }
                         }
                     }
@@ -703,7 +708,10 @@ struct FragmentEditView: View {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "#", with: "")
         if !trimmed.isEmpty && !tags.contains(trimmed) {
-            tags.append(trimmed)
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                tags.append(trimmed)
+            }
+            HapticFeedback.impact(.light)
         }
         tagInput = ""
     }
@@ -940,6 +948,7 @@ private struct MoodPickerRow: View {
     private func moodChip(emoji: String, label: String?) -> some View {
         Button {
             selected = selected == emoji ? "" : emoji
+            HapticFeedback.impact(.light)
         } label: {
             VStack(spacing: 2) {
                 Text(emoji).font(.title3)

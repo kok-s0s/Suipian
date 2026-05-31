@@ -34,7 +34,7 @@ struct StoryListView: View {
                                 } label: {
                                     StoryCard(name: story.name, fragments: story.fragments)
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(PressScaleButtonStyle())
                             }
                         }
                         .padding(16)
@@ -186,7 +186,7 @@ struct StoryDetailView: View {
                     } label: {
                         FragmentCardView(fragment: fragment)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressScaleButtonStyle())
                 }
             }
             .padding(.horizontal, 16)
