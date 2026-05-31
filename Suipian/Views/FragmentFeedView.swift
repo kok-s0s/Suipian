@@ -81,8 +81,9 @@ struct FragmentFeedView: View {
     }
 
     private func pickRandomFragment() {
-        guard let fragment = reviewableFragments.randomElement() else { return }
-        randomReviewRequest = RandomReviewRequest(initialFragment: fragment)
+        let pool = reviewableFragments
+        guard let fragment = pool.randomElement() else { return }
+        randomReviewRequest = RandomReviewRequest(initialFragment: fragment, allFragments: pool)
     }
 
     var body: some View {
@@ -348,13 +349,8 @@ struct FragmentFeedView: View {
             SettingsView()
         }
         .sheet(item: $randomReviewRequest) { request in
-            RandomReviewSheet(
-                initialFragment: request.initialFragment,
-                getNext: { current in
-                    reviewableFragments.filter { $0.id != current.id }.randomElement()
-                        ?? reviewableFragments.randomElement()
-                }
-            )
+            RandomReviewSheet(initialFragment: request.initialFragment,
+                              allFragments: request.allFragments)
         }
         .sheet(isPresented: $showingTagPicker) {
             TagPickerSheet(cachedSortedTags: cachedSortedTags, totalCount: fragments.count, selectedTag: $selectedTag)
@@ -407,6 +403,7 @@ private struct CreateRequest: Identifiable {
 private struct RandomReviewRequest: Identifiable {
     let id = UUID()
     let initialFragment: Fragment
+    let allFragments: [Fragment]
 }
 
 private struct MediaEditRequest: Identifiable {
@@ -963,17 +960,35 @@ private struct DraftBanner: View {
 // MARK: - Random review sheet
 
 private struct RandomReviewSheet: View {
-    let initialFragment: Fragment
-    let getNext: (Fragment) -> Fragment?
+    let allFragments: [Fragment]
 
     @State private var fragment: Fragment
+    // Sliding window of recently seen IDs — fragments in this set are excluded from the next pick.
+    // Window size = min(count - 1, 8), so at most 8 items are blocked at a time.
+    @State private var seenIDs: [PersistentIdentifier]
     @State private var slideDirection: Edge = .trailing
     @Environment(\.dismiss) private var dismiss
 
-    init(initialFragment: Fragment, getNext: @escaping (Fragment) -> Fragment?) {
-        self.initialFragment = initialFragment
-        self.getNext = getNext
+    init(initialFragment: Fragment, allFragments: [Fragment]) {
+        self.allFragments = allFragments
         _fragment = State(initialValue: initialFragment)
+        _seenIDs = State(initialValue: [initialFragment.persistentModelID])
+    }
+
+    private var windowSize: Int { min(allFragments.count - 1, 8) }
+
+    private func pickNext() -> Fragment? {
+        let excluded = Set(seenIDs)
+        var pool = allFragments.filter { !excluded.contains($0.persistentModelID) }
+        if pool.isEmpty {
+            // Full cycle complete — reset history and allow everything except current
+            seenIDs = [fragment.persistentModelID]
+            pool = allFragments.filter { $0.persistentModelID != fragment.persistentModelID }
+        }
+        guard let next = pool.randomElement() else { return nil }
+        seenIDs.append(next.persistentModelID)
+        while seenIDs.count > windowSize { seenIDs.removeFirst() }
+        return next
     }
 
     var body: some View {
@@ -1041,7 +1056,7 @@ private struct RandomReviewSheet: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        guard let next = getNext(fragment) else { return }
+                        guard let next = pickNext() else { return }
                         slideDirection = .trailing
                         withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
                             fragment = next
