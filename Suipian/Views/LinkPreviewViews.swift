@@ -152,11 +152,11 @@ struct LinkPreviewRow: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "link.badge.plus")
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(.secondary)
                     .font(.subheadline)
                 Text("附加链接预览")
                     .font(.subheadline)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 16)
@@ -355,7 +355,7 @@ struct LinkPreviewCard: View {
 
                     Image(systemName: "arrow.up.right.square")
                         .font(.title3)
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(12)
             }

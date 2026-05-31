@@ -15,7 +15,7 @@ struct LockScreenView: View {
             VStack(spacing: 28) {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 56))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(.secondary)
 
                 VStack(spacing: 8) {
                     Text("碎片已锁定")

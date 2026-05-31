@@ -29,14 +29,26 @@ struct OnThisDayView: View {
                             } label: {
                                 FragmentCardView(fragment: fragment)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(PressScaleButtonStyle())
                             .padding(.horizontal, 16)
+                            .scrollTransition(.animated(.spring(response: 0.5, dampingFraction: 0.88))) { content, phase in
+                                content
+                                    .opacity(phase.isIdentity ? 1 : max(0, 1 - abs(phase.value) * 0.72))
+                                    .scaleEffect(phase.isIdentity ? 1 : max(0.88, 1 - abs(phase.value) * 0.1))
+                                    .rotation3DEffect(
+                                        .degrees(phase.value * 12),
+                                        axis: (x: 1, y: 0, z: 0),
+                                        anchor: .center,
+                                        perspective: 0.35
+                                    )
+                            }
                         }
                     }
                 }
             }
             .padding(.vertical, 16)
         }
+        .background { AppBackgroundCanvas().ignoresSafeArea() }
         .navigationTitle(todayTitle())
         .navigationBarTitleDisplayMode(.large)
     }
