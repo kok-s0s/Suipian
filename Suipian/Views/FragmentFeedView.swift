@@ -20,8 +20,7 @@ struct FragmentFeedView: View {
     @State private var cameraID: String? = nil
     @State private var mediaEditRequest: MediaEditRequest? = nil
     @State private var showingSettings = false
-    @State private var showingRandomReview = false
-    @State private var randomFragment: Fragment? = nil
+    @State private var randomReviewRequest: RandomReviewRequest? = nil
     @State private var hasDraft = false
     @State private var fabExpanded = false
     @State private var showingVoiceInput = false
@@ -82,9 +81,8 @@ struct FragmentFeedView: View {
     }
 
     private func pickRandomFragment() {
-        guard !reviewableFragments.isEmpty else { return }
-        randomFragment = reviewableFragments.randomElement()
-        showingRandomReview = true
+        guard let fragment = reviewableFragments.randomElement() else { return }
+        randomReviewRequest = RandomReviewRequest(initialFragment: fragment)
     }
 
     var body: some View {
@@ -349,12 +347,14 @@ struct FragmentFeedView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
-        .sheet(isPresented: $showingRandomReview) {
-            if let fragment = randomFragment {
-                RandomReviewSheet(fragment: fragment) {
-                    randomFragment = reviewableFragments.filter { $0.id != fragment.id }.randomElement() ?? reviewableFragments.randomElement()
+        .sheet(item: $randomReviewRequest) { request in
+            RandomReviewSheet(
+                initialFragment: request.initialFragment,
+                getNext: { current in
+                    reviewableFragments.filter { $0.id != current.id }.randomElement()
+                        ?? reviewableFragments.randomElement()
                 }
-            }
+            )
         }
         .sheet(isPresented: $showingTagPicker) {
             TagPickerSheet(cachedSortedTags: cachedSortedTags, totalCount: fragments.count, selectedTag: $selectedTag)
@@ -402,6 +402,11 @@ struct FragmentFeedView: View {
 private struct CreateRequest: Identifiable {
     let id = UUID()
     var preloadedContent: String = ""
+}
+
+private struct RandomReviewRequest: Identifiable {
+    let id = UUID()
+    let initialFragment: Fragment
 }
 
 private struct MediaEditRequest: Identifiable {
@@ -958,15 +963,23 @@ private struct DraftBanner: View {
 // MARK: - Random review sheet
 
 private struct RandomReviewSheet: View {
-    let fragment: Fragment
-    let onNext: () -> Void
+    let initialFragment: Fragment
+    let getNext: (Fragment) -> Fragment?
+
+    @State private var fragment: Fragment
+    @State private var slideDirection: Edge = .trailing
     @Environment(\.dismiss) private var dismiss
+
+    init(initialFragment: Fragment, getNext: @escaping (Fragment) -> Fragment?) {
+        self.initialFragment = initialFragment
+        self.getNext = getNext
+        _fragment = State(initialValue: initialFragment)
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    // Time context
                     Label(
                         fragment.date.formatted(date: .long, time: .shortened),
                         systemImage: "clock"
@@ -974,7 +987,6 @@ private struct RandomReviewSheet: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                    // Cover image
                     if let coverID = fragment.coverMediaID {
                         MediaThumbnailView(identifier: coverID, size: CGSize(width: 600, height: 600))
                             .frame(maxWidth: .infinity)
@@ -983,7 +995,6 @@ private struct RandomReviewSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
 
-                    // Mood + content
                     if !fragment.mood.isEmpty || !fragment.content.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             if !fragment.mood.isEmpty {
@@ -998,7 +1009,6 @@ private struct RandomReviewSheet: View {
                         }
                     }
 
-                    // Tags
                     if !fragment.tags.isEmpty {
                         HStack(spacing: 6) {
                             ForEach(fragment.tags, id: \.self) { tag in
@@ -1008,7 +1018,6 @@ private struct RandomReviewSheet: View {
                         }
                     }
 
-                    // Location
                     if fragment.hasLocation && !fragment.locationName.isEmpty {
                         Label(fragment.locationName, systemImage: "location.fill")
                             .font(.caption)
@@ -1016,6 +1025,13 @@ private struct RandomReviewSheet: View {
                     }
                 }
                 .padding(20)
+                // id forces SwiftUI to recreate content view on fragment change,
+                // triggering the slide transition
+                .id(fragment.id)
+                .transition(.asymmetric(
+                    insertion: .move(edge: slideDirection).combined(with: .opacity),
+                    removal:   .move(edge: slideDirection == .trailing ? .leading : .trailing).combined(with: .opacity)
+                ))
             }
             .navigationTitle("随机回顾")
             .navigationBarTitleDisplayMode(.inline)
@@ -1025,7 +1041,12 @@ private struct RandomReviewSheet: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        withAnimation(.spring(response: 0.35)) { onNext() }
+                        guard let next = getNext(fragment) else { return }
+                        slideDirection = .trailing
+                        withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                            fragment = next
+                        }
+                        HapticFeedback.impact(.light)
                     } label: {
                         Label("换一条", systemImage: "shuffle")
                     }
