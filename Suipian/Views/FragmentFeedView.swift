@@ -76,8 +76,8 @@ struct FragmentFeedView: View {
 
     // Fragments older than 7 days, for random review
     private var reviewableFragments: [Fragment] {
-        let cutoff = Date().addingTimeInterval(-7 * 86400)
-        return fragments.filter { $0.date < cutoff }
+        let today = Calendar.current.startOfDay(for: Date())
+        return fragments.filter { $0.date < today }
     }
 
     private func pickRandomFragment() {
