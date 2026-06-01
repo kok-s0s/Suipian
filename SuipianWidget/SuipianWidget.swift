@@ -61,7 +61,7 @@ struct SuipianWidgetEntryView: View {
                 HStack {
                     Text("碎片")
                         .font(.caption2).fontWeight(.semibold)
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
                     Spacer()
                     Text(f.date.formatted(.relative(presentation: .named)))
                         .font(.caption2)
@@ -96,7 +96,7 @@ struct SuipianWidgetEntryView: View {
             VStack(spacing: 10) {
                 Image(systemName: "square.on.square")
                     .font(.title2)
-                    .foregroundStyle(Color.accentColor.opacity(0.6))
+                    .foregroundStyle(.secondary)
                 Text("还没有碎片")
                     .font(.caption)
                     .foregroundStyle(.secondary)
