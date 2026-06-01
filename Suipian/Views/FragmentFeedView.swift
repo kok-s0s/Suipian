@@ -966,7 +966,6 @@ private struct RandomReviewSheet: View {
     // Sliding window of recently seen IDs — fragments in this set are excluded from the next pick.
     // Window size = min(count - 1, 8), so at most 8 items are blocked at a time.
     @State private var seenIDs: [PersistentIdentifier]
-    @State private var slideDirection: Edge = .trailing
     @Environment(\.dismiss) private var dismiss
 
     init(initialFragment: Fragment, allFragments: [Fragment]) {
@@ -993,80 +992,24 @@ private struct RandomReviewSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Label(
-                        fragment.date.formatted(date: .long, time: .shortened),
-                        systemImage: "clock"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                    if let coverID = fragment.coverMediaID {
-                        MediaThumbnailView(identifier: coverID, size: CGSize(width: 600, height: 600))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 240)
-                            .clipped()
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
+            FragmentDetailView(fragment: fragment)
+                .id(fragment.persistentModelID)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("关闭") { dismiss() }
                     }
-
-                    if !fragment.mood.isEmpty || !fragment.content.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            if !fragment.mood.isEmpty {
-                                Text(fragment.mood)
-                                    .font(.title2)
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            guard let next = pickNext() else { return }
+                            withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                                fragment = next
                             }
-                            if !fragment.content.isEmpty {
-                                Text(fragment.content)
-                                    .font(.body)
-                                    .lineSpacing(5)
-                            }
+                            HapticFeedback.impact(.light)
+                        } label: {
+                            Image(systemName: "shuffle")
                         }
                     }
-
-                    if !fragment.tags.isEmpty {
-                        HStack(spacing: 6) {
-                            ForEach(fragment.tags, id: \.self) { tag in
-                                Text("#\(tag)")
-                                    .gradientTagStyle(fontSize: 12, paddingH: 10, paddingV: 4)
-                            }
-                        }
-                    }
-
-                    if fragment.hasLocation && !fragment.locationName.isEmpty {
-                        Label(fragment.locationName, systemImage: "location.fill")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
                 }
-                .padding(20)
-                // id forces SwiftUI to recreate content view on fragment change,
-                // triggering the slide transition
-                .id(fragment.id)
-                .transition(.asymmetric(
-                    insertion: .move(edge: slideDirection).combined(with: .opacity),
-                    removal:   .move(edge: slideDirection == .trailing ? .leading : .trailing).combined(with: .opacity)
-                ))
-            }
-            .navigationTitle("随机回顾")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("关闭") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        guard let next = pickNext() else { return }
-                        slideDirection = .trailing
-                        withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
-                            fragment = next
-                        }
-                        HapticFeedback.impact(.light)
-                    } label: {
-                        Label("换一条", systemImage: "shuffle")
-                    }
-                }
-            }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
