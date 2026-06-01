@@ -25,6 +25,9 @@ struct FragmentFeedView: View {
     @State private var fabExpanded = false
     @State private var showingVoiceInput = false
     @State private var pendingVoiceTranscript = ""
+    @State private var fragmentToEdit: Fragment? = nil
+    @State private var fragmentToDelete: Fragment? = nil
+    @State private var showDeleteAlert = false
 
     static let draftKey = "fragmentDraft_new"
     private func refreshDraftStatus() {
@@ -84,6 +87,59 @@ struct FragmentFeedView: View {
         let pool = reviewableFragments
         guard let fragment = pool.randomElement() else { return }
         randomReviewRequest = RandomReviewRequest(initialFragment: fragment, allFragments: pool)
+    }
+
+    // MARK: - Date sections
+
+    private struct FeedSection: Identifiable {
+        let id: String
+        let fragments: [Fragment]
+    }
+
+    private func monthLabel(_ date: Date) -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy 年 M 月"
+        return fmt.string(from: date)
+    }
+
+    private var listSections: [FeedSection] {
+        if !searchText.isEmpty || selectedTag != nil {
+            return filteredFragments.isEmpty ? [] : [FeedSection(id: "", fragments: filteredFragments)]
+        }
+        let pinned = filteredFragments.filter { $0.isPinned }
+        let unpinned = filteredFragments.filter { !$0.isPinned }
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: Date())
+        let yesterdayStart = cal.date(byAdding: .day, value: -1, to: todayStart)!
+        let weekStart = cal.date(byAdding: .day, value: -7, to: todayStart)!
+        var todayFrags: [Fragment] = []
+        var yesterdayFrags: [Fragment] = []
+        var weekFrags: [Fragment] = []
+        var monthMap: [String: [Fragment]] = [:]
+        var monthFirstDate: [String: Date] = [:]
+        for f in unpinned {
+            if f.date >= todayStart { todayFrags.append(f) }
+            else if f.date >= yesterdayStart { yesterdayFrags.append(f) }
+            else if f.date >= weekStart { weekFrags.append(f) }
+            else {
+                let key = monthLabel(f.date)
+                if monthFirstDate[key] == nil { monthFirstDate[key] = f.date }
+                monthMap[key, default: []].append(f)
+            }
+        }
+        let monthSections = monthMap.keys
+            .sorted { (monthFirstDate[$0] ?? .distantPast) > (monthFirstDate[$1] ?? .distantPast) }
+            .map { FeedSection(id: $0, fragments: monthMap[$0]!) }
+        var dateSections: [FeedSection] = []
+        if !todayFrags.isEmpty     { dateSections.append(FeedSection(id: "今天", fragments: todayFrags)) }
+        if !yesterdayFrags.isEmpty { dateSections.append(FeedSection(id: "昨天", fragments: yesterdayFrags)) }
+        if !weekFrags.isEmpty      { dateSections.append(FeedSection(id: "本周", fragments: weekFrags)) }
+        dateSections.append(contentsOf: monthSections)
+        if sortAscending { dateSections = dateSections.reversed() }
+        var result: [FeedSection] = []
+        if !pinned.isEmpty { result.append(FeedSection(id: "置顶", fragments: pinned)) }
+        result.append(contentsOf: dateSections)
+        return result
     }
 
     var body: some View {
@@ -173,12 +229,22 @@ struct FragmentFeedView: View {
                                     }
                                     .buttonStyle(PressScaleButtonStyle())
                                     .contextMenu {
+                                        Button { fragmentToEdit = fragment } label: {
+                                            Label("编辑", systemImage: "pencil")
+                                        }
                                         Button {
                                             fragment.isPinned.toggle()
                                             HapticFeedback.impact(.light)
                                         } label: {
                                             Label(fragment.isPinned ? "取消置顶" : "置顶",
                                                   systemImage: fragment.isPinned ? "pin.slash" : "pin")
+                                        }
+                                        Divider()
+                                        Button(role: .destructive) {
+                                            fragmentToDelete = fragment
+                                            showDeleteAlert = true
+                                        } label: {
+                                            Label("删除", systemImage: "trash")
                                         }
                                     }
                                     .scrollTransition(.animated(.spring(response: 0.45, dampingFraction: 0.85))) { content, phase in
@@ -197,12 +263,22 @@ struct FragmentFeedView: View {
                                     }
                                     .buttonStyle(PressScaleButtonStyle())
                                     .contextMenu {
+                                        Button { fragmentToEdit = fragment } label: {
+                                            Label("编辑", systemImage: "pencil")
+                                        }
                                         Button {
                                             fragment.isPinned.toggle()
                                             HapticFeedback.impact(.light)
                                         } label: {
                                             Label(fragment.isPinned ? "取消置顶" : "置顶",
                                                   systemImage: fragment.isPinned ? "pin.slash" : "pin")
+                                        }
+                                        Divider()
+                                        Button(role: .destructive) {
+                                            fragmentToDelete = fragment
+                                            showDeleteAlert = true
+                                        } label: {
+                                            Label("删除", systemImage: "trash")
                                         }
                                     }
                                     .scrollTransition(.animated(.spring(response: 0.45, dampingFraction: 0.85))) { content, phase in
@@ -217,33 +293,54 @@ struct FragmentFeedView: View {
                         .padding(.bottom, 100)
                         .transition(.opacity)
                     } else {
-                        LazyVStack(spacing: 14) {
-                            ForEach(Array(filteredFragments.enumerated()), id: \.element.id) { index, fragment in
-                                NavigationLink {
-                                    FragmentDetailView(fragment: fragment)
-                                } label: {
-                                    FragmentCardView(fragment: fragment)
+                        LazyVStack(spacing: 0) {
+                            ForEach(listSections) { section in
+                                if !section.id.isEmpty {
+                                    Text(section.id)
+                                        .font(.caption).fontWeight(.semibold)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.top, 18)
+                                        .padding(.bottom, 8)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                 }
-                                .buttonStyle(PressScaleButtonStyle())
-                                .contextMenu {
-                                    Button {
-                                        fragment.isPinned.toggle()
-                                        HapticFeedback.impact(.light)
+                                ForEach(section.fragments) { fragment in
+                                    NavigationLink {
+                                        FragmentDetailView(fragment: fragment)
                                     } label: {
-                                        Label(fragment.isPinned ? "取消置顶" : "置顶",
-                                              systemImage: fragment.isPinned ? "pin.slash" : "pin")
+                                        FragmentCardView(fragment: fragment)
                                     }
-                                }
-                                .scrollTransition(.animated(.spring(response: 0.5, dampingFraction: 0.88))) { content, phase in
-                                    content
-                                        .opacity(phase.isIdentity ? 1 : max(0, 1 - abs(phase.value) * 0.72))
-                                        .scaleEffect(phase.isIdentity ? 1 : max(0.88, 1 - abs(phase.value) * 0.1))
-                                        .rotation3DEffect(
-                                            .degrees(phase.value * 12),
-                                            axis: (x: 1, y: 0, z: 0),
-                                            anchor: .center,
-                                            perspective: 0.35
-                                        )
+                                    .buttonStyle(PressScaleButtonStyle())
+                                    .contextMenu {
+                                        Button { fragmentToEdit = fragment } label: {
+                                            Label("编辑", systemImage: "pencil")
+                                        }
+                                        Button {
+                                            fragment.isPinned.toggle()
+                                            HapticFeedback.impact(.light)
+                                        } label: {
+                                            Label(fragment.isPinned ? "取消置顶" : "置顶",
+                                                  systemImage: fragment.isPinned ? "pin.slash" : "pin")
+                                        }
+                                        Divider()
+                                        Button(role: .destructive) {
+                                            fragmentToDelete = fragment
+                                            showDeleteAlert = true
+                                        } label: {
+                                            Label("删除", systemImage: "trash")
+                                        }
+                                    }
+                                    .scrollTransition(.animated(.spring(response: 0.5, dampingFraction: 0.88))) { content, phase in
+                                        content
+                                            .opacity(phase.isIdentity ? 1 : max(0, 1 - abs(phase.value) * 0.72))
+                                            .scaleEffect(phase.isIdentity ? 1 : max(0.88, 1 - abs(phase.value) * 0.1))
+                                            .rotation3DEffect(
+                                                .degrees(phase.value * 12),
+                                                axis: (x: 1, y: 0, z: 0),
+                                                anchor: .center,
+                                                perspective: 0.35
+                                            )
+                                    }
+                                    .padding(.bottom, 14)
                                 }
                             }
                         }
@@ -390,6 +487,23 @@ struct FragmentFeedView: View {
         .sheet(item: $createRequest, onDismiss: { refreshDraftStatus() }) { req in
             FragmentEditView(preloadedContent: req.preloadedContent)
         }
+        .sheet(item: $fragmentToEdit, onDismiss: { fragmentToEdit = nil }) { f in
+            FragmentEditView(fragment: f)
+        }
+        .alert("删除碎片", isPresented: $showDeleteAlert) {
+            Button("永久删除", role: .destructive) {
+                if let f = fragmentToDelete {
+                    f.audioFileNames.forEach { AudioStore.delete($0) }
+                    modelContext.delete(f)
+                    WidgetDataStore.clear()
+                    HapticFeedback.impact(.medium)
+                }
+                fragmentToDelete = nil
+            }
+            Button("取消", role: .cancel) { fragmentToDelete = nil }
+        } message: {
+            Text("此操作无法撤销")
+        }
     }
 }
 
@@ -435,6 +549,10 @@ private struct SpeedDialFAB: View {
                 fabAction(icon: "text.alignleft",          label: "文字",  color: Color(red: 0.36, green: 0.44, blue: 0.64), action: onText)
                     .offset(y: isExpanded ? 0 : 40).opacity(isExpanded ? 1 : 0)
                     .animation(.spring(response: 0.38, dampingFraction: 0.72).delay(0.12), value: isExpanded)
+
+                fabAction(icon: "waveform",                label: "语音",  color: Color(red: 0.52, green: 0.40, blue: 0.72), action: onVoice)
+                    .offset(y: isExpanded ? 0 : 40).opacity(isExpanded ? 1 : 0)
+                    .animation(.spring(response: 0.38, dampingFraction: 0.72).delay(0.18), value: isExpanded)
 
                 // Main FAB
                 mainFAB
