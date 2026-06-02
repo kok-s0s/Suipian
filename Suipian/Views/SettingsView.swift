@@ -358,10 +358,21 @@ struct SettingsView: View {
             }
 
             let fmt = ISO8601DateFormatter()
+            // Build a dedup set from existing fragments (date string + content)
+            let existing = fragments.map { dupKey(date: $0.date, content: $0.content) }
+            let existingSet = Set(existing)
+
+            var inserted = 0
+            var skipped = 0
             for record in records {
+                let date = fmt.date(from: record.date) ?? Date()
+                if existingSet.contains(dupKey(date: date, content: record.content)) {
+                    skipped += 1
+                    continue
+                }
                 let fragment = Fragment(
                     content: record.content,
-                    date: fmt.date(from: record.date) ?? Date(),
+                    date: date,
                     tags: record.tags,
                     latitude: record.latitude,
                     longitude: record.longitude,
@@ -372,12 +383,20 @@ struct SettingsView: View {
                 fragment.isPrivate = record.isPrivate
                 fragment.isPinned = record.isPinned
                 modelContext.insert(fragment)
+                inserted += 1
             }
 
             try? modelContext.save()
             HapticFeedback.success()
-            importResult = ImportResult(success: true, message: "成功导入 \(records.count) 条碎片。")
+            let msg = skipped > 0
+                ? "导入 \(inserted) 条，跳过 \(skipped) 条重复"
+                : "成功导入 \(inserted) 条碎片"
+            importResult = ImportResult(success: true, message: msg)
         }
+    }
+
+    private func dupKey(date: Date, content: String) -> String {
+        "\(Int(date.timeIntervalSinceReferenceDate))|\(content)"
     }
 
     // MARK: - Notification helpers

@@ -104,9 +104,7 @@ struct FragmentFeedView: View {
     }
 
     private var listSections: [FeedSection] {
-        if !searchText.isEmpty || selectedTag != nil {
-            return filteredFragments.isEmpty ? [] : [FeedSection(id: "", fragments: filteredFragments)]
-        }
+        if filteredFragments.isEmpty { return [] }
         let pinned = filteredFragments.filter { $0.isPinned }
         let unpinned = filteredFragments.filter { !$0.isPinned }
         let cal = Calendar.current
@@ -541,12 +539,16 @@ private struct SpeedDialFAB: View {
     let onCamera: () -> Void
     let onVoice: () -> Void
 
+    private let cameraAvailable = UIImagePickerController.isSourceTypeAvailable(.camera)
+
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             VStack(alignment: .trailing, spacing: 14) {
+                if cameraAvailable {
                 fabAction(icon: "camera.fill",             label: "拍照",  color: Color(red: 0.45, green: 0.55, blue: 0.72), action: onCamera)
                     .offset(y: isExpanded ? 0 : 40).opacity(isExpanded ? 1 : 0)
                     .animation(.spring(response: 0.38, dampingFraction: 0.72).delay(0.0), value: isExpanded)
+                }
 
                 fabAction(icon: "photo.on.rectangle.fill", label: "相册",  color: Color(red: 0.42, green: 0.62, blue: 0.55), action: onPhoto)
                     .offset(y: isExpanded ? 0 : 40).opacity(isExpanded ? 1 : 0)
@@ -948,7 +950,7 @@ private struct PhotoLibraryPicker: UIViewControllerRepresentable {
     }
 }
 
-// MARK: - Camera picker (UIImagePickerController wrapper)
+// MARK: - Camera picker (UIImagePickerController, camera source only)
 
 private struct CameraPickerView: UIViewControllerRepresentable {
     @Binding var capturedID: String?
@@ -956,7 +958,7 @@ private struct CameraPickerView: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
-        picker.sourceType = UIImagePickerController.isSourceTypeAvailable(.camera) ? .camera : .photoLibrary
+        picker.sourceType = .camera
         picker.delegate = context.coordinator
         return picker
     }
