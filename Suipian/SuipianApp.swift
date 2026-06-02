@@ -3,6 +3,8 @@ import SwiftData
 
 @main
 struct SuipianApp: App {
+    @State private var syncMonitor = CloudKitSyncMonitor()
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([Fragment.self])
         let config = ModelConfiguration(
@@ -23,6 +25,7 @@ struct SuipianApp: App {
             ContentView()
                 .tint(Color(red: 0.36, green: 0.44, blue: 0.64))
                 .task { migrateAudioDataIfNeeded() }
+                .environment(syncMonitor)
         }
         .modelContainer(sharedModelContainer)
     }

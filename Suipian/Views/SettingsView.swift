@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 import UserNotifications
 import UniformTypeIdentifiers
+import CloudKit
+import CoreData
 
 struct SettingsView: View {
     @AppStorage("reminderEnabled") private var reminderEnabled = false
@@ -11,6 +13,7 @@ struct SettingsView: View {
     @AppStorage("appLockEnabled") private var appLockEnabled = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(CloudKitSyncMonitor.self) private var syncMonitor
     @Query private var fragments: [Fragment]
 
     @State private var reminderTime = Date()
@@ -18,6 +21,7 @@ struct SettingsView: View {
     @State private var exportItem: ExportFile?
     @State private var showingImporter = false
     @State private var importResult: ImportResult?
+    @State private var iCloudAccountStatus: CKAccountStatus = .couldNotDetermine
 
     var body: some View {
         NavigationStack {
@@ -97,6 +101,15 @@ struct SettingsView: View {
                          : "开启后每天定时提醒，帮助养成记录习惯")
                 }
 
+                // MARK: iCloud 同步
+                Section {
+                    iCloudStatusRow
+                } header: {
+                    Label("iCloud 同步", systemImage: "icloud")
+                } footer: {
+                    Text("碎片的文字、标签、情绪、位置、音频均通过 iCloud 自动同步到你的所有设备。照片保存在系统相册，由 iCloud 照片负责同步。")
+                }
+
                 // MARK: 数据管理
                 Section {
                     HStack {
@@ -131,7 +144,10 @@ struct SettingsView: View {
                     Button("完成") { dismiss() }
                 }
             }
-            .onAppear { loadReminderTime() }
+            .onAppear {
+                loadReminderTime()
+                Task { await refreshICloudAccountStatus() }
+            }
             .alert("需要通知权限", isPresented: $showingPermissionAlert) {
                 Button("去设置") {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -163,6 +179,117 @@ struct SettingsView: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
+
+    // MARK: - iCloud status
+
+    @ViewBuilder
+    private var iCloudStatusRow: some View {
+        // Account not signed in or restricted — show account-level warning
+        if iCloudAccountStatus == .noAccount || iCloudAccountStatus == .restricted
+            || iCloudAccountStatus == .temporarilyUnavailable {
+            HStack(spacing: 12) {
+                Image(systemName: accountStatusIcon)
+                    .font(.title3)
+                    .foregroundStyle(.orange)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(accountStatusTitle)
+                        .font(.subheadline)
+                    Text(accountStatusDetail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 2)
+        } else {
+            // Account available — show real sync state from global monitor
+            HStack(spacing: 12) {
+                syncStateIcon
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(syncStateTitle)
+                        .font(.subheadline)
+                    if let date = syncMonitor.lastSyncDate {
+                        Text("上次同步：\(date.relativeDescription)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else if syncMonitor.state == .idle {
+                        Text("等待同步事件…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    @ViewBuilder
+    private var syncStateIcon: some View {
+        switch syncMonitor.state {
+        case .syncing:
+            ProgressView()
+                .scaleEffect(0.85)
+                .tint(.blue)
+        case .succeeded:
+            Image(systemName: "checkmark.icloud.fill")
+                .font(.title3)
+                .foregroundStyle(.blue)
+        case .failed:
+            Image(systemName: "exclamationmark.icloud.fill")
+                .font(.title3)
+                .foregroundStyle(.orange)
+        case .idle:
+            Image(systemName: "icloud")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var syncStateTitle: String {
+        switch syncMonitor.state {
+        case .syncing:   return "正在同步…"
+        case .succeeded: return "已同步"
+        case .failed:    return "同步遇到问题"
+        case .idle:      return "同步已开启"
+        }
+    }
+
+    private var accountStatusIcon: String {
+        switch iCloudAccountStatus {
+        case .noAccount:              return "icloud.slash"
+        case .restricted:             return "lock.icloud"
+        case .temporarilyUnavailable: return "exclamationmark.icloud"
+        default:                      return "icloud"
+        }
+    }
+
+    private var accountStatusTitle: String {
+        switch iCloudAccountStatus {
+        case .noAccount:              return "未登录 Apple ID"
+        case .restricted:             return "iCloud 访问受限"
+        case .temporarilyUnavailable: return "暂时无法连接 iCloud"
+        default:                      return "正在检查…"
+        }
+    }
+
+    private var accountStatusDetail: String {
+        switch iCloudAccountStatus {
+        case .noAccount:              return "前往「设置」→「登录 iPhone」以开启同步"
+        case .restricted:             return "家长控制或设备管理策略限制了 iCloud 使用"
+        case .temporarilyUnavailable: return "请检查网络连接，稍后自动重试"
+        default:                      return ""
+        }
+    }
+
+    private func refreshICloudAccountStatus() async {
+        do {
+            iCloudAccountStatus = try await CKContainer.default().accountStatus()
+        } catch {
+            iCloudAccountStatus = .couldNotDetermine
+        }
+    }
+
 
     // MARK: - Data model (encode + decode)
 
@@ -294,6 +421,16 @@ struct SettingsView: View {
 }
 
 // MARK: - Helpers
+
+private extension Date {
+    var relativeDescription: String {
+        let diff = Int(Date().timeIntervalSince(self))
+        if diff < 60  { return "刚刚" }
+        if diff < 3600 { return "\(diff / 60) 分钟前" }
+        if diff < 86400 { return "\(diff / 3600) 小时前" }
+        return "\(diff / 86400) 天前"
+    }
+}
 
 private struct ExportFile: Identifiable {
     let id = UUID()

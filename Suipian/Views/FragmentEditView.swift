@@ -11,6 +11,7 @@ struct FragmentEditView: View {
     var fragment: Fragment?
     var preloadedMediaIDs: [String] = []
     var preloadedContent: String = ""
+    var preloadedStoryName: String = ""
     var saveDraftOnCancel: Bool = true
 
     @State private var content = ""
@@ -664,9 +665,10 @@ struct FragmentEditView: View {
 
     private func loadExisting() {
         guard let fragment else {
-            if !preloadedMediaIDs.isEmpty || !preloadedContent.isEmpty {
+            if !preloadedMediaIDs.isEmpty || !preloadedContent.isEmpty || !preloadedStoryName.isEmpty {
                 if !preloadedMediaIDs.isEmpty { mediaIdentifiers = preloadedMediaIDs }
                 if !preloadedContent.isEmpty { content = preloadedContent }
+                if !preloadedStoryName.isEmpty { storyName = preloadedStoryName }
             } else {
                 restoreDraftIfNeeded()
             }

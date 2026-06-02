@@ -6,6 +6,10 @@ import SwiftData
 struct StoryListView: View {
     @Query(sort: \Fragment.date, order: .reverse) private var fragments: [Fragment]
 
+    @State private var showingNewStoryAlert = false
+    @State private var newStoryNameInput = ""
+    @State private var createRequest: StoryCreateRequest? = nil
+
     private var stories: [(name: String, fragments: [Fragment])] {
         var dict: [String: [Fragment]] = [:]
         for f in fragments where !f.storyName.isEmpty {
@@ -18,34 +22,118 @@ struct StoryListView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if stories.isEmpty {
-                    ContentUnavailableView(
-                        "还没有故事线",
-                        systemImage: "link.badge.plus",
-                        description: Text("编辑碎片时填写「关联到故事线」，多条碎片共用同一名称就会自动归组")
-                    )
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 14) {
-                            ForEach(stories, id: \.name) { story in
-                                NavigationLink {
-                                    StoryDetailView(name: story.name, fragments: story.fragments)
-                                } label: {
-                                    StoryCard(name: story.name, fragments: story.fragments)
+            ZStack(alignment: .bottomTrailing) {
+                Group {
+                    if stories.isEmpty {
+                        storyEmptyState
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 14) {
+                                ForEach(stories, id: \.name) { story in
+                                    NavigationLink {
+                                        StoryDetailView(name: story.name, fragments: story.fragments)
+                                    } label: {
+                                        StoryCard(name: story.name, fragments: story.fragments)
+                                    }
+                                    .buttonStyle(PressScaleButtonStyle())
                                 }
-                                .buttonStyle(PressScaleButtonStyle())
                             }
+                            .padding(16)
+                            .padding(.bottom, 100)
                         }
-                        .padding(16)
-                        .padding(.bottom, 100)
+                        .background { AppBackgroundCanvas().ignoresSafeArea() }
                     }
-                    .background { AppBackgroundCanvas().ignoresSafeArea() }
                 }
+
+                // FAB — create new story
+                Button {
+                    newStoryNameInput = ""
+                    showingNewStoryAlert = true
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color.accentColor.opacity(0.18))
+                            .frame(width: 70, height: 70)
+                            .blur(radius: 8)
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .frame(width: 56, height: 56)
+                            .overlay(
+                                Circle().strokeBorder(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.6), Color.white.opacity(0.1)],
+                                        startPoint: .topLeading, endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
+                            )
+                            .shadow(color: Color.black.opacity(0.16), radius: 10, y: 5)
+                        Image(systemName: "plus")
+                            .font(.title2).fontWeight(.semibold)
+                            .foregroundStyle(Color.accentColor)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 20)
+                .padding(.bottom, 24)
             }
             .toolbar(.hidden, for: .navigationBar)
         }
+        .alert("新建故事线", isPresented: $showingNewStoryAlert) {
+            TextField("故事线名称，如「日本之旅」", text: $newStoryNameInput)
+            Button("创建") {
+                let name = newStoryNameInput.trimmingCharacters(in: .whitespaces)
+                guard !name.isEmpty else { return }
+                createRequest = StoryCreateRequest(name: name)
+                newStoryNameInput = ""
+            }
+            Button("取消", role: .cancel) { newStoryNameInput = "" }
+        } message: {
+            Text("创建后可立即记录第一条碎片")
+        }
+        .sheet(item: $createRequest) { req in
+            FragmentEditView(preloadedStoryName: req.name, saveDraftOnCancel: false)
+        }
     }
+
+    private var storyEmptyState: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "link.badge.plus")
+                .font(.system(size: 52))
+                .foregroundStyle(.tertiary)
+            VStack(spacing: 8) {
+                Text("还没有故事线")
+                    .font(.title3).fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                Text("把多条碎片串联成一个故事\n旅行、项目、成长，都可以是一条故事线")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            Button {
+                newStoryNameInput = ""
+                showingNewStoryAlert = true
+            } label: {
+                Label("新建故事线", systemImage: "plus")
+                    .font(.subheadline).fontWeight(.semibold)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(Color.accentColor, in: Capsule())
+            }
+            .buttonStyle(PressScaleButtonStyle())
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Request token
+
+private struct StoryCreateRequest: Identifiable {
+    let id = UUID()
+    let name: String
 }
 
 // MARK: - Story card (hero poster style)
@@ -176,6 +264,7 @@ struct StoryDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var showingRename = false
     @State private var newName = ""
+    @State private var showingAddFragment = false
 
     var body: some View {
         ScrollView {
@@ -197,11 +286,23 @@ struct StoryDetailView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    newName = name
-                    showingRename = true
-                } label: {
-                    Image(systemName: "pencil")
+                HStack(spacing: 4) {
+                    Button {
+                        showingAddFragment = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .glassToolbarIcon()
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        newName = name
+                        showingRename = true
+                    } label: {
+                        Image(systemName: "pencil")
+                            .glassToolbarIcon()
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -216,6 +317,9 @@ struct StoryDetailView: View {
             }
         } message: {
             Text("将同时更新该故事线下所有碎片的关联名称")
+        }
+        .sheet(isPresented: $showingAddFragment) {
+            FragmentEditView(preloadedStoryName: name, saveDraftOnCancel: false)
         }
     }
 }

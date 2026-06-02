@@ -5,6 +5,7 @@ import Photos
 
 struct FragmentFeedView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(CloudKitSyncMonitor.self) private var syncMonitor
     @Query(sort: \Fragment.date, order: .reverse) private var fragments: [Fragment]
 
     @AppStorage("fragmentViewIsGrid") private var isGridView = false
@@ -383,6 +384,11 @@ struct FragmentFeedView: View {
                             .glassToolbarIcon()
                     }
                     .buttonStyle(.plain)
+                }
+                if syncMonitor.state != .idle {
+                    ToolbarItem(placement: .topBarLeading) {
+                        SyncStatusIcon(state: syncMonitor.state)
+                    }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if !reviewableFragments.isEmpty {
@@ -1131,5 +1137,42 @@ private struct RandomReviewSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+}
+
+// MARK: - iCloud sync status icon (toolbar)
+
+private struct SyncStatusIcon: View {
+    let state: CloudKitSyncMonitor.SyncState
+
+    var body: some View {
+        ZStack {
+            switch state {
+            case .idle:
+                EmptyView()
+            case .syncing:
+                ProgressView()
+                    .scaleEffect(0.75)
+                    .tint(.secondary)
+                    .frame(width: 34, height: 34)
+                    .background(Circle().fill(.ultraThinMaterial))
+                    .transition(.opacity)
+            case .succeeded:
+                Image(systemName: "checkmark.icloud.fill")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.blue)
+                    .frame(width: 34, height: 34)
+                    .background(Circle().fill(.ultraThinMaterial))
+                    .transition(.scale(0.7).combined(with: .opacity))
+            case .failed:
+                Image(systemName: "exclamationmark.icloud.fill")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.orange)
+                    .frame(width: 34, height: 34)
+                    .background(Circle().fill(.ultraThinMaterial))
+                    .transition(.opacity)
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.72), value: state == .idle)
     }
 }
