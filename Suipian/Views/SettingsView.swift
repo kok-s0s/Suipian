@@ -120,6 +120,12 @@ struct SettingsView: View {
                             .monospacedDigit()
                     }
 
+                    NavigationLink {
+                        TagManagementView()
+                    } label: {
+                        Label("标签管理", systemImage: "tag")
+                    }
+
                     Button {
                         exportJSON()
                     } label: {

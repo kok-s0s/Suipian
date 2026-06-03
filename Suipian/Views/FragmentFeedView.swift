@@ -6,7 +6,10 @@ import Photos
 struct FragmentFeedView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(CloudKitSyncMonitor.self) private var syncMonitor
+    @Environment(AppRouter.self) private var appRouter
     @Query(sort: \Fragment.date, order: .reverse) private var fragments: [Fragment]
+
+    @State private var deepLinkFragment: Fragment? = nil
 
     @AppStorage("fragmentViewIsGrid") private var isGridView = false
     @AppStorage("fragmentSortAscending") private var sortAscending = false
@@ -312,6 +315,14 @@ struct FragmentFeedView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .searchable(text: $searchText, prompt: "搜索内容、标签、地点")
+            .navigationDestination(item: $deepLinkFragment) { fragment in
+                FragmentDetailView(fragment: fragment)
+            }
+            .onChange(of: appRouter.pendingFragment) { _, fragment in
+                guard let fragment else { return }
+                deepLinkFragment = fragment
+                appRouter.pendingFragment = nil
+            }
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     if let tag = selectedTag {

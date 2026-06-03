@@ -1,9 +1,11 @@
 import SwiftUI
 import SwiftData
+import CoreSpotlight
 
 @main
 struct SuipianApp: App {
     @State private var syncMonitor = CloudKitSyncMonitor()
+    @State private var appRouter = AppRouter()
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([Fragment.self])
@@ -26,6 +28,14 @@ struct SuipianApp: App {
                 .tint(Color(red: 0.36, green: 0.44, blue: 0.64))
                 .task { migrateAudioDataIfNeeded() }
                 .environment(syncMonitor)
+                .environment(appRouter)
+                .onContinueUserActivity(CSSearchableItemActionType) { [self] activity in
+                    guard let id = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String else { return }
+                    let ctx = sharedModelContainer.mainContext
+                    guard let fragments = try? ctx.fetch(FetchDescriptor<Fragment>()) else { return }
+                    guard let match = fragments.first(where: { SpotlightManager.itemID(for: $0) == id }) else { return }
+                    appRouter.open(match)
+                }
         }
         .modelContainer(sharedModelContainer)
     }

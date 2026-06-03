@@ -1,21 +1,27 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(AppRouter.self) private var appRouter
     @AppStorage("appLockEnabled") private var appLockEnabled = false
     @State private var isLocked = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
+        @Bindable var router = appRouter
         ZStack {
-            TabView {
+            TabView(selection: $router.selectedTab) {
                 FragmentFeedView()
                     .tabItem { Label("碎片", systemImage: "square.on.square.fill") }
+                    .tag(0)
                 StoryListView()
                     .tabItem { Label("故事线", systemImage: "link") }
+                    .tag(1)
                 FragmentMapView()
                     .tabItem { Label("地图", systemImage: "map.fill") }
+                    .tag(2)
                 StatsView()
                     .tabItem { Label("统计", systemImage: "chart.bar.fill") }
+                    .tag(3)
             }
 
             if isLocked && appLockEnabled {
