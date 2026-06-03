@@ -243,6 +243,21 @@ private struct HeatmapSection: View {
         return result
     }
 
+    private func currentStreak(byDay: [Date: [Fragment]]) -> Int {
+        let cal = Calendar.current
+        var day = cal.startOfDay(for: Date())
+        // If today has no record yet, start checking from yesterday
+        if byDay[day] == nil {
+            day = cal.date(byAdding: .day, value: -1, to: day)!
+        }
+        var streak = 0
+        while byDay[day] != nil {
+            streak += 1
+            day = cal.date(byAdding: .day, value: -1, to: day)!
+        }
+        return streak
+    }
+
     private var startDate: Date {
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
@@ -329,9 +344,19 @@ private struct HeatmapSection: View {
                 }
                 Text("多").font(.caption2).foregroundStyle(.tertiary)
                 Spacer()
-                Text("点击格子查看当日碎片")
-                    .font(.system(size: 9))
-                    .foregroundStyle(.tertiary)
+                let streak = currentStreak(byDay: byDay)
+                if streak > 0 {
+                    HStack(spacing: 2) {
+                        Text("🔥").font(.system(size: 10))
+                        Text("连续 \(streak) 天")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
+                    }
+                } else {
+                    Text("点击格子查看当日碎片")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
         .padding(16)

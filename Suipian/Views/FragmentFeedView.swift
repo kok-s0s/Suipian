@@ -215,75 +215,33 @@ struct FragmentFeedView: View {
 
                     // Fragment cards
                     if isGridView {
-                        let enumerated = Array(filteredFragments.enumerated())
-                        let leftItems = enumerated.filter { $0.offset % 2 == 0 }.map(\.element)
-                        let rightItems = enumerated.filter { $0.offset % 2 == 1 }.map(\.element)
-                        HStack(alignment: .top, spacing: 12) {
-                            LazyVStack(spacing: 12) {
-                                ForEach(leftItems) { fragment in
-                                    NavigationLink {
-                                        FragmentDetailView(fragment: fragment)
-                                    } label: {
-                                        FragmentGridCellView(fragment: fragment)
-                                    }
-                                    .buttonStyle(PressScaleButtonStyle())
-                                    .contextMenu {
-                                        Button { fragmentToEdit = fragment } label: {
-                                            Label("编辑", systemImage: "pencil")
-                                        }
-                                        Button {
-                                            fragment.isPinned.toggle()
-                                            HapticFeedback.impact(.light)
-                                        } label: {
-                                            Label(fragment.isPinned ? "取消置顶" : "置顶",
-                                                  systemImage: fragment.isPinned ? "pin.slash" : "pin")
-                                        }
-                                        Divider()
-                                        Button(role: .destructive) {
-                                            fragmentToDelete = fragment
-                                            showDeleteAlert = true
-                                        } label: {
-                                            Label("删除", systemImage: "trash")
-                                        }
-                                    }
-                                    .scrollTransition(.animated(.spring(response: 0.45, dampingFraction: 0.85))) { content, phase in
-                                        content
-                                            .opacity(phase.isIdentity ? 1 : max(0, 1 - abs(phase.value) * 0.6))
-                                            .scaleEffect(phase.isIdentity ? 1 : max(0.92, 1 - abs(phase.value) * 0.07))
-                                    }
+                        LazyVStack(spacing: 0) {
+                            ForEach(listSections) { section in
+                                if !section.id.isEmpty {
+                                    Text(section.id)
+                                        .font(.caption).fontWeight(.semibold)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.top, 18)
+                                        .padding(.bottom, 8)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                 }
-                            }
-                            LazyVStack(spacing: 12) {
-                                ForEach(rightItems) { fragment in
-                                    NavigationLink {
-                                        FragmentDetailView(fragment: fragment)
-                                    } label: {
-                                        FragmentGridCellView(fragment: fragment)
-                                    }
-                                    .buttonStyle(PressScaleButtonStyle())
-                                    .contextMenu {
-                                        Button { fragmentToEdit = fragment } label: {
-                                            Label("编辑", systemImage: "pencil")
-                                        }
-                                        Button {
-                                            fragment.isPinned.toggle()
-                                            HapticFeedback.impact(.light)
-                                        } label: {
-                                            Label(fragment.isPinned ? "取消置顶" : "置顶",
-                                                  systemImage: fragment.isPinned ? "pin.slash" : "pin")
-                                        }
-                                        Divider()
-                                        Button(role: .destructive) {
-                                            fragmentToDelete = fragment
-                                            showDeleteAlert = true
-                                        } label: {
-                                            Label("删除", systemImage: "trash")
+                                let frags = section.fragments
+                                let leftItems = frags.enumerated().filter { $0.offset % 2 == 0 }.map(\.element)
+                                let rightItems = frags.enumerated().filter { $0.offset % 2 == 1 }.map(\.element)
+                                HStack(alignment: .top, spacing: 12) {
+                                    LazyVStack(spacing: 12) {
+                                        ForEach(leftItems) { fragment in
+                                            GridCell(fragment: fragment,
+                                                     onEdit: { fragmentToEdit = fragment },
+                                                     onDelete: { fragmentToDelete = fragment; showDeleteAlert = true })
                                         }
                                     }
-                                    .scrollTransition(.animated(.spring(response: 0.45, dampingFraction: 0.85))) { content, phase in
-                                        content
-                                            .opacity(phase.isIdentity ? 1 : max(0, 1 - abs(phase.value) * 0.6))
-                                            .scaleEffect(phase.isIdentity ? 1 : max(0.92, 1 - abs(phase.value) * 0.07))
+                                    LazyVStack(spacing: 12) {
+                                        ForEach(rightItems) { fragment in
+                                            GridCell(fragment: fragment,
+                                                     onEdit: { fragmentToEdit = fragment },
+                                                     onDelete: { fragmentToDelete = fragment; showDeleteAlert = true })
+                                        }
                                     }
                                 }
                             }
@@ -1139,6 +1097,44 @@ private struct RandomReviewSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+}
+
+// MARK: - Grid cell wrapper (eliminates left/right column duplication)
+
+private struct GridCell: View {
+    let fragment: Fragment
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        NavigationLink {
+            FragmentDetailView(fragment: fragment)
+        } label: {
+            FragmentGridCellView(fragment: fragment)
+        }
+        .buttonStyle(PressScaleButtonStyle())
+        .contextMenu {
+            Button(action: onEdit) {
+                Label("编辑", systemImage: "pencil")
+            }
+            Button {
+                fragment.isPinned.toggle()
+                HapticFeedback.impact(.light)
+            } label: {
+                Label(fragment.isPinned ? "取消置顶" : "置顶",
+                      systemImage: fragment.isPinned ? "pin.slash" : "pin")
+            }
+            Divider()
+            Button(role: .destructive, action: onDelete) {
+                Label("删除", systemImage: "trash")
+            }
+        }
+        .scrollTransition(.animated(.spring(response: 0.45, dampingFraction: 0.85))) { content, phase in
+            content
+                .opacity(phase.isIdentity ? 1 : max(0, 1 - abs(phase.value) * 0.6))
+                .scaleEffect(phase.isIdentity ? 1 : max(0.92, 1 - abs(phase.value) * 0.07))
+        }
     }
 }
 
