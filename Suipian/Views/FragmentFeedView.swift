@@ -268,41 +268,29 @@ struct FragmentFeedView: View {
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                                 ForEach(section.fragments) { fragment in
-                                    SwipeRevealRow(
-                                        isPinned: fragment.isPinned,
-                                        onPin: {
+                                    NavigationLink {
+                                        FragmentDetailView(fragment: fragment)
+                                    } label: {
+                                        FragmentCardView(fragment: fragment)
+                                    }
+                                    .buttonStyle(PressScaleButtonStyle())
+                                    .contextMenu {
+                                        Button { fragmentToEdit = fragment } label: {
+                                            Label("编辑", systemImage: "pencil")
+                                        }
+                                        Button {
                                             fragment.isPinned.toggle()
                                             HapticFeedback.impact(.light)
-                                        },
-                                        onDelete: {
+                                        } label: {
+                                            Label(fragment.isPinned ? "取消置顶" : "置顶",
+                                                  systemImage: fragment.isPinned ? "pin.slash" : "pin")
+                                        }
+                                        Divider()
+                                        Button(role: .destructive) {
                                             fragmentToDelete = fragment
                                             showDeleteAlert = true
-                                        }
-                                    ) {
-                                        NavigationLink {
-                                            FragmentDetailView(fragment: fragment)
                                         } label: {
-                                            FragmentCardView(fragment: fragment)
-                                        }
-                                        .buttonStyle(PressScaleButtonStyle())
-                                        .contextMenu {
-                                            Button { fragmentToEdit = fragment } label: {
-                                                Label("编辑", systemImage: "pencil")
-                                            }
-                                            Button {
-                                                fragment.isPinned.toggle()
-                                                HapticFeedback.impact(.light)
-                                            } label: {
-                                                Label(fragment.isPinned ? "取消置顶" : "置顶",
-                                                      systemImage: fragment.isPinned ? "pin.slash" : "pin")
-                                            }
-                                            Divider()
-                                            Button(role: .destructive) {
-                                                fragmentToDelete = fragment
-                                                showDeleteAlert = true
-                                            } label: {
-                                                Label("删除", systemImage: "trash")
-                                            }
+                                            Label("删除", systemImage: "trash")
                                         }
                                     }
                                     .scrollTransition(.animated(.spring(response: 0.5, dampingFraction: 0.88))) { content, phase in
@@ -1151,85 +1139,6 @@ private struct RandomReviewSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
-    }
-}
-
-// MARK: - Swipe-to-reveal row (list mode only)
-
-private struct SwipeRevealRow<Content: View>: View {
-    let isPinned: Bool
-    let onPin: () -> Void
-    let onDelete: () -> Void
-    @ViewBuilder let content: () -> Content
-
-    @State private var offset: CGFloat = 0
-    private let revealWidth: CGFloat = 144   // two 72-pt buttons
-
-    var body: some View {
-        ZStack(alignment: .trailing) {
-            // Revealed action buttons
-            HStack(spacing: 0) {
-                // Pin / Unpin
-                Button {
-                    snap(to: 0); DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { onPin() }
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: isPinned ? "pin.slash.fill" : "pin.fill")
-                            .font(.system(size: 18, weight: .medium))
-                        Text(isPinned ? "取消" : "置顶")
-                            .font(.caption2)
-                    }
-                    .foregroundStyle(.white)
-                    .frame(width: 72)
-                    .frame(maxHeight: .infinity)
-                    .background(Color(red: 0.36, green: 0.44, blue: 0.64))
-                }
-                .buttonStyle(.plain)
-
-                // Delete
-                Button {
-                    snap(to: 0); DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { onDelete() }
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: "trash.fill")
-                            .font(.system(size: 18, weight: .medium))
-                        Text("删除")
-                            .font(.caption2)
-                    }
-                    .foregroundStyle(.white)
-                    .frame(width: 72)
-                    .frame(maxHeight: .infinity)
-                    .background(Color.red)
-                }
-                .buttonStyle(.plain)
-            }
-            .frame(width: revealWidth)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .opacity(offset < -4 ? 1 : 0)
-            .scaleEffect(x: min(1, -offset / revealWidth), anchor: .trailing)
-
-            // Card content
-            content()
-                .offset(x: offset)
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 20)
-                        .onChanged { v in
-                            let h = v.translation.width
-                            guard abs(h) > abs(v.translation.height) * 0.8 else { return }
-                            offset = max(-revealWidth, min(0, h + (offset < 0 ? -revealWidth : 0)))
-                            if offset < -revealWidth { offset = -revealWidth }
-                        }
-                        .onEnded { v in
-                            snap(to: v.translation.width < -40 ? -revealWidth : 0)
-                        }
-                )
-        }
-        .clipped()
-    }
-
-    private func snap(to target: CGFloat) {
-        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { offset = target }
-        if target < 0 { HapticFeedback.impact(.light) }
     }
 }
 
