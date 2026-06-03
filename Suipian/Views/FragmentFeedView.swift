@@ -32,6 +32,10 @@ struct FragmentFeedView: View {
     @State private var fragmentToEdit: Fragment? = nil
     @State private var fragmentToDelete: Fragment? = nil
     @State private var showDeleteAlert = false
+    @State private var showConfetti = false
+    @State private var milestoneText: String? = nil
+
+    private static let milestones: Set<Int> = [1, 10, 50, 100, 200, 365, 500, 1000]
 
     static let draftKey = "fragmentDraft_new"
     private func refreshDraftStatus() {
@@ -264,29 +268,41 @@ struct FragmentFeedView: View {
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                                 ForEach(section.fragments) { fragment in
-                                    NavigationLink {
-                                        FragmentDetailView(fragment: fragment)
-                                    } label: {
-                                        FragmentCardView(fragment: fragment)
-                                    }
-                                    .buttonStyle(PressScaleButtonStyle())
-                                    .contextMenu {
-                                        Button { fragmentToEdit = fragment } label: {
-                                            Label("编辑", systemImage: "pencil")
-                                        }
-                                        Button {
+                                    SwipeRevealRow(
+                                        isPinned: fragment.isPinned,
+                                        onPin: {
                                             fragment.isPinned.toggle()
                                             HapticFeedback.impact(.light)
-                                        } label: {
-                                            Label(fragment.isPinned ? "取消置顶" : "置顶",
-                                                  systemImage: fragment.isPinned ? "pin.slash" : "pin")
-                                        }
-                                        Divider()
-                                        Button(role: .destructive) {
+                                        },
+                                        onDelete: {
                                             fragmentToDelete = fragment
                                             showDeleteAlert = true
+                                        }
+                                    ) {
+                                        NavigationLink {
+                                            FragmentDetailView(fragment: fragment)
                                         } label: {
-                                            Label("删除", systemImage: "trash")
+                                            FragmentCardView(fragment: fragment)
+                                        }
+                                        .buttonStyle(PressScaleButtonStyle())
+                                        .contextMenu {
+                                            Button { fragmentToEdit = fragment } label: {
+                                                Label("编辑", systemImage: "pencil")
+                                            }
+                                            Button {
+                                                fragment.isPinned.toggle()
+                                                HapticFeedback.impact(.light)
+                                            } label: {
+                                                Label(fragment.isPinned ? "取消置顶" : "置顶",
+                                                      systemImage: fragment.isPinned ? "pin.slash" : "pin")
+                                            }
+                                            Divider()
+                                            Button(role: .destructive) {
+                                                fragmentToDelete = fragment
+                                                showDeleteAlert = true
+                                            } label: {
+                                                Label("删除", systemImage: "trash")
+                                            }
                                         }
                                     }
                                     .scrollTransition(.animated(.spring(response: 0.5, dampingFraction: 0.88))) { content, phase in
@@ -391,9 +407,19 @@ struct FragmentFeedView: View {
             refreshDraftStatus()
             WidgetDataStore.updateTagFragments(fragments)
         }
-        .onChange(of: fragments) { _, newFragments in
+        .onChange(of: fragments) { oldFragments, newFragments in
             cachedSortedTags = buildSortedTags()
             WidgetDataStore.updateTagFragments(newFragments)
+            if newFragments.count > oldFragments.count,
+               Self.milestones.contains(newFragments.count) {
+                let n = newFragments.count
+                milestoneText = n == 1 ? "第一条碎片 🎉" : "第 \(n) 条碎片 🎊"
+                showConfetti = true
+                HapticFeedback.success()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
+                    withAnimation(.easeOut(duration: 0.4)) { milestoneText = nil }
+                }
+            }
         }
         .overlay {
                 if fabExpanded {
@@ -401,6 +427,23 @@ struct FragmentFeedView: View {
                         .ignoresSafeArea()
                         .onTapGesture { withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { fabExpanded = false } }
                         .transition(.opacity)
+                }
+            }
+        .overlay {
+                ConfettiView(isVisible: $showConfetti)
+                    .allowsHitTesting(false)
+            }
+        .overlay(alignment: .top) {
+                if let text = milestoneText {
+                    Text(text)
+                        .font(.headline).fontWeight(.bold)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 20).padding(.vertical, 10)
+                        .background(.black.opacity(0.72), in: Capsule())
+                        .shadow(radius: 8)
+                        .padding(.top, 12)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: milestoneText)
                 }
             }
         .overlay(alignment: .bottomTrailing) {
@@ -1108,6 +1151,85 @@ private struct RandomReviewSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+}
+
+// MARK: - Swipe-to-reveal row (list mode only)
+
+private struct SwipeRevealRow<Content: View>: View {
+    let isPinned: Bool
+    let onPin: () -> Void
+    let onDelete: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    @State private var offset: CGFloat = 0
+    private let revealWidth: CGFloat = 144   // two 72-pt buttons
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            // Revealed action buttons
+            HStack(spacing: 0) {
+                // Pin / Unpin
+                Button {
+                    snap(to: 0); DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { onPin() }
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: isPinned ? "pin.slash.fill" : "pin.fill")
+                            .font(.system(size: 18, weight: .medium))
+                        Text(isPinned ? "取消" : "置顶")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(width: 72)
+                    .frame(maxHeight: .infinity)
+                    .background(Color(red: 0.36, green: 0.44, blue: 0.64))
+                }
+                .buttonStyle(.plain)
+
+                // Delete
+                Button {
+                    snap(to: 0); DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { onDelete() }
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: 18, weight: .medium))
+                        Text("删除")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(width: 72)
+                    .frame(maxHeight: .infinity)
+                    .background(Color.red)
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(width: revealWidth)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .opacity(offset < -4 ? 1 : 0)
+            .scaleEffect(x: min(1, -offset / revealWidth), anchor: .trailing)
+
+            // Card content
+            content()
+                .offset(x: offset)
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 20)
+                        .onChanged { v in
+                            let h = v.translation.width
+                            guard abs(h) > abs(v.translation.height) * 0.8 else { return }
+                            offset = max(-revealWidth, min(0, h + (offset < 0 ? -revealWidth : 0)))
+                            if offset < -revealWidth { offset = -revealWidth }
+                        }
+                        .onEnded { v in
+                            snap(to: v.translation.width < -40 ? -revealWidth : 0)
+                        }
+                )
+        }
+        .clipped()
+    }
+
+    private func snap(to target: CGFloat) {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { offset = target }
+        if target < 0 { HapticFeedback.impact(.light) }
     }
 }
 
