@@ -118,6 +118,30 @@ struct WrappedView: View {
             ))
         }
 
+        if let loc = topLocationInfo() {
+            result.append(WrappedCardData(
+                gradient: [Color(red: 0.18, green: 0.38, blue: 0.48), Color(red: 0.12, green: 0.28, blue: 0.38)],
+                icon: "location.fill", highlight: loc.name,
+                title: "是你最常出现的地方", subtitle: "共记录了 \(loc.count) 次"
+            ))
+        }
+
+        if let longest = longestFragmentInfo() {
+            result.append(WrappedCardData(
+                gradient: [Color(red: 0.24, green: 0.42, blue: 0.28), Color(red: 0.16, green: 0.30, blue: 0.20)],
+                icon: "text.alignleft", highlight: "\(longest.charCount) 字",
+                title: "是你写过最长的一段话", subtitle: longest.preview
+            ))
+        }
+
+        if let period = topTimePeriodInfo() {
+            result.append(WrappedCardData(
+                gradient: [Color(red: 0.44, green: 0.32, blue: 0.16), Color(red: 0.32, green: 0.22, blue: 0.10)],
+                icon: period.icon, highlight: period.label,
+                title: "是你最爱记录的时段", subtitle: "共 \(period.count) 条碎片在这个时段"
+            ))
+        }
+
         result.append(WrappedCardData(
             gradient: [Color(red: 0.34, green: 0.20, blue: 0.44), Color(red: 0.46, green: 0.24, blue: 0.40)],
             icon: "star.fill", highlight: "🌟",
@@ -125,6 +149,45 @@ struct WrappedView: View {
         ))
 
         return result
+    }
+
+    private func topLocationInfo() -> (name: String, count: Int)? {
+        var counts: [String: Int] = [:]
+        for f in fragments where !f.locationName.isEmpty {
+            counts[f.locationName, default: 0] += 1
+        }
+        guard let top = counts.max(by: { $0.value < $1.value }), top.value >= 2 else { return nil }
+        let name = top.key.count > 8 ? String(top.key.prefix(8)) + "…" : top.key
+        return (name: name, count: top.value)
+    }
+
+    private func longestFragmentInfo() -> (charCount: Int, preview: String)? {
+        guard let f = fragments.max(by: { $0.content.count < $1.content.count }),
+              f.content.count > 50 else { return nil }
+        let preview = String(f.content.prefix(30)).replacingOccurrences(of: "\n", with: " ") + "…"
+        return (charCount: f.content.count, preview: preview)
+    }
+
+    private func topTimePeriodInfo() -> (label: String, icon: String, count: Int)? {
+        var morning = 0, afternoon = 0, evening = 0, night = 0
+        let cal = Calendar.current
+        for f in fragments {
+            let hour = cal.component(.hour, from: f.date)
+            switch hour {
+            case 6..<12:  morning += 1
+            case 12..<18: afternoon += 1
+            case 18..<24: evening += 1
+            default:      night += 1
+            }
+        }
+        let periods = [
+            ("早晨", "sunrise.fill", morning),
+            ("午后", "sun.max.fill", afternoon),
+            ("傍晚", "sunset.fill", evening),
+            ("深夜", "moon.stars.fill", night)
+        ]
+        guard let top = periods.max(by: { $0.2 < $1.2 }), top.2 > 0 else { return nil }
+        return (label: top.0, icon: top.1, count: top.2)
     }
 
     private func topMonthInfo() -> (label: String, count: Int)? {

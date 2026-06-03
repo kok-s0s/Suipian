@@ -15,6 +15,31 @@ struct StatsView: View {
     @Query(sort: \Fragment.date, order: .reverse) private var fragments: [Fragment]
     @State private var drillDown: FragmentDrillDown?
     @State private var showingWrapped = false
+    @State private var period: StatsPeriod = .all
+
+    enum StatsPeriod: String, CaseIterable {
+        case threeMonths = "近3个月"
+        case thisYear    = "今年"
+        case all         = "全部"
+
+        func startDate() -> Date? {
+            let cal = Calendar.current
+            switch self {
+            case .threeMonths:
+                return cal.date(byAdding: .month, value: -3, to: cal.startOfDay(for: Date()))
+            case .thisYear:
+                let comps = cal.dateComponents([.year], from: Date())
+                return cal.date(from: comps)
+            case .all:
+                return nil
+            }
+        }
+    }
+
+    private var filteredFragments: [Fragment] {
+        guard let start = period.startDate() else { return fragments }
+        return fragments.filter { $0.date >= start }
+    }
 
     var body: some View {
         NavigationStack {
@@ -29,11 +54,19 @@ struct StatsView: View {
                     ScrollView {
                         VStack(spacing: 14) {
                             WrappedBannerCard { showingWrapped = true }
-                            SummaryCardsSection(fragments: fragments, onDrillDown: { drillDown = $0 })
-                            HeatmapSection(fragments: fragments, onDrillDown: { drillDown = $0 })
-                            MoodCurveSection(fragments: fragments, onDrillDown: { drillDown = $0 })
-                            MoodStatsSection(fragments: fragments, onDrillDown: { drillDown = $0 })
-                            TopTagsSection(fragments: fragments, onDrillDown: { drillDown = $0 })
+
+                            Picker("时间段", selection: $period) {
+                                ForEach(StatsPeriod.allCases, id: \.self) {
+                                    Text($0.rawValue).tag($0)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+
+                            SummaryCardsSection(fragments: filteredFragments, onDrillDown: { drillDown = $0 })
+                            HeatmapSection(fragments: filteredFragments, onDrillDown: { drillDown = $0 })
+                            MoodCurveSection(fragments: filteredFragments, onDrillDown: { drillDown = $0 })
+                            MoodStatsSection(fragments: filteredFragments, onDrillDown: { drillDown = $0 })
+                            TopTagsSection(fragments: filteredFragments, onDrillDown: { drillDown = $0 })
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 12)
