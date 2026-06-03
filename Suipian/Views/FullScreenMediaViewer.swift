@@ -10,6 +10,7 @@ struct FullScreenMediaViewer: View {
     @Environment(\.dismiss) private var dismiss
     @State private var currentIndex: Int
     private let videoIDs: Set<String>
+    private let livePhotoIDs: Set<String>
 
     // Swipe-to-dismiss
     @State private var dismissOffset: CGFloat = 0
@@ -25,10 +26,13 @@ struct FullScreenMediaViewer: View {
 
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
         var vids = Set<String>()
+        var lives = Set<String>()
         assets.enumerateObjects { asset, _, _ in
             if asset.mediaType == .video { vids.insert(asset.localIdentifier) }
+            if asset.playbackStyle == .livePhoto { lives.insert(asset.localIdentifier) }
         }
         videoIDs = vids
+        livePhotoIDs = lives
     }
 
     private var effectiveCoverID: String? {
@@ -44,7 +48,10 @@ struct FullScreenMediaViewer: View {
 
             TabView(selection: $currentIndex) {
                 ForEach(Array(identifiers.enumerated()), id: \.offset) { index, id in
-                    if videoIDs.contains(id) {
+                    // Videos and Live Photos go directly to MediaDetailView —
+                    // Live Photos must bypass ZoomablePhotoView because PHLivePhotoView
+                    // handles its own touch events during playback, causing gesture conflicts.
+                    if videoIDs.contains(id) || livePhotoIDs.contains(id) {
                         MediaDetailView(identifier: id, isFullScreen: true)
                             .ignoresSafeArea()
                             .tag(index)
@@ -187,6 +194,11 @@ private struct ZoomablePhotoView: View {
                     } else {
                         scale = 2.5; isZoomed = true
                     }
+                }
+            }
+            .onChange(of: identifier) { _, _ in
+                withAnimation(.spring(response: 0.3)) {
+                    scale = 1.0; panOffset = .zero; isZoomed = false
                 }
             }
     }

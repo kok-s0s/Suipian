@@ -196,12 +196,12 @@ struct MediaDetailView: View {
             } else if isVideo, let player {
                 VideoPlayer(player: player)
             } else if isLivePhoto, let livePhoto {
-                LivePhotoView(
+                let lv = LivePhotoView(
                     livePhoto: livePhoto,
                     playbackStyle: isFullScreen ? .full : .hint,
                     playTrigger: livePlayTrigger
                 )
-                .ignoresSafeArea()
+                if isFullScreen { lv.ignoresSafeArea() } else { lv }
             } else if let image {
                 Image(uiImage: image)
                     .resizable()
