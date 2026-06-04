@@ -238,14 +238,14 @@ struct FragmentFeedView: View {
                                 HStack(alignment: .top, spacing: 12) {
                                     LazyVStack(spacing: 12) {
                                         ForEach(leftItems) { fragment in
-                                            GridCell(fragment: fragment,
+                                            GridCell(fragment: fragment, highlight: searchText,
                                                      onEdit: { fragmentToEdit = fragment },
                                                      onDelete: { fragmentToDelete = fragment; showDeleteAlert = true })
                                         }
                                     }
                                     LazyVStack(spacing: 12) {
                                         ForEach(rightItems) { fragment in
-                                            GridCell(fragment: fragment,
+                                            GridCell(fragment: fragment, highlight: searchText,
                                                      onEdit: { fragmentToEdit = fragment },
                                                      onDelete: { fragmentToDelete = fragment; showDeleteAlert = true })
                                         }
@@ -271,7 +271,7 @@ struct FragmentFeedView: View {
                                     NavigationLink {
                                         FragmentDetailView(fragment: fragment)
                                     } label: {
-                                        FragmentCardView(fragment: fragment)
+                                        FragmentCardView(fragment: fragment, highlight: searchText)
                                     }
                                     .buttonStyle(PressScaleButtonStyle())
                                     .contextMenu {
@@ -721,6 +721,7 @@ private struct OnThisDayBanner: View {
 
 private struct FragmentGridCellView: View {
     let fragment: Fragment
+    var highlight: String = ""
     @State private var imageRatio: CGFloat
 
     // Process-lifetime cache: avoids layout jump on re-appearance
@@ -790,7 +791,7 @@ private struct FragmentGridCellView: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 if !fragment.content.isEmpty {
-                    Text(fragment.content)
+                    Text(highlighted(fragment.content, query: highlight))
                         .font(.caption)
                         .foregroundStyle(.primary)
                         .lineLimit(3)
@@ -1146,6 +1147,7 @@ private struct RandomReviewSheet: View {
 
 private struct GridCell: View {
     let fragment: Fragment
+    var highlight: String = ""
     let onEdit: () -> Void
     let onDelete: () -> Void
 
@@ -1153,7 +1155,7 @@ private struct GridCell: View {
         NavigationLink {
             FragmentDetailView(fragment: fragment)
         } label: {
-            FragmentGridCellView(fragment: fragment)
+            FragmentGridCellView(fragment: fragment, highlight: highlight)
         }
         .buttonStyle(PressScaleButtonStyle())
         .contextMenu {

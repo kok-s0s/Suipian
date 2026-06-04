@@ -432,16 +432,7 @@ struct SettingsView: View {
     }
 
     private func scheduleNotification() {
-        let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: ["daily-reminder"])
-        let content = UNMutableNotificationContent()
-        content.title = "今天记录了吗？"
-        content.body = "打开碎片，把今天的瞬间留下来。"
-        content.sound = .default
-        var comps = DateComponents()
-        comps.hour = reminderHour; comps.minute = reminderMinute
-        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
-        center.add(UNNotificationRequest(identifier: "daily-reminder", content: content, trigger: trigger))
+        NotificationScheduler.schedule(hour: reminderHour, minute: reminderMinute, fragments: fragments)
     }
 }
 

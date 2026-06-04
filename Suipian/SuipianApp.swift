@@ -27,6 +27,7 @@ struct SuipianApp: App {
             ContentView()
                 .tint(Color(red: 0.36, green: 0.44, blue: 0.64))
                 .task { migrateAudioDataIfNeeded() }
+                .task { await refreshNotificationIfNeeded() }
                 .environment(syncMonitor)
                 .environment(appRouter)
                 .onContinueUserActivity(CSSearchableItemActionType) { [self] activity in
@@ -38,6 +39,21 @@ struct SuipianApp: App {
                 }
         }
         .modelContainer(sharedModelContainer)
+    }
+
+    // Refresh notification copy once per day when app launches — picks up new data-driven message.
+    private func refreshNotificationIfNeeded() async {
+        let center = UNUserNotificationCenter.current()
+        let status = await center.notificationSettings().authorizationStatus
+        guard status == .authorized || status == .provisional else { return }
+        let pending = await center.pendingNotificationRequests()
+        guard let req = pending.first(where: { $0.identifier == "daily-reminder" }),
+              let calTrigger = req.trigger as? UNCalendarNotificationTrigger,
+              let comps = calTrigger.dateComponents.hour.map({ h -> (Int, Int) in
+                  (h, calTrigger.dateComponents.minute ?? 0)
+              }) else { return }
+        let fragments = (try? sharedModelContainer.mainContext.fetch(FetchDescriptor<Fragment>())) ?? []
+        NotificationScheduler.schedule(hour: comps.0, minute: comps.1, fragments: fragments)
     }
 
     // One-time migration: populate audioData for fragments that have audio files but empty audioData.

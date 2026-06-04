@@ -3,6 +3,7 @@ import Photos
 
 struct FragmentCardView: View {
     let fragment: Fragment
+    var highlight: String = ""
 
     var body: some View {
         if fragment.isPrivate {
@@ -54,7 +55,7 @@ struct FragmentCardView: View {
 
                 VStack(alignment: .leading, spacing: 10) {
                     if !fragment.content.isEmpty {
-                        Text(fragment.content)
+                        Text(highlighted(fragment.content, query: highlight))
                             .font(fragment.hasMedia ? .subheadline : .body)
                             .foregroundStyle(.primary)
                             .lineLimit(fragment.hasMedia ? 3 : 8)
@@ -127,6 +128,24 @@ struct FragmentCardView: View {
             }
         }
     }
+}
+
+// MARK: - Highlight helper
+
+func highlighted(_ text: String, query: String) -> AttributedString {
+    var attr = AttributedString(text)
+    guard !query.isEmpty else { return attr }
+    var searchStart = attr.startIndex
+    while searchStart < attr.endIndex {
+        guard let range = attr[searchStart...].range(
+            of: query, options: [.caseInsensitive, .diacriticInsensitive]
+        ) else { break }
+        attr[range].foregroundColor = UIColor(Color(red: 0.36, green: 0.44, blue: 0.64))
+        attr[range].backgroundColor = UIColor(Color(red: 0.36, green: 0.44, blue: 0.64).opacity(0.15))
+        attr[range].font = UIFont.systemFont(ofSize: 0, weight: .semibold)
+        searchStart = range.upperBound
+    }
+    return attr
 }
 
 // MARK: - Cover image: scaledToFit, no cropping

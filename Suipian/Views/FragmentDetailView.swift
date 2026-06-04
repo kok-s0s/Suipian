@@ -28,6 +28,7 @@ struct FragmentDetailView: View {
         return storyFragments.filter { $0.persistentModelID != currentID }
     }
 
+    @State private var mapPosition: MapCameraPosition = .automatic
     @State private var showingEdit = false
     @State private var showingDeleteConfirm = false
     @State private var fullScreenPresentation: FullScreenPresentation? = nil
@@ -129,15 +130,7 @@ struct FragmentDetailView: View {
 
                     // Map
                     if fragment.hasLocation {
-                        Map(initialPosition: .region(
-                            MKCoordinateRegion(
-                                center: CLLocationCoordinate2D(
-                                    latitude: fragment.latitude,
-                                    longitude: fragment.longitude
-                                ),
-                                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-                            )
-                        )) {
+                        Map(position: $mapPosition) {
                             Marker(
                                 fragment.locationName.isEmpty ? "这里" : fragment.locationName,
                                 coordinate: CLLocationCoordinate2D(
@@ -148,6 +141,15 @@ struct FragmentDetailView: View {
                         }
                         .frame(height: 200)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .onAppear {
+                            mapPosition = .region(MKCoordinateRegion(
+                                center: CLLocationCoordinate2D(
+                                    latitude: fragment.latitude,
+                                    longitude: fragment.longitude
+                                ),
+                                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                            ))
+                        }
                     }
                     // Related fragments (story line)
                     if !relatedFragments.isEmpty {
