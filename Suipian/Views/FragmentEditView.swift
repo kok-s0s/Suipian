@@ -12,6 +12,9 @@ struct FragmentEditView: View {
     var preloadedMediaIDs: [String] = []
     var preloadedContent: String = ""
     var preloadedStoryName: String = ""
+    var preloadedLatitude: Double = 0
+    var preloadedLongitude: Double = 0
+    var preloadedLocationName: String = ""
     var saveDraftOnCancel: Bool = true
 
     @State private var content = ""
@@ -665,10 +668,22 @@ struct FragmentEditView: View {
 
     private func loadExisting() {
         guard let fragment else {
-            if !preloadedMediaIDs.isEmpty || !preloadedContent.isEmpty || !preloadedStoryName.isEmpty {
+            let hasPreload = !preloadedMediaIDs.isEmpty || !preloadedContent.isEmpty
+                || !preloadedStoryName.isEmpty || preloadedLatitude != 0
+            if hasPreload {
                 if !preloadedMediaIDs.isEmpty { mediaIdentifiers = preloadedMediaIDs }
                 if !preloadedContent.isEmpty { content = preloadedContent }
                 if !preloadedStoryName.isEmpty { storyName = preloadedStoryName }
+                if preloadedLatitude != 0 {
+                    latitude = preloadedLatitude
+                    longitude = preloadedLongitude
+                    locationName = preloadedLocationName
+                    locationSearch = preloadedLocationName
+                    cameraPosition = .region(MKCoordinateRegion(
+                        center: CLLocationCoordinate2D(latitude: preloadedLatitude, longitude: preloadedLongitude),
+                        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                    ))
+                }
             } else {
                 restoreDraftIfNeeded()
             }

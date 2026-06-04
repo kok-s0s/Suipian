@@ -6,8 +6,6 @@ import MapKit
 
 struct FragmentCluster: Identifiable {
     var fragments: [Fragment]
-    // Stable ID derived from the seed fragment so SwiftUI doesn't treat
-    // the same cluster as a new annotation on every re-render.
     var id: String { fragments.first.map { "\($0.persistentModelID)" } ?? "" }
 
     var coordinate: CLLocationCoordinate2D {
@@ -28,8 +26,6 @@ struct FragmentCluster: Identifiable {
 private func makeClusters(_ fragments: [Fragment], threshold: Double) -> [FragmentCluster] {
     var clusters: [FragmentCluster] = []
     for f in fragments {
-        // Compare against the seed (first fragment) of each cluster, not the shifting centroid,
-        // to prevent chain-merging of distant points.
         if let i = clusters.firstIndex(where: { c in
             guard let seed = c.fragments.first else { return false }
             return abs(seed.latitude - f.latitude) < threshold &&
@@ -43,6 +39,14 @@ private func makeClusters(_ fragments: [Fragment], threshold: Double) -> [Fragme
     return clusters
 }
 
+// MARK: - Long-press pin token
+
+private struct LongPressMark: Identifiable {
+    let id = UUID()
+    let coordinate: CLLocationCoordinate2D
+    var resolvedName: String = ""
+}
+
 // MARK: - Map view
 
 struct FragmentMapView: View {
@@ -54,13 +58,44 @@ struct FragmentMapView: View {
     @State private var locationSearchText = ""
     @State private var locationSearchResults: [MKMapItem] = []
     @State private var isSearching = false
-    // Tracks visible region so clustering adapts to zoom level
     @State private var mapSpan: MKCoordinateSpan = MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
+
+    // Map style
+    @State private var mapStyle: MapStyleOption = .standard
+    enum MapStyleOption: String, CaseIterable {
+        case standard = "地图"
+        case satellite = "卫星"
+        case hybrid = "混合"
+        var mapStyle: MapStyle {
+            switch self {
+            case .standard:  return .standard
+            case .satellite: return .imagery
+            case .hybrid:    return .hybrid
+            }
+        }
+        var icon: String {
+            switch self {
+            case .standard:  return "map"
+            case .satellite: return "globe.asia.australia"
+            case .hybrid:    return "map.fill"
+            }
+        }
+    }
+
+    // Long-press create
+    @State private var longPressMark: LongPressMark? = nil
+    @State private var isResolvingName = false
+    @State private var createRequest: MapCreateRequest? = nil
+
+    private struct MapCreateRequest: Identifiable {
+        let id = UUID()
+        let latitude: Double
+        let longitude: Double
+        let locationName: String
+    }
 
     var located: [Fragment] { fragments.filter { $0.hasLocation } }
     var clusters: [FragmentCluster] {
-        // Scale threshold with the visible span (≈10% of screen height).
-        // Floor at 0.004° (~440 m) so nearby pins always separate when zoomed in.
         let threshold = max(mapSpan.latitudeDelta * 0.10, 0.004)
         return makeClusters(located, threshold: threshold)
     }
@@ -89,143 +124,137 @@ struct FragmentMapView: View {
         locationSearchResults = []
     }
 
+    private func flyToRandom() {
+        guard let randomCluster = clusters.randomElement() else { return }
+        withAnimation(.easeInOut(duration: 1.0)) {
+            position = .region(MKCoordinateRegion(
+                center: randomCluster.coordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.06, longitudeDelta: 0.06)
+            ))
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            withAnimation(.spring(response: 0.35)) {
+                selectedCluster = randomCluster
+            }
+            HapticFeedback.impact(.light)
+        }
+    }
+
+    private func resolveName(for coordinate: CLLocationCoordinate2D) async -> String {
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let geocoder = CLGeocoder()
+        guard let placemarks = try? await geocoder.reverseGeocodeLocation(location),
+              let p = placemarks.first else { return "" }
+        return [p.name, p.locality, p.administrativeArea]
+            .compactMap { $0 }.filter { !$0.isEmpty }.prefix(2).joined(separator: ", ")
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
-                Map(position: $position) {
-                    UserAnnotation()
-                    ForEach(clusters) { cluster in
-                        Annotation("", coordinate: cluster.coordinate) {
-                            ClusterPin(cluster: cluster, isSelected: selectedCluster?.id == cluster.id)
-                                .onTapGesture {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        if selectedCluster?.id == cluster.id {
-                                            selectedCluster = nil
-                                        } else {
-                                            selectedCluster = cluster
-                                            position = .region(MKCoordinateRegion(
-                                                center: cluster.coordinate,
-                                                span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04)
-                                            ))
+                MapReader { proxy in
+                    Map(position: $position) {
+                        UserAnnotation()
+                        ForEach(clusters) { cluster in
+                            Annotation("", coordinate: cluster.coordinate) {
+                                ClusterPin(cluster: cluster, isSelected: selectedCluster?.id == cluster.id)
+                                    .onTapGesture {
+                                        withAnimation(.spring(response: 0.3)) {
+                                            if selectedCluster?.id == cluster.id {
+                                                selectedCluster = nil
+                                            } else {
+                                                selectedCluster = cluster
+                                                longPressMark = nil
+                                                position = .region(MKCoordinateRegion(
+                                                    center: cluster.coordinate,
+                                                    span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04)
+                                                ))
+                                            }
                                         }
                                     }
-                                }
+                            }
+                        }
+                        // Long-press pin
+                        if let mark = longPressMark {
+                            Annotation("", coordinate: mark.coordinate) {
+                                LongPressPin(isResolving: isResolvingName)
+                            }
+                        }
+                    }
+                    .mapStyle(mapStyle.mapStyle)
+                    .ignoresSafeArea(edges: .bottom)
+                    .onMapCameraChange(frequency: .onEnd) { context in
+                        mapSpan = context.region.span
+                    }
+                    .onTapGesture {
+                        withAnimation { selectedCluster = nil; longPressMark = nil }
+                    }
+                    .onLongPressGesture(minimumDuration: 0.5) { screenPoint in
+                        guard let coord = proxy.convert(screenPoint, from: .local) else { return }
+                        HapticFeedback.impact(.medium)
+                        withAnimation(.spring(response: 0.3)) {
+                            selectedCluster = nil
+                            longPressMark = LongPressMark(coordinate: coord)
+                            position = .region(MKCoordinateRegion(
+                                center: coord,
+                                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                            ))
+                        }
+                        isResolvingName = true
+                        Task {
+                            let name = await resolveName(for: coord)
+                            longPressMark?.resolvedName = name
+                            isResolvingName = false
                         }
                     }
                 }
-                .ignoresSafeArea(edges: .bottom)
-                .onMapCameraChange(frequency: .onEnd) { context in
-                    mapSpan = context.region.span
-                }
-                .onTapGesture { withAnimation { selectedCluster = nil } }
 
                 // Location search overlay
                 if showingLocationSearch {
-                    VStack(spacing: 0) {
-                        HStack(spacing: 10) {
-                            if isSearching {
-                                ProgressView().scaleEffect(0.8)
-                            } else {
-                                Image(systemName: "magnifyingglass")
-                                    .foregroundStyle(.secondary)
-                            }
-                            TextField("搜索地点", text: $locationSearchText)
-                                .submitLabel(.search)
-                                .onSubmit { Task { await doLocationSearch() } }
-                            if !locationSearchText.isEmpty {
-                                Button {
-                                    locationSearchText = ""
-                                    locationSearchResults = []
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            Button("取消") {
-                                showingLocationSearch = false
-                                locationSearchText = ""
-                                locationSearchResults = []
-                                isSearching = false
-                            }
-                            .foregroundStyle(Color.accentColor)
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-
-                        if !locationSearchResults.isEmpty {
-                            Divider()
-                            ScrollView {
-                                LazyVStack(spacing: 0) {
-                                    ForEach(Array(locationSearchResults.enumerated()), id: \.offset) { index, item in
-                                        Button { selectLocationResult(item) } label: {
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(item.name ?? "未知地点")
-                                                    .font(.subheadline)
-                                                    .foregroundStyle(.primary)
-                                                if let addr = item.placemark.title, addr != item.name {
-                                                    Text(addr)
-                                                        .font(.caption)
-                                                        .foregroundStyle(.secondary)
-                                                        .lineLimit(1)
-                                                }
-                                            }
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .padding(.horizontal, 14)
-                                            .padding(.vertical, 10)
-                                        }
-                                        if index < locationSearchResults.count - 1 {
-                                            Divider().padding(.leading, 14)
-                                        }
-                                    }
-                                }
-                            }
-                            .frame(maxHeight: 240)
-                        }
-                    }
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-                    .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
-                    .padding(.horizontal, 12)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .padding(.top, 8)
-                    .task(id: locationSearchText) {
-                        guard !locationSearchText.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                        try? await Task.sleep(nanoseconds: 400_000_000)
-                        guard !Task.isCancelled else { return }
-                        await doLocationSearch()
-                    }
+                    locationSearchOverlay
                 }
 
-                // Bottom card — single fragment preview or cluster entry
-                if let cluster = selectedCluster {
-                    VStack {
-                        Spacer()
-                        if cluster.isSingle, let fragment = cluster.fragments.first {
-                            NavigationLink(destination: FragmentDetailView(fragment: fragment)) {
-                                MapPreviewCard(fragment: fragment)
-                            }
-                            .buttonStyle(.plain)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                        } else {
-                            Button {
-                                showingClusterSheet = true
-                            } label: {
-                                ClusterPreviewCard(cluster: cluster)
-                            }
-                            .buttonStyle(.plain)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
-                    .id(cluster.id)
-                    .gesture(
-                        DragGesture(minimumDistance: 20)
-                            .onEnded { value in
-                                if value.translation.height > 60 {
-                                    withAnimation(.spring(response: 0.3)) { selectedCluster = nil }
+                // Bottom card — long-press create / single fragment / cluster
+                VStack {
+                    Spacer()
+                    if let mark = longPressMark {
+                        LongPressCreateCard(
+                            mark: mark,
+                            isResolving: isResolvingName,
+                            onCreate: {
+                                createRequest = MapCreateRequest(
+                                    latitude: mark.coordinate.latitude,
+                                    longitude: mark.coordinate.longitude,
+                                    locationName: mark.resolvedName
+                                )
+                            },
+                            onDismiss: { withAnimation { longPressMark = nil } }
+                        )
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .padding(.horizontal, 16).padding(.bottom, 24)
+                    } else if let cluster = selectedCluster {
+                        Group {
+                            if cluster.isSingle, let fragment = cluster.fragments.first {
+                                NavigationLink(destination: FragmentDetailView(fragment: fragment)) {
+                                    MapPreviewCard(fragment: fragment)
                                 }
+                                .buttonStyle(.plain)
+                            } else {
+                                Button { showingClusterSheet = true } label: {
+                                    ClusterPreviewCard(cluster: cluster)
+                                }
+                                .buttonStyle(.plain)
                             }
-                    )
+                        }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .padding(.horizontal, 16).padding(.bottom, 24)
+                        .id(cluster.id)
+                        .gesture(DragGesture(minimumDistance: 20).onEnded { v in
+                            if v.translation.height > 60 {
+                                withAnimation(.spring(response: 0.3)) { selectedCluster = nil }
+                            }
+                        })
+                    }
                 }
             }
             .navigationTitle("地图")
@@ -242,18 +271,43 @@ struct FragmentMapView: View {
                         }
                     } label: {
                         Image(systemName: showingLocationSearch ? "magnifyingglass.circle.fill" : "magnifyingglass")
-                            .foregroundStyle(Color.accentColor)
+                            .glassToolbarIcon(active: showingLocationSearch)
                     }
+                    .buttonStyle(.plain)
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        withAnimation {
-                            position = .userLocation(fallback: .automatic)
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    // Fly to random fragment
+                    if !clusters.isEmpty {
+                        Button { flyToRandom() } label: {
+                            Image(systemName: "shuffle")
+                                .glassToolbarIcon()
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // Map style cycle
+                    Menu {
+                        ForEach(MapStyleOption.allCases, id: \.self) { style in
+                            Button {
+                                withAnimation { mapStyle = style }
+                            } label: {
+                                Label(style.rawValue, systemImage: style.icon)
+                            }
                         }
                     } label: {
-                        Image(systemName: "location.fill")
-                            .foregroundStyle(Color.accentColor)
+                        Image(systemName: mapStyle.icon)
+                            .glassToolbarIcon(active: mapStyle != .standard)
                     }
+                    .buttonStyle(.plain)
+
+                    // My location
+                    Button {
+                        withAnimation { position = .userLocation(fallback: .automatic) }
+                    } label: {
+                        Image(systemName: "location.fill")
+                            .glassToolbarIcon()
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .overlay {
@@ -267,10 +321,175 @@ struct FragmentMapView: View {
             }
         }
         .sheet(isPresented: $showingClusterSheet) {
-            if let cluster = selectedCluster {
-                ClusterDetailSheet(cluster: cluster)
+            if let cluster = selectedCluster { ClusterDetailSheet(cluster: cluster) }
+        }
+        .sheet(item: $createRequest) { req in
+            FragmentEditView(
+                preloadedLatitude: req.latitude,
+                preloadedLongitude: req.longitude,
+                preloadedLocationName: req.locationName,
+                saveDraftOnCancel: false
+            )
+        }
+    }
+
+    // MARK: - Location search overlay
+
+    private var locationSearchOverlay: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                if isSearching {
+                    ProgressView().scaleEffect(0.8)
+                } else {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                }
+                TextField("搜索地点", text: $locationSearchText)
+                    .submitLabel(.search)
+                    .onSubmit { Task { await doLocationSearch() } }
+                if !locationSearchText.isEmpty {
+                    Button {
+                        locationSearchText = ""
+                        locationSearchResults = []
+                    } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    }
+                }
+                Button("取消") {
+                    showingLocationSearch = false
+                    locationSearchText = ""
+                    locationSearchResults = []
+                }
+                .foregroundStyle(Color.accentColor)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+
+            if !locationSearchResults.isEmpty {
+                Divider()
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(locationSearchResults.enumerated()), id: \.offset) { index, item in
+                            Button { selectLocationResult(item) } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.name ?? "未知地点")
+                                        .font(.subheadline).foregroundStyle(.primary)
+                                    if let addr = item.placemark.title, addr != item.name {
+                                        Text(addr).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 14).padding(.vertical, 10)
+                            }
+                            if index < locationSearchResults.count - 1 {
+                                Divider().padding(.leading, 14)
+                            }
+                        }
+                    }
+                }
+                .frame(maxHeight: 240)
             }
         }
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.top, 8)
+        .task(id: locationSearchText) {
+            guard !locationSearchText.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard !Task.isCancelled else { return }
+            await doLocationSearch()
+        }
+    }
+}
+
+// MARK: - Long-press pin annotation
+
+private struct LongPressPin: View {
+    let isResolving: Bool
+    @State private var appeared = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Circle()
+                    .fill(Color.accentColor)
+                    .frame(width: 36, height: 36)
+                    .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                    .shadow(color: Color.accentColor.opacity(0.5), radius: 8, y: 2)
+                if isResolving {
+                    ProgressView().scaleEffect(0.6).tint(.white)
+                } else {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+            Triangle()
+                .fill(Color.accentColor)
+                .frame(width: 12, height: 7)
+                .offset(y: -1)
+        }
+        .scaleEffect(appeared ? 1 : 0.1)
+        .animation(.spring(response: 0.35, dampingFraction: 0.6), value: appeared)
+        .onAppear { appeared = true }
+    }
+}
+
+private struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        p.closeSubpath()
+        return p
+    }
+}
+
+// MARK: - Long-press create card
+
+private struct LongPressCreateCard: View {
+    let mark: LongPressMark
+    let isResolving: Bool
+    let onCreate: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(isResolving ? "正在识别位置…" : (mark.resolvedName.isEmpty ? "未知地点" : mark.resolvedName))
+                    .font(.subheadline).fontWeight(.medium)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                let lat = String(format: "%.4f", mark.coordinate.latitude)
+                let lon = String(format: "%.4f", mark.coordinate.longitude)
+                Text("\(lat), \(lon)")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            Spacer()
+            Button(action: onCreate) {
+                Label("在这里记录", systemImage: "plus")
+                    .font(.subheadline).fontWeight(.semibold)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(Color.accentColor, in: Capsule())
+            }
+            .buttonStyle(PressScaleButtonStyle(scale: 0.94))
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.caption2).fontWeight(.bold)
+                    .foregroundStyle(.secondary)
+                    .padding(7)
+                    .background(.regularMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16)
+            .strokeBorder(Color.accentColor.opacity(0.3), lineWidth: 0.8))
+        .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
     }
 }
 
@@ -310,7 +529,6 @@ private struct ClusterPin: View {
 
     private var multiPin: some View {
         ZStack(alignment: .topTrailing) {
-            // Stacked thumbnails
             ZStack {
                 ForEach(Array(cluster.fragments.prefix(3).enumerated()), id: \.offset) { i, f in
                     if let id = f.coverMediaID {
@@ -331,13 +549,10 @@ private struct ClusterPin: View {
                 }
             }
             .padding(.trailing, 6)
-
-            // Count badge
             Text("\(cluster.fragments.count)")
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.white)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
+                .padding(.horizontal, 5).padding(.vertical, 2)
                 .background(Color(red: 0.780, green: 0.624, blue: 0.384))
                 .clipShape(Capsule())
                 .overlay(Capsule().strokeBorder(.white, lineWidth: 1))
@@ -347,11 +562,10 @@ private struct ClusterPin: View {
     }
 }
 
-// MARK: - Single fragment preview card
+// MARK: - Preview cards
 
 private struct MapPreviewCard: View {
     let fragment: Fragment
-
     var body: some View {
         HStack(spacing: 12) {
             if let id = fragment.coverMediaID {
@@ -361,20 +575,12 @@ private struct MapPreviewCard: View {
             }
             VStack(alignment: .leading, spacing: 4) {
                 if !fragment.content.isEmpty {
-                    Text(fragment.content)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
+                    Text(fragment.content).font(.subheadline).foregroundStyle(.primary).lineLimit(2)
                 }
                 HStack(spacing: 4) {
                     if !fragment.locationName.isEmpty {
-                        Image(systemName: "location.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        Text(fragment.locationName)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        Image(systemName: "location.fill").font(.caption2).foregroundStyle(.secondary)
+                        Text(fragment.locationName).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         Text("·").font(.caption).foregroundStyle(.tertiary)
                     }
                     Text(fragment.date.formatted(.relative(presentation: .named)))
@@ -390,11 +596,8 @@ private struct MapPreviewCard: View {
     }
 }
 
-// MARK: - Cluster preview card (tap to expand)
-
 private struct ClusterPreviewCard: View {
     let cluster: FragmentCluster
-
     var body: some View {
         HStack(spacing: 12) {
             ZStack {
@@ -410,14 +613,9 @@ private struct ClusterPreviewCard: View {
                 }
             }
             .frame(width: 64, height: 56)
-
             VStack(alignment: .leading, spacing: 4) {
-                Text(cluster.displayName)
-                    .font(.subheadline).fontWeight(.medium)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                Text("\(cluster.fragments.count) 条碎片")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text(cluster.displayName).font(.subheadline).fontWeight(.medium).foregroundStyle(.primary).lineLimit(1)
+                Text("\(cluster.fragments.count) 条碎片").font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             Image(systemName: "chevron.up").font(.caption).foregroundStyle(.tertiary)
@@ -445,15 +643,12 @@ private struct ClusterDetailSheet: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 16)
+                .padding(.horizontal, 16).padding(.vertical, 16)
             }
             .navigationTitle(cluster.displayName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("关闭") { dismiss() }
-                }
+                ToolbarItem(placement: .topBarTrailing) { Button("关闭") { dismiss() } }
             }
         }
         .presentationDetents([.medium, .large])
