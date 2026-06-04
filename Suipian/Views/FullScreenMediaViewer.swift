@@ -155,17 +155,19 @@ private struct ZoomablePhotoView: View {
     @Binding var isZoomed: Bool
 
     @State private var scale: CGFloat = 1.0
-    @State private var panOffset: CGSize = .zero
+    @State private var offset: CGSize = .zero
+    // Stores offset at the start of each drag so we can compute
+    // the new position purely from @State (no @GestureState needed).
+    // Using only @State avoids the GestureState-reset-before-onEnded
+    // race that caused a visible jitter frame on every drag release.
+    @State private var dragBaseOffset: CGSize = .zero
     @GestureState private var pinchScale: CGFloat = 1.0
-    @GestureState private var dragDelta: CGSize = .zero
 
     var body: some View {
         MediaDetailView(identifier: identifier, isFullScreen: true)
             .scaleEffect(max(1.0, scale * pinchScale))
-            .offset(
-                x: scale > 1 ? panOffset.width + dragDelta.width : 0,
-                y: scale > 1 ? panOffset.height + dragDelta.height : 0
-            )
+            .offset(x: scale > 1 ? offset.width : 0,
+                    y: scale > 1 ? offset.height : 0)
             .gesture(
                 MagnificationGesture()
                     .updating($pinchScale) { value, state, _ in state = value }
@@ -173,24 +175,32 @@ private struct ZoomablePhotoView: View {
                         let newScale = max(1.0, scale * value)
                         scale = newScale
                         isZoomed = newScale > 1.0
-                        if newScale <= 1.0 { panOffset = .zero }
+                        if newScale <= 1.0 { offset = .zero; dragBaseOffset = .zero }
                     }
             )
             .simultaneousGesture(
                 DragGesture()
-                    .updating($dragDelta) { value, state, _ in state = value.translation }
-                    .onEnded { value in
-                        panOffset = CGSize(
-                            width: panOffset.width + value.translation.width,
-                            height: panOffset.height + value.translation.height
+                    .onChanged { v in
+                        guard scale > 1 else { return }
+                        offset = CGSize(
+                            width: dragBaseOffset.width + v.translation.width,
+                            height: dragBaseOffset.height + v.translation.height
                         )
+                    }
+                    .onEnded { v in
+                        guard scale > 1 else { return }
+                        offset = CGSize(
+                            width: dragBaseOffset.width + v.translation.width,
+                            height: dragBaseOffset.height + v.translation.height
+                        )
+                        dragBaseOffset = offset
                     },
                 including: scale > 1 ? .all : .none
             )
             .onTapGesture(count: 2) {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     if scale > 1.0 {
-                        scale = 1.0; panOffset = .zero; isZoomed = false
+                        scale = 1.0; offset = .zero; dragBaseOffset = .zero; isZoomed = false
                     } else {
                         scale = 2.5; isZoomed = true
                     }
@@ -198,7 +208,7 @@ private struct ZoomablePhotoView: View {
             }
             .onChange(of: identifier) { _, _ in
                 withAnimation(.spring(response: 0.3)) {
-                    scale = 1.0; panOffset = .zero; isZoomed = false
+                    scale = 1.0; offset = .zero; dragBaseOffset = .zero; isZoomed = false
                 }
             }
     }

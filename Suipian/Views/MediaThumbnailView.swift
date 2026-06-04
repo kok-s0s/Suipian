@@ -201,7 +201,16 @@ struct MediaDetailView: View {
                     playbackStyle: isFullScreen ? .full : .hint,
                     playTrigger: livePlayTrigger
                 )
-                if isFullScreen { lv.ignoresSafeArea() } else { lv }
+                // PHLivePhotoView's intrinsicContentSize = photo pixel dimensions (e.g. 4032×3024).
+                // Without explicit frame constraints the SwiftUI layout honours that huge size.
+                // frame(maxWidth/Height: .infinity) + clipped() keeps it within the carousel slot.
+                if isFullScreen {
+                    lv.ignoresSafeArea()
+                } else {
+                    lv
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                }
             } else if let image {
                 Image(uiImage: image)
                     .resizable()
