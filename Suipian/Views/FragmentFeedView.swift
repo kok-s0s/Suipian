@@ -417,7 +417,7 @@ struct FragmentFeedView: View {
         .onAppear {
             rebuildAll(fragments: fragments)
             refreshDraftStatus()
-            WidgetDataStore.updateTagFragments(fragments)
+            WidgetDataStore.rebuildFragmentWidgets(fragments)
         }
         .onChange(of: fragments) { oldFragments, newFragments in
             // Milestone: immediate, no debounce needed
@@ -437,7 +437,7 @@ struct FragmentFeedView: View {
                 try? await Task.sleep(nanoseconds: 150_000_000)
                 guard !Task.isCancelled else { return }
                 rebuildAll(fragments: newFragments)
-                WidgetDataStore.updateTagFragments(newFragments)
+                WidgetDataStore.rebuildFragmentWidgets(newFragments)
             }
         }
         .onChange(of: searchText) { _, _ in rebuildFiltered(fragments: fragments) }
@@ -536,7 +536,7 @@ struct FragmentFeedView: View {
                 if let f = fragmentToDelete {
                     f.audioFileNames.forEach { AudioStore.delete($0) }
                     modelContext.delete(f)
-                    WidgetDataStore.clear()
+                    WidgetDataStore.rebuildFragmentWidgets(fragments.filter { $0.persistentModelID != f.persistentModelID })
                     HapticFeedback.impact(.medium)
                 }
                 fragmentToDelete = nil

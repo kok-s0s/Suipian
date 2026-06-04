@@ -7,6 +7,7 @@ import CoreLocation
 struct FragmentEditView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query private var allFragments: [Fragment]
 
     var fragment: Fragment?
     var preloadedMediaIDs: [String] = []
@@ -828,7 +829,7 @@ struct FragmentEditView: View {
             fragment.locationName = locationName
             fragment.isPrivate = isPrivate
             SpotlightManager.index(fragment)
-            WidgetDataStore.update(with: fragment)
+            WidgetDataStore.rebuildFragmentWidgets(allFragments)
         } else {
             let f = Fragment(
                 content: content,
@@ -856,7 +857,7 @@ struct FragmentEditView: View {
             f.linkImageURL = linkImageURL
             modelContext.insert(f)
             SpotlightManager.index(f)
-            WidgetDataStore.update(with: f)
+            WidgetDataStore.rebuildFragmentWidgets(allFragments + [f])
         }
         clearDraft()
         HapticFeedback.success()

@@ -24,8 +24,22 @@ private struct WidgetImportantDateData: Codable {
 }
 
 enum WidgetDataStore {
-    static func update(with fragment: Fragment) {
-        guard !fragment.isPrivate else { return }
+    static func rebuildFragmentWidgets(_ fragments: [Fragment]) {
+        let publicFragments = fragments
+            .filter { !$0.isPrivate }
+            .sorted { $0.date > $1.date }
+
+        if let latest = publicFragments.first {
+            updateLatestFragment(latest)
+        } else {
+            UserDefaults(suiteName: kAppGroupID)?.removeObject(forKey: kLatestFragmentKey)
+        }
+
+        updateTagFragments(publicFragments)
+        WidgetCenter.shared.reloadTimelines(ofKind: "com.kok-s0s.Suipian.latestFragment")
+    }
+
+    private static func updateLatestFragment(_ fragment: Fragment) {
         let payload = WidgetFragmentData(
             content: fragment.content,
             date: fragment.date,
@@ -35,12 +49,6 @@ enum WidgetDataStore {
         if let encoded = try? JSONEncoder().encode(payload) {
             UserDefaults(suiteName: kAppGroupID)?.set(encoded, forKey: kLatestFragmentKey)
         }
-        WidgetCenter.shared.reloadAllTimelines()
-    }
-
-    static func clear() {
-        UserDefaults(suiteName: kAppGroupID)?.removeObject(forKey: kLatestFragmentKey)
-        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // Writes tag-grouped fragment data for the TagFeedWidget.

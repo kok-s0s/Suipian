@@ -17,6 +17,7 @@ struct ImportantDateEditView: View {
     @State private var notificationEnabled = true
     @State private var advanceReminderDays = 0
     @State private var showingEmojiPicker = false
+    @State private var showingPermissionAlert = false
 
     var isEditing: Bool { item != nil }
 
@@ -163,7 +164,7 @@ struct ImportantDateEditView: View {
                     Button("取消") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") { save() }
+                    Button("保存") { Task { await save() } }
                         .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                         .fontWeight(.semibold)
                 }
@@ -178,6 +179,16 @@ struct ImportantDateEditView: View {
         } message: {
             Text("输入一个 emoji 作为日期图标")
         }
+        .alert("需要通知权限", isPresented: $showingPermissionAlert) {
+            Button("去设置") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("请在系统设置中允许碎片发送通知，重要日期提醒才会生效。")
+        }
     }
 
     private func loadExisting() {
@@ -188,9 +199,17 @@ struct ImportantDateEditView: View {
         advanceReminderDays = it.advanceReminderDays
     }
 
-    private func save() {
+    @MainActor
+    private func save() async {
         let trimmed = title.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
+        if notificationEnabled {
+            let authorized = await ImportantDateNotifier.requestAuthorizationIfNeeded()
+            guard authorized else {
+                showingPermissionAlert = true
+                return
+            }
+        }
         if let it = item {
             it.title = trimmed; it.date = date; it.emoji = emoji
             it.category = category; it.note = note

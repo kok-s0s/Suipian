@@ -12,14 +12,14 @@ Open `Suipian.xcodeproj` in Xcode 15+, select a simulator or device running iOS 
 
 `SuipianApp.swift` bootstraps the single `ModelContainer` with `cloudKitDatabase: .automatic` (CloudKit sync is already wired up via the entitlement `iCloud.com.kok-s0s.Suipian`). The fallback path silently drops CloudKit and uses local-only storage.
 
-**Only `Fragment` is registered in the SwiftData schema** — `Schema([Fragment.self])`.
+`Fragment` and `ImportantDate` are registered in the SwiftData schema — `Schema([Fragment.self, ImportantDate.self])`.
 
 ### Tab structure
 
 `ContentView.swift` owns a 4-tab `TabView`:
-- **碎片** → `FragmentFeedView` — main feed with list/grid toggle, FAB, search, tag filter, date sections, random review, On This Day banner
+- **碎片** → `FragmentFeedView` — main feed with list/grid toggle, FAB, search, tag filter, date sections, random review, On This Day banner, and the map entry
 - **故事线** → `StoryListView` → `StoryDetailView` — stories are implicit groups of fragments sharing the same `storyName` string
-- **地图** → `FragmentMapView` — distance-threshold clustering, tap cluster to sheet
+- **日期** → `ImportantDatesTabView` — important-date countdowns, advance/day-of notifications, and automatic day-of fragment recording
 - **统计** → `StatsView` — heatmap, mood curve, tag distribution, Wrapped full-screen cover
 
 ### Fragment model
@@ -34,7 +34,7 @@ Open `Suipian.xcodeproj` in Xcode 15+, select a simulator or device running iOS 
 
 **Audio dual-storage**: Audio is recorded to `~/Documents/audio/<uuid>.m4a` via `AudioStore` (enum with static helpers). The raw `Data` is also saved into `fragment.audioData` so that when CloudKit syncs to another device, `AudioStore.restore(_:as:)` can recreate the local file. `SuipianApp` runs a one-time migration on launch to backfill `audioData` for older fragments that only have file names.
 
-**Widget bridge**: `WidgetDataStore` writes to `UserDefaults(suiteName: "group.com.kok-s0s.Suipian")`. The widget target reads from the same suite. The `WidgetFragmentData` struct must stay in sync between `WidgetDataStore.swift` (app) and `SuipianWidget.swift` (widget).
+**Widget bridge**: `WidgetDataStore` writes to `UserDefaults(suiteName: "group.com.kok-s0s.Suipian")`. The widget target reads from the same suite. `WidgetFragmentData` and `WidgetImportantDateData` must stay in sync between the app and widget target files.
 
 **App lock**: `ContentView` listens to `scenePhase`; on `.background` it sets `isLocked = true`. `LockScreenView` calls `LocalAuthentication` to unlock. Individual private fragments also show `LockScreenView` inline in `FragmentDetailView`.
 
@@ -58,4 +58,5 @@ Open `Suipian.xcodeproj` in Xcode 15+, select a simulator or device running iOS 
 | App Group | `group.com.kok-s0s.Suipian` |
 | iCloud container | `iCloud.com.kok-s0s.Suipian` |
 | Widget kind (tag feed) | `com.kok-s0s.Suipian.tagFeed` |
+| Widget kind (important date countdown) | `com.kok-s0s.Suipian.importantDateCountdown` |
 | Daily notification | `"daily-reminder"` |

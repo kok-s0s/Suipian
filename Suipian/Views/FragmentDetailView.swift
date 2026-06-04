@@ -9,6 +9,7 @@ struct FragmentDetailView: View {
 
     let fragment: Fragment
     @Query private var storyFragments: [Fragment]
+    @Query private var allFragments: [Fragment]
 
     init(fragment: Fragment) {
         self.fragment = fragment
@@ -231,7 +232,7 @@ struct FragmentDetailView: View {
                 UINotificationFeedbackGenerator().notificationOccurred(.warning)
                 fragment.audioFileNames.forEach { AudioStore.delete($0) }
                 modelContext.delete(fragment)
-                WidgetDataStore.clear()
+                WidgetDataStore.rebuildFragmentWidgets(allFragments.filter { $0.persistentModelID != fragment.persistentModelID })
                 dismiss()
             }
             .presentationDetents([.height(196)])

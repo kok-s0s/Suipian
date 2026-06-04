@@ -13,6 +13,32 @@ struct WidgetImportantDateData: Codable {
     let daysUntil: Int
 
     var stableID: String { "\(title)-\(date.timeIntervalSinceReferenceDate)" }
+
+    var currentDaysUntil: Int {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+
+        if isRecurring {
+            let thisYear = cal.component(.year, from: today)
+            var comps = cal.dateComponents([.month, .day], from: date)
+            comps.year = thisYear
+            if let thisOccurrence = cal.date(from: comps) {
+                let start = cal.startOfDay(for: thisOccurrence)
+                if start >= today {
+                    return cal.dateComponents([.day], from: today, to: start).day ?? 0
+                }
+            }
+            comps.year = thisYear + 1
+            if let nextOccurrence = cal.date(from: comps) {
+                let start = cal.startOfDay(for: nextOccurrence)
+                return cal.dateComponents([.day], from: today, to: start).day ?? 0
+            }
+            return daysUntil
+        }
+
+        let target = cal.startOfDay(for: date)
+        return cal.dateComponents([.day], from: today, to: target).day ?? daysUntil
+    }
 }
 
 struct ImportantDateEntry: TimelineEntry {
@@ -34,7 +60,8 @@ struct ImportantDateCountdownProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ImportantDateEntry>) -> Void) {
         let entry = ImportantDateEntry(date: Date(), dates: load())
-        let nextRefresh = Calendar.current.date(byAdding: .hour, value: 6, to: Date()) ?? Date()
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date()))
+        let nextRefresh = tomorrow?.addingTimeInterval(60) ?? Date().addingTimeInterval(3600)
         completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
     }
 
@@ -44,7 +71,9 @@ struct ImportantDateCountdownProvider: TimelineProvider {
               let decoded = try? JSONDecoder().decode([WidgetImportantDateData].self, from: data) else {
             return []
         }
-        return decoded.sorted { $0.daysUntil < $1.daysUntil }
+        return decoded
+            .filter { $0.isRecurring || $0.currentDaysUntil >= 0 }
+            .sorted { $0.currentDaysUntil < $1.currentDaysUntil }
     }
 }
 
@@ -86,7 +115,7 @@ struct ImportantDateCountdownWidgetView: View {
                                 Text(item.title)
                                     .lineLimit(1)
                                 Spacer()
-                                Text(item.daysUntil == 0 ? "今天" : "\(item.daysUntil)天")
+                                Text(item.currentDaysUntil == 0 ? "今天" : "\(item.currentDaysUntil)天")
                                     .monospacedDigit()
                                     .foregroundStyle(.secondary)
                             }
@@ -125,11 +154,11 @@ struct ImportantDateCountdownWidgetView: View {
 
     private func countdown(for item: WidgetImportantDateData) -> some View {
         HStack(alignment: .lastTextBaseline, spacing: 4) {
-            if item.daysUntil == 0 {
+            if item.currentDaysUntil == 0 {
                 Text("今天")
                     .font(.system(size: 30, weight: .bold, design: .rounded))
             } else {
-                Text("\(item.daysUntil)")
+                Text("\(item.currentDaysUntil)")
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .monospacedDigit()
                 Text("天后")

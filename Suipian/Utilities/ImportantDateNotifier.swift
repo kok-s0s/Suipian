@@ -5,6 +5,16 @@ import SwiftData
 enum ImportantDateNotifier {
     private static let prefix = "important-date-"
 
+    static func requestAuthorizationIfNeeded() async -> Bool {
+        let center = UNUserNotificationCenter.current()
+        let status = await center.notificationSettings().authorizationStatus
+        if status == .authorized || status == .provisional { return true }
+        if status == .notDetermined {
+            return (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        }
+        return false
+    }
+
     static func rescheduleAll(_ dates: [ImportantDate]) {
         let center = UNUserNotificationCenter.current()
         // Remove all important-date notifications first

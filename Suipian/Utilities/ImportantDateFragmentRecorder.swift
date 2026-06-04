@@ -28,7 +28,7 @@ enum ImportantDateFragmentRecorder {
         if changed {
             try? context.save()
             let allFragments = (try? context.fetch(FetchDescriptor<Fragment>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
-            WidgetDataStore.updateTagFragments(allFragments)
+            WidgetDataStore.rebuildFragmentWidgets(allFragments)
         }
     }
 
