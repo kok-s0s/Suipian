@@ -94,10 +94,13 @@ struct FragmentMapView: View {
         let locationName: String
     }
 
-    var located: [Fragment] { fragments.filter { $0.hasLocation } }
-    var clusters: [FragmentCluster] {
+    @State private var cachedClusters: [FragmentCluster] = []
+    var clusters: [FragmentCluster] { cachedClusters }
+
+    private func rebuildClusters() {
+        let located = fragments.filter { $0.hasLocation }
         let threshold = max(mapSpan.latitudeDelta * 0.10, 0.004)
-        return makeClusters(located, threshold: threshold)
+        cachedClusters = makeClusters(located, threshold: threshold)
     }
 
     private func doLocationSearch() async {
@@ -223,6 +226,7 @@ struct FragmentMapView: View {
                         .ignoresSafeArea(edges: .bottom)
                         .onMapCameraChange(frequency: .onEnd) { context in
                             mapSpan = context.region.span
+                            rebuildClusters()
                         }
                         .onTapGesture {
                             withAnimation { selectedCluster = nil; longPressMark = nil }
@@ -340,7 +344,9 @@ struct FragmentMapView: View {
                 }
             }
             .overlay {
-                if located.isEmpty {
+                if cachedClusters.isEmpty && !fragments.filter({ $0.hasLocation }).isEmpty {
+                    EmptyView()
+                } else if fragments.filter({ $0.hasLocation }).isEmpty {
                     ContentUnavailableView(
                         "还没有位置信息",
                         systemImage: "map",
@@ -348,6 +354,8 @@ struct FragmentMapView: View {
                     )
                 }
             }
+            .onAppear { rebuildClusters() }
+            .onChange(of: fragments) { _, _ in rebuildClusters() }
         }
         .sheet(isPresented: $showingClusterSheet) {
             if let cluster = selectedCluster { ClusterDetailSheet(cluster: cluster) }

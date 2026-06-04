@@ -55,11 +55,20 @@ struct FragmentCardView: View {
 
                 VStack(alignment: .leading, spacing: 10) {
                     if !fragment.content.isEmpty {
-                        Text(highlighted(fragment.content, query: highlight))
-                            .font(fragment.hasMedia ? .subheadline : .body)
-                            .foregroundStyle(.primary)
-                            .lineLimit(fragment.hasMedia ? 3 : 8)
-                            .multilineTextAlignment(.leading)
+                        // Fast path: skip AttributedString allocation when not searching
+                        if highlight.isEmpty {
+                            Text(fragment.content)
+                                .font(fragment.hasMedia ? .subheadline : .body)
+                                .foregroundStyle(.primary)
+                                .lineLimit(fragment.hasMedia ? 3 : 8)
+                                .multilineTextAlignment(.leading)
+                        } else {
+                            Text(highlighted(fragment.content, query: highlight))
+                                .font(fragment.hasMedia ? .subheadline : .body)
+                                .foregroundStyle(.primary)
+                                .lineLimit(fragment.hasMedia ? 3 : 8)
+                                .multilineTextAlignment(.leading)
+                        }
                     }
 
                     HStack(alignment: .center) {

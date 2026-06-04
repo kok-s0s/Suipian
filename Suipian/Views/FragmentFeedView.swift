@@ -49,6 +49,7 @@ struct FragmentFeedView: View {
     @State private var cachedListSections: [FeedSection] = []
     @State private var cachedOnThisDay: [Fragment] = []
     @State private var cachedReviewable: [Fragment] = []
+    @State private var rebuildTask: Task<Void, Never>? = nil
 
     // Use cached values in the view
     var filteredFragments: [Fragment] { cachedFilteredFragments }
@@ -403,8 +404,7 @@ struct FragmentFeedView: View {
             WidgetDataStore.updateTagFragments(fragments)
         }
         .onChange(of: fragments) { oldFragments, newFragments in
-            rebuildAll(fragments: newFragments)
-            WidgetDataStore.updateTagFragments(newFragments)
+            // Milestone: immediate, no debounce needed
             if newFragments.count > oldFragments.count,
                Self.milestones.contains(newFragments.count) {
                 let n = newFragments.count
@@ -414,6 +414,14 @@ struct FragmentFeedView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
                     withAnimation(.easeOut(duration: 0.4)) { milestoneText = nil }
                 }
+            }
+            // Heavy rebuild: debounce 150ms to absorb rapid CloudKit sync bursts
+            rebuildTask?.cancel()
+            rebuildTask = Task {
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                guard !Task.isCancelled else { return }
+                rebuildAll(fragments: newFragments)
+                WidgetDataStore.updateTagFragments(newFragments)
             }
         }
         .onChange(of: searchText) { _, _ in rebuildFiltered(fragments: fragments) }
@@ -802,11 +810,17 @@ private struct FragmentGridCellView: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 if !fragment.content.isEmpty {
-                    Text(highlighted(fragment.content, query: highlight))
-                        .font(.caption)
-                        .foregroundStyle(.primary)
-                        .lineLimit(3)
-                        .multilineTextAlignment(.leading)
+                    Group {
+                        if highlight.isEmpty {
+                            Text(fragment.content)
+                        } else {
+                            Text(highlighted(fragment.content, query: highlight))
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
                 }
 
                 if !fragment.tags.isEmpty {
