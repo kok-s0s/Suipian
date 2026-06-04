@@ -86,8 +86,9 @@ struct FragmentMapView: View {
     @State private var longPressMark: LongPressMark? = nil
     @State private var isResolvingName = false
     @State private var createRequest: MapCreateRequest? = nil
-    // Tracks touch-down location so long-press callback can read it
-    @GestureState private var pressLocation: CGPoint = .zero
+    // Persists touch-down location across the long-press duration window.
+    // @GestureState resets before onLongPressGesture fires, so @State is required.
+    @State private var lastPressLocation: CGPoint = .zero
 
     private struct MapCreateRequest: Identifiable {
         let id = UUID()
@@ -128,16 +129,15 @@ struct FragmentMapView: View {
 
     private func flyToRandom() {
         guard let randomCluster = clusters.randomElement() else { return }
-        withAnimation(.easeInOut(duration: 1.0)) {
+        selectedCluster = nil
+        withAnimation(.easeInOut(duration: 0.9)) {
             position = .region(MKCoordinateRegion(
                 center: randomCluster.coordinate,
                 span: MKCoordinateSpan(latitudeDelta: 0.06, longitudeDelta: 0.06)
             ))
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            withAnimation(.spring(response: 0.35)) {
-                selectedCluster = randomCluster
-            }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            withAnimation(.spring(response: 0.35)) { selectedCluster = randomCluster }
             HapticFeedback.impact(.light)
         }
     }
@@ -180,16 +180,20 @@ struct FragmentMapView: View {
     }
 
     private func tapCluster(_ cluster: FragmentCluster) {
-        withAnimation(.spring(response: 0.3)) {
-            if selectedCluster?.id == cluster.id {
-                selectedCluster = nil
-            } else {
-                selectedCluster = cluster
-                longPressMark = nil
+        if selectedCluster?.id == cluster.id {
+            withAnimation(.spring(response: 0.3)) { selectedCluster = nil }
+        } else {
+            longPressMark = nil
+            // Smooth pan — easeInOut feels like the map is gliding, not jumping
+            withAnimation(.easeInOut(duration: 0.75)) {
                 position = .region(MKCoordinateRegion(
                     center: cluster.coordinate,
                     span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04)
                 ))
+            }
+            // Show the card after the pan lands
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                withAnimation(.spring(response: 0.35)) { selectedCluster = cluster }
             }
         }
     }
@@ -227,14 +231,14 @@ struct FragmentMapView: View {
                         .onTapGesture {
                             withAnimation { selectedCluster = nil; longPressMark = nil }
                         }
-                        // DragGesture(minimumDistance: 0) captures touch-start location;
-                        // onLongPressGesture reads it via pressLocation GestureState.
+                        // DragGesture captures touch-start into @State (not @GestureState)
+                        // so the value survives until onLongPressGesture fires.
                         .simultaneousGesture(
                             DragGesture(minimumDistance: 0)
-                                .updating($pressLocation) { v, state, _ in state = v.startLocation }
+                                .onChanged { v in lastPressLocation = v.startLocation }
                         )
-                        .onLongPressGesture(minimumDuration: 0.5) {
-                            handleLongPress(at: pressLocation, proxy: proxy)
+                        .onLongPressGesture(minimumDuration: 0.6) {
+                            handleLongPress(at: lastPressLocation, proxy: proxy)
                         }
                 }
 
