@@ -86,6 +86,8 @@ struct FragmentMapView: View {
     @State private var longPressMark: LongPressMark? = nil
     @State private var isResolvingName = false
     @State private var createRequest: MapCreateRequest? = nil
+    // Tracks touch-down location so long-press callback can read it
+    @GestureState private var pressLocation: CGPoint = .zero
 
     private struct MapCreateRequest: Identifiable {
         let id = UUID()
@@ -193,7 +195,8 @@ struct FragmentMapView: View {
     }
 
     private func handleLongPress(at screenPoint: CGPoint, proxy: MapProxy) {
-        guard let coord = proxy.convert(screenPoint, from: .local) else { return }
+        guard let coord = proxy.convert(screenPoint, from: .local),
+              screenPoint != .zero else { return }
         HapticFeedback.impact(.medium)
         withAnimation(.spring(response: 0.3)) {
             selectedCluster = nil
@@ -224,8 +227,14 @@ struct FragmentMapView: View {
                         .onTapGesture {
                             withAnimation { selectedCluster = nil; longPressMark = nil }
                         }
-                        .onLongPressGesture(minimumDuration: 0.5) { pt in
-                            handleLongPress(at: pt, proxy: proxy)
+                        // DragGesture(minimumDistance: 0) captures touch-start location;
+                        // onLongPressGesture reads it via pressLocation GestureState.
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 0)
+                                .updating($pressLocation) { v, state, _ in state = v.startLocation }
+                        )
+                        .onLongPressGesture(minimumDuration: 0.5) {
+                            handleLongPress(at: pressLocation, proxy: proxy)
                         }
                 }
 
