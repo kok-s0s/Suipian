@@ -732,8 +732,9 @@ private struct FragmentGridCellView: View {
         (UIScreen.main.bounds.width - 44) / 2
     }
 
-    init(fragment: Fragment) {
+    init(fragment: Fragment, highlight: String = "") {
         self.fragment = fragment
+        self.highlight = highlight
         let cached = fragment.coverMediaID.flatMap { FragmentGridCellView.ratioCache[$0] }
         _imageRatio = State(initialValue: cached ?? 1.0)
     }
