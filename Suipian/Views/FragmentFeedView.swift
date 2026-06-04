@@ -42,33 +42,50 @@ struct FragmentFeedView: View {
         hasDraft = UserDefaults.standard.data(forKey: Self.draftKey) != nil
     }
 
-    var onThisDayFragments: [Fragment] {
+    // MARK: - Cached derived state (rebuilt only when inputs change, not on every render)
+
+    @State private var cachedSortedTags: [(tag: String, count: Int)] = []
+    @State private var cachedFilteredFragments: [Fragment] = []
+    @State private var cachedListSections: [FeedSection] = []
+    @State private var cachedOnThisDay: [Fragment] = []
+    @State private var cachedReviewable: [Fragment] = []
+
+    // Use cached values in the view
+    var filteredFragments: [Fragment] { cachedFilteredFragments }
+    var onThisDayFragments: [Fragment] { cachedOnThisDay }
+    private var reviewableFragments: [Fragment] { cachedReviewable }
+
+    private static let monthFmt: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "yyyy 年 M 月"; return f
+    }()
+
+    private func rebuildAll(fragments: [Fragment]) {
+        // Tag frequency
+        var freq: [String: Int] = [:]
+        for f in fragments { for t in f.tags { freq[t, default: 0] += 1 } }
+        cachedSortedTags = freq.sorted { $0.value > $1.value }.map { (tag: $0.key, count: $0.value) }
+
+        // On this day
         let cal = Calendar.current
         let today = cal.dateComponents([.month, .day], from: Date())
         let thisYear = cal.component(.year, from: Date())
-        return fragments.filter {
+        cachedOnThisDay = fragments.filter {
             let c = cal.dateComponents([.month, .day], from: $0.date)
             return c.month == today.month && c.day == today.day
                 && cal.component(.year, from: $0.date) < thisYear
         }
+
+        // Reviewable
+        let todayStart = cal.startOfDay(for: Date())
+        cachedReviewable = fragments.filter { $0.date < todayStart }
+
+        // Filtered + sorted
+        rebuildFiltered(fragments: fragments)
     }
 
-    // Cached tag frequency — recomputed only when fragments change, not on every keypress
-    @State private var cachedSortedTags: [(tag: String, count: Int)] = []
-
-    private func buildSortedTags() -> [(tag: String, count: Int)] {
-        var freq: [String: Int] = [:]
-        for fragment in fragments {
-            for tag in fragment.tags { freq[tag, default: 0] += 1 }
-        }
-        return freq.sorted { $0.value > $1.value }.map { (tag: $0.key, count: $0.value) }
-    }
-
-    var filteredFragments: [Fragment] {
+    private func rebuildFiltered(fragments: [Fragment]) {
         var result = fragments
-        if let tag = selectedTag {
-            result = result.filter { $0.tags.contains(tag) }
-        }
+        if let tag = selectedTag { result = result.filter { $0.tags.contains(tag) } }
         if !searchText.isEmpty {
             let q = searchText.lowercased()
             result = result.filter {
@@ -79,16 +96,48 @@ struct FragmentFeedView: View {
                 $0.mood.contains(q)
             }
         }
-        return result.sorted { lhs, rhs in
+        result.sort { lhs, rhs in
             if lhs.isPinned != rhs.isPinned { return lhs.isPinned }
             return sortAscending ? lhs.date < rhs.date : lhs.date > rhs.date
         }
+        cachedFilteredFragments = result
+        rebuildSections(filtered: result)
     }
 
-    // Fragments older than 7 days, for random review
-    private var reviewableFragments: [Fragment] {
-        let today = Calendar.current.startOfDay(for: Date())
-        return fragments.filter { $0.date < today }
+    private func rebuildSections(filtered: [Fragment]) {
+        guard !filtered.isEmpty else { cachedListSections = []; return }
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: Date())
+        let yesterdayStart = cal.date(byAdding: .day, value: -1, to: todayStart)!
+        let weekStart = cal.date(byAdding: .day, value: -7, to: todayStart)!
+        let pinned = filtered.filter { $0.isPinned }
+        let unpinned = filtered.filter { !$0.isPinned }
+        var todayF: [Fragment] = [], yesterdayF: [Fragment] = [], weekF: [Fragment] = []
+        var monthMap: [String: [Fragment]] = [:]
+        var monthFirst: [String: Date] = [:]
+        for f in unpinned {
+            if f.date >= todayStart { todayF.append(f) }
+            else if f.date >= yesterdayStart { yesterdayF.append(f) }
+            else if f.date >= weekStart { weekF.append(f) }
+            else {
+                let key = Self.monthFmt.string(from: f.date)
+                if monthFirst[key] == nil { monthFirst[key] = f.date }
+                monthMap[key, default: []].append(f)
+            }
+        }
+        let monthSections = monthMap.keys
+            .sorted { (monthFirst[$0] ?? .distantPast) > (monthFirst[$1] ?? .distantPast) }
+            .map { FeedSection(id: $0, fragments: monthMap[$0]!) }
+        var dateSections: [FeedSection] = []
+        if !todayF.isEmpty     { dateSections.append(FeedSection(id: "今天",    fragments: todayF)) }
+        if !yesterdayF.isEmpty { dateSections.append(FeedSection(id: "昨天",    fragments: yesterdayF)) }
+        if !weekF.isEmpty      { dateSections.append(FeedSection(id: "本周",    fragments: weekF)) }
+        dateSections.append(contentsOf: monthSections)
+        if sortAscending { dateSections = dateSections.reversed() }
+        var result: [FeedSection] = []
+        if !pinned.isEmpty { result.append(FeedSection(id: "置顶", fragments: pinned)) }
+        result.append(contentsOf: dateSections)
+        cachedListSections = result
     }
 
     private func pickRandomFragment() {
@@ -104,49 +153,7 @@ struct FragmentFeedView: View {
         let fragments: [Fragment]
     }
 
-    private func monthLabel(_ date: Date) -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy 年 M 月"
-        return fmt.string(from: date)
-    }
-
-    private var listSections: [FeedSection] {
-        if filteredFragments.isEmpty { return [] }
-        let pinned = filteredFragments.filter { $0.isPinned }
-        let unpinned = filteredFragments.filter { !$0.isPinned }
-        let cal = Calendar.current
-        let todayStart = cal.startOfDay(for: Date())
-        let yesterdayStart = cal.date(byAdding: .day, value: -1, to: todayStart)!
-        let weekStart = cal.date(byAdding: .day, value: -7, to: todayStart)!
-        var todayFrags: [Fragment] = []
-        var yesterdayFrags: [Fragment] = []
-        var weekFrags: [Fragment] = []
-        var monthMap: [String: [Fragment]] = [:]
-        var monthFirstDate: [String: Date] = [:]
-        for f in unpinned {
-            if f.date >= todayStart { todayFrags.append(f) }
-            else if f.date >= yesterdayStart { yesterdayFrags.append(f) }
-            else if f.date >= weekStart { weekFrags.append(f) }
-            else {
-                let key = monthLabel(f.date)
-                if monthFirstDate[key] == nil { monthFirstDate[key] = f.date }
-                monthMap[key, default: []].append(f)
-            }
-        }
-        let monthSections = monthMap.keys
-            .sorted { (monthFirstDate[$0] ?? .distantPast) > (monthFirstDate[$1] ?? .distantPast) }
-            .map { FeedSection(id: $0, fragments: monthMap[$0]!) }
-        var dateSections: [FeedSection] = []
-        if !todayFrags.isEmpty     { dateSections.append(FeedSection(id: "今天", fragments: todayFrags)) }
-        if !yesterdayFrags.isEmpty { dateSections.append(FeedSection(id: "昨天", fragments: yesterdayFrags)) }
-        if !weekFrags.isEmpty      { dateSections.append(FeedSection(id: "本周", fragments: weekFrags)) }
-        dateSections.append(contentsOf: monthSections)
-        if sortAscending { dateSections = dateSections.reversed() }
-        var result: [FeedSection] = []
-        if !pinned.isEmpty { result.append(FeedSection(id: "置顶", fragments: pinned)) }
-        result.append(contentsOf: dateSections)
-        return result
-    }
+    private var listSections: [FeedSection] { cachedListSections }
 
     var body: some View {
         NavigationStack {
@@ -391,12 +398,12 @@ struct FragmentFeedView: View {
                 }
             }
         .onAppear {
-            cachedSortedTags = buildSortedTags()
+            rebuildAll(fragments: fragments)
             refreshDraftStatus()
             WidgetDataStore.updateTagFragments(fragments)
         }
         .onChange(of: fragments) { oldFragments, newFragments in
-            cachedSortedTags = buildSortedTags()
+            rebuildAll(fragments: newFragments)
             WidgetDataStore.updateTagFragments(newFragments)
             if newFragments.count > oldFragments.count,
                Self.milestones.contains(newFragments.count) {
@@ -409,6 +416,9 @@ struct FragmentFeedView: View {
                 }
             }
         }
+        .onChange(of: searchText) { _, _ in rebuildFiltered(fragments: fragments) }
+        .onChange(of: selectedTag) { _, _ in rebuildFiltered(fragments: fragments) }
+        .onChange(of: sortAscending) { _, _ in rebuildFiltered(fragments: fragments) }
         .overlay {
                 if fabExpanded {
                     Color.black.opacity(0.25)
