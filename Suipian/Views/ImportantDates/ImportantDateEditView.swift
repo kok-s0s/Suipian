@@ -4,6 +4,7 @@ import SwiftData
 struct ImportantDateEditView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query private var allDates: [ImportantDate]
 
     var item: ImportantDate? = nil
 
@@ -14,6 +15,7 @@ struct ImportantDateEditView: View {
     @State private var note = ""
     @State private var isRecurring = true
     @State private var notificationEnabled = true
+    @State private var advanceReminderDays = 0
     @State private var showingEmojiPicker = false
 
     var isEditing: Bool { item != nil }
@@ -93,14 +95,31 @@ struct ImportantDateEditView: View {
                                 Image(systemName: "bell.fill")
                                     .foregroundStyle(notificationEnabled ? Color.accentColor : .secondary)
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text("当天提醒")
+                                    Text("重要日期提醒")
                                         .font(.subheadline)
-                                    Text("当天上午 9 点发送通知")
+                                    Text(notificationDescription)
                                         .font(.caption).foregroundStyle(.secondary)
                                 }
                             }
                         }
                         .padding(16)
+
+                        if notificationEnabled {
+                            Divider().padding(.leading, 58)
+                            Stepper(value: $advanceReminderDays, in: 0...30) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "calendar.badge.exclamationmark")
+                                        .foregroundStyle(Color.accentColor)
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text("提前提醒")
+                                            .font(.subheadline)
+                                        Text(advanceReminderDays == 0 ? "不提前，只在当天提醒" : "提前 \(advanceReminderDays) 天上午 9 点提醒")
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                            .padding(16)
+                        }
                     }
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
 
@@ -119,6 +138,7 @@ struct ImportantDateEditView: View {
                             if let it = item {
                                 ImportantDateNotifier.remove(it)
                                 modelContext.delete(it)
+                                WidgetDataStore.updateImportantDates(allDates.filter { $0 !== it })
                             }
                             dismiss()
                         } label: {
@@ -165,6 +185,7 @@ struct ImportantDateEditView: View {
         title = it.title; date = it.date; emoji = it.emoji
         category = it.category; note = it.note
         isRecurring = it.isRecurring; notificationEnabled = it.notificationEnabled
+        advanceReminderDays = it.advanceReminderDays
     }
 
     private func save() {
@@ -174,16 +195,26 @@ struct ImportantDateEditView: View {
             it.title = trimmed; it.date = date; it.emoji = emoji
             it.category = category; it.note = note
             it.isRecurring = isRecurring; it.notificationEnabled = notificationEnabled
+            it.advanceReminderDays = advanceReminderDays
             ImportantDateNotifier.remove(it)
             if notificationEnabled { ImportantDateNotifier.schedule(it) }
+            WidgetDataStore.updateImportantDates(allDates)
         } else {
             let newItem = ImportantDate(title: trimmed, date: date, emoji: emoji,
                                         category: category, note: note,
-                                        isRecurring: isRecurring, notificationEnabled: notificationEnabled)
+                                        isRecurring: isRecurring, notificationEnabled: notificationEnabled,
+                                        advanceReminderDays: advanceReminderDays)
             modelContext.insert(newItem)
             if notificationEnabled { ImportantDateNotifier.schedule(newItem) }
+            WidgetDataStore.updateImportantDates(allDates + [newItem])
         }
         HapticFeedback.success()
         dismiss()
+    }
+
+    private var notificationDescription: String {
+        advanceReminderDays == 0
+            ? "当天上午 9 点通知"
+            : "提前 \(advanceReminderDays) 天和当天上午 9 点通知"
     }
 }

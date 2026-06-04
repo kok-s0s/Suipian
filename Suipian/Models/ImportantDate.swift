@@ -10,11 +10,13 @@ final class ImportantDate {
     var note: String = ""
     var isRecurring: Bool = true
     var notificationEnabled: Bool = true
+    var advanceReminderDays: Int = 0
     var createdAt: Date = Date()
 
     init(title: String, date: Date, emoji: String = "🗓",
          category: String = "纪念日", note: String = "",
-         isRecurring: Bool = true, notificationEnabled: Bool = true) {
+         isRecurring: Bool = true, notificationEnabled: Bool = true,
+         advanceReminderDays: Int = 0) {
         self.title = title
         self.date = date
         self.emoji = emoji
@@ -22,6 +24,7 @@ final class ImportantDate {
         self.note = note
         self.isRecurring = isRecurring
         self.notificationEnabled = notificationEnabled
+        self.advanceReminderDays = advanceReminderDays
     }
 
     static let categories = ["生日", "纪念日", "节日", "目标", "其他"]

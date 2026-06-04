@@ -95,6 +95,14 @@ struct ImportantDatesTabView: View {
         .sheet(item: $dateToEdit) { item in
             ImportantDateEditView(item: item)
         }
+        .onAppear {
+            WidgetDataStore.updateImportantDates(dates)
+            ImportantDateNotifier.rescheduleAll(dates)
+        }
+        .onChange(of: dates) { _, newDates in
+            WidgetDataStore.updateImportantDates(newDates)
+            ImportantDateNotifier.rescheduleAll(newDates)
+        }
     }
 
     @ViewBuilder

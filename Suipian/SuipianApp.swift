@@ -28,6 +28,7 @@ struct SuipianApp: App {
                 .tint(Color(red: 0.36, green: 0.44, blue: 0.64))
                 .task { migrateAudioDataIfNeeded() }
                 .task { await refreshNotificationIfNeeded() }
+                .task { await refreshImportantDateFeatures() }
                 .environment(syncMonitor)
                 .environment(appRouter)
                 .onContinueUserActivity(CSSearchableItemActionType) { [self] activity in
@@ -67,5 +68,14 @@ struct SuipianApp: App {
             changed = true
         }
         if changed { try? ctx.save() }
+    }
+
+    @MainActor
+    private func refreshImportantDateFeatures() {
+        let ctx = sharedModelContainer.mainContext
+        let dates = (try? ctx.fetch(FetchDescriptor<ImportantDate>())) ?? []
+        WidgetDataStore.updateImportantDates(dates)
+        ImportantDateNotifier.rescheduleAll(dates)
+        ImportantDateFragmentRecorder.recordTodayItems(dates, in: ctx)
     }
 }

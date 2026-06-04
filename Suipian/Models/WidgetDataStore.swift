@@ -3,6 +3,7 @@ import WidgetKit
 
 private let kAppGroupID = "group.com.kok-s0s.Suipian"
 private let kLatestFragmentKey = "latestFragment"
+private let kImportantDatesKey = "importantDates"
 
 // Mirrors WidgetFragmentData in SuipianWidget.swift — must stay in sync.
 private struct WidgetFragmentData: Codable {
@@ -10,6 +11,16 @@ private struct WidgetFragmentData: Codable {
     let date: Date
     let locationName: String
     let tags: [String]
+}
+
+// Mirrors WidgetImportantDateData in ImportantDateCountdownWidget.swift.
+private struct WidgetImportantDateData: Codable {
+    let title: String
+    let date: Date
+    let emoji: String
+    let category: String
+    let isRecurring: Bool
+    let daysUntil: Int
 }
 
 enum WidgetDataStore {
@@ -67,5 +78,27 @@ enum WidgetDataStore {
         defaults.set(Array(tagMap.keys.sorted()), forKey: "widgetAvailableTags")
 
         WidgetCenter.shared.reloadTimelines(ofKind: "com.kok-s0s.Suipian.tagFeed")
+    }
+
+    static func updateImportantDates(_ dates: [ImportantDate]) {
+        let payloads = dates
+            .filter { !$0.isPast }
+            .sorted { $0.daysUntil < $1.daysUntil }
+            .prefix(12)
+            .map {
+                WidgetImportantDateData(
+                    title: $0.title,
+                    date: $0.date,
+                    emoji: $0.emoji,
+                    category: $0.category,
+                    isRecurring: $0.isRecurring,
+                    daysUntil: $0.daysUntil
+                )
+            }
+
+        if let encoded = try? JSONEncoder().encode(Array(payloads)) {
+            UserDefaults(suiteName: kAppGroupID)?.set(encoded, forKey: kImportantDatesKey)
+        }
+        WidgetCenter.shared.reloadTimelines(ofKind: "com.kok-s0s.Suipian.importantDateCountdown")
     }
 }
