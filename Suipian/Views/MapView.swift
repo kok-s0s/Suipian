@@ -86,9 +86,6 @@ struct FragmentMapView: View {
     @State private var longPressMark: LongPressMark? = nil
     @State private var isResolvingName = false
     @State private var createRequest: MapCreateRequest? = nil
-    // Persists touch-down location across the long-press duration window.
-    // @GestureState resets before onLongPressGesture fires, so @State is required.
-    @State private var lastPressLocation: CGPoint = .zero
 
     private struct MapCreateRequest: Identifiable {
         let id = UUID()
@@ -199,8 +196,7 @@ struct FragmentMapView: View {
     }
 
     private func handleLongPress(at screenPoint: CGPoint, proxy: MapProxy) {
-        guard let coord = proxy.convert(screenPoint, from: .local),
-              screenPoint != .zero else { return }
+        guard let coord = proxy.convert(screenPoint, from: .local) else { return }
         HapticFeedback.impact(.medium)
         withAnimation(.spring(response: 0.3)) {
             selectedCluster = nil
@@ -231,14 +227,14 @@ struct FragmentMapView: View {
                         .onTapGesture {
                             withAnimation { selectedCluster = nil; longPressMark = nil }
                         }
-                        // DragGesture captures touch-start into @State (not @GestureState)
-                        // so the value survives until onLongPressGesture fires.
-                        .simultaneousGesture(
-                            DragGesture(minimumDistance: 0)
-                                .onChanged { v in lastPressLocation = v.startLocation }
-                        )
-                        .onLongPressGesture(minimumDuration: 0.6) {
-                            handleLongPress(at: lastPressLocation, proxy: proxy)
+                        .overlay {
+                            // UILongPressGestureRecognizer is the only reliable way to
+                            // intercept long-press with a location on top of MapKit's
+                            // own gesture recognizers (SwiftUI gestures get eaten by Map).
+                            LongPressOverlay(minimumDuration: 0.6) { screenPoint in
+                                handleLongPress(at: screenPoint, proxy: proxy)
+                            }
+                            .ignoresSafeArea(edges: .bottom)
                         }
                 }
 
@@ -686,5 +682,46 @@ private struct ClusterDetailSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+}
+
+// MARK: - Long-press overlay (UIKit bridge)
+// SwiftUI gestures are consumed by Map's internal gesture recognizers.
+// This transparent UIView sits on top and uses UILongPressGestureRecognizer
+// with cancelsTouchesInView = false so Map still pans/zooms normally.
+
+private struct LongPressOverlay: UIViewRepresentable {
+    var minimumDuration: TimeInterval = 0.6
+    var onLongPress: (CGPoint) -> Void
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = true
+        let recognizer = UILongPressGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handle(_:))
+        )
+        recognizer.minimumPressDuration = minimumDuration
+        recognizer.cancelsTouchesInView = false
+        recognizer.delaysTouchesEnded = false
+        view.addGestureRecognizer(recognizer)
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.onLongPress = onLongPress
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(onLongPress: onLongPress) }
+
+    class Coordinator: NSObject {
+        var onLongPress: (CGPoint) -> Void
+        init(onLongPress: @escaping (CGPoint) -> Void) { self.onLongPress = onLongPress }
+
+        @objc func handle(_ r: UILongPressGestureRecognizer) {
+            guard r.state == .began else { return }
+            onLongPress(r.location(in: r.view))
+        }
     }
 }
