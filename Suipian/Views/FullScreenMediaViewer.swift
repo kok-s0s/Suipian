@@ -48,10 +48,13 @@ struct FullScreenMediaViewer: View {
 
             TabView(selection: $currentIndex) {
                 ForEach(Array(identifiers.enumerated()), id: \.offset) { index, id in
-                    // Videos and Live Photos go directly to MediaDetailView —
-                    // Live Photos must bypass ZoomablePhotoView because PHLivePhotoView
-                    // handles its own touch events during playback, causing gesture conflicts.
-                    if videoIDs.contains(id) || livePhotoIDs.contains(id) {
+                    // Videos go to MediaDetailView (AVPlayer handles its own gestures).
+                    // Live Photos and regular photos both use ZoomablePhotoView:
+                    //   - PHLivePhotoView's playback uses long-press, which doesn't
+                    //     conflict with MagnificationGesture (pinch) or double-tap
+                    //   - The previous super-zoom bug was caused by ignoresSafeArea()
+                    //     layout mismatch and GestureState race, both now fixed
+                    if videoIDs.contains(id) {
                         MediaDetailView(identifier: id, isFullScreen: true)
                             .ignoresSafeArea()
                             .tag(index)
