@@ -142,71 +142,91 @@ struct FragmentMapView: View {
 
     private func resolveName(for coordinate: CLLocationCoordinate2D) async -> String {
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        let geocoder = CLGeocoder()
-        guard let placemarks = try? await geocoder.reverseGeocodeLocation(location),
-              let p = placemarks.first else { return "" }
-        return [p.name, p.locality, p.administrativeArea]
-            .compactMap { $0 }.filter { !$0.isEmpty }.prefix(2).joined(separator: ", ")
+        // MKReverseGeocodingRequest (iOS 18+); fall back to CLGeocoder on older OS
+        if #available(iOS 18, *) {
+            if let req = MKReverseGeocodingRequest(location: location),
+               let item = try? await req.mapItems.first {
+                return [item.name, item.placemark.locality]
+                    .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
+            }
+        } else {
+            let geocoder = CLGeocoder()
+            if let placemarks = try? await geocoder.reverseGeocodeLocation(location),
+               let p = placemarks.first {
+                return [p.name, p.locality]
+                    .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
+            }
+        }
+        return ""
+    }
+
+    // Extracted to help the type-checker — Map + annotations in isolation
+    @MapContentBuilder
+    private func mapAnnotations() -> some MapContent {
+        UserAnnotation()
+        ForEach(clusters) { cluster in
+            Annotation("", coordinate: cluster.coordinate) {
+                ClusterPin(cluster: cluster, isSelected: selectedCluster?.id == cluster.id)
+                    .onTapGesture { tapCluster(cluster) }
+            }
+        }
+        if let mark = longPressMark {
+            Annotation("", coordinate: mark.coordinate) {
+                LongPressPin(isResolving: isResolvingName)
+            }
+        }
+    }
+
+    private func tapCluster(_ cluster: FragmentCluster) {
+        withAnimation(.spring(response: 0.3)) {
+            if selectedCluster?.id == cluster.id {
+                selectedCluster = nil
+            } else {
+                selectedCluster = cluster
+                longPressMark = nil
+                position = .region(MKCoordinateRegion(
+                    center: cluster.coordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04)
+                ))
+            }
+        }
+    }
+
+    private func handleLongPress(at screenPoint: CGPoint, proxy: MapProxy) {
+        guard let coord = proxy.convert(screenPoint, from: .local) else { return }
+        HapticFeedback.impact(.medium)
+        withAnimation(.spring(response: 0.3)) {
+            selectedCluster = nil
+            longPressMark = LongPressMark(coordinate: coord)
+            position = .region(MKCoordinateRegion(
+                center: coord,
+                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+            ))
+        }
+        isResolvingName = true
+        Task {
+            let name = await resolveName(for: coord)
+            longPressMark?.resolvedName = name
+            isResolvingName = false
+        }
     }
 
     var body: some View {
         NavigationStack {
             ZStack {
                 MapReader { proxy in
-                    Map(position: $position) {
-                        UserAnnotation()
-                        ForEach(clusters) { cluster in
-                            Annotation("", coordinate: cluster.coordinate) {
-                                ClusterPin(cluster: cluster, isSelected: selectedCluster?.id == cluster.id)
-                                    .onTapGesture {
-                                        withAnimation(.spring(response: 0.3)) {
-                                            if selectedCluster?.id == cluster.id {
-                                                selectedCluster = nil
-                                            } else {
-                                                selectedCluster = cluster
-                                                longPressMark = nil
-                                                position = .region(MKCoordinateRegion(
-                                                    center: cluster.coordinate,
-                                                    span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04)
-                                                ))
-                                            }
-                                        }
-                                    }
-                            }
+                    Map(position: $position) { mapAnnotations() }
+                        .mapStyle(mapStyle.mapStyle)
+                        .ignoresSafeArea(edges: .bottom)
+                        .onMapCameraChange(frequency: .onEnd) { context in
+                            mapSpan = context.region.span
                         }
-                        // Long-press pin
-                        if let mark = longPressMark {
-                            Annotation("", coordinate: mark.coordinate) {
-                                LongPressPin(isResolving: isResolvingName)
-                            }
+                        .onTapGesture {
+                            withAnimation { selectedCluster = nil; longPressMark = nil }
                         }
-                    }
-                    .mapStyle(mapStyle.mapStyle)
-                    .ignoresSafeArea(edges: .bottom)
-                    .onMapCameraChange(frequency: .onEnd) { context in
-                        mapSpan = context.region.span
-                    }
-                    .onTapGesture {
-                        withAnimation { selectedCluster = nil; longPressMark = nil }
-                    }
-                    .onLongPressGesture(minimumDuration: 0.5) { screenPoint in
-                        guard let coord = proxy.convert(screenPoint, from: .local) else { return }
-                        HapticFeedback.impact(.medium)
-                        withAnimation(.spring(response: 0.3)) {
-                            selectedCluster = nil
-                            longPressMark = LongPressMark(coordinate: coord)
-                            position = .region(MKCoordinateRegion(
-                                center: coord,
-                                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                            ))
+                        .onLongPressGesture(minimumDuration: 0.5) { pt in
+                            handleLongPress(at: pt, proxy: proxy)
                         }
-                        isResolvingName = true
-                        Task {
-                            let name = await resolveName(for: coord)
-                            longPressMark?.resolvedName = name
-                            isResolvingName = false
-                        }
-                    }
                 }
 
                 // Location search overlay
