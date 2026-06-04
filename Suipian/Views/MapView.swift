@@ -686,42 +686,71 @@ private struct ClusterDetailSheet: View {
 }
 
 // MARK: - Long-press overlay (UIKit bridge)
-// SwiftUI gestures are consumed by Map's internal gesture recognizers.
-// This transparent UIView sits on top and uses UILongPressGestureRecognizer
-// with cancelsTouchesInView = false so Map still pans/zooms normally.
+//
+// Problem: Map's internal UIGestureRecognizers consume all touches.
+// If an overlay UIView is hit-tested first, Map never gets pan/zoom events.
+//
+// Solution:
+//   - hitTest returns nil → overlay is invisible to hit testing, Map gets
+//     all touches normally (pan/zoom restored)
+//   - UILongPressGestureRecognizer is added to the UIWindow (always in the
+//     responder chain), so it still fires regardless of hit test result
+//   - bounds check filters: only fire if the touch is within the map area
+//   - cleanup in didMoveToWindow(window: nil) removes the window recognizer
 
 private struct LongPressOverlay: UIViewRepresentable {
     var minimumDuration: TimeInterval = 0.6
     var onLongPress: (CGPoint) -> Void
 
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView()
-        view.backgroundColor = .clear
-        view.isUserInteractionEnabled = true
-        let recognizer = UILongPressGestureRecognizer(
-            target: context.coordinator,
-            action: #selector(Coordinator.handle(_:))
-        )
-        recognizer.minimumPressDuration = minimumDuration
-        recognizer.cancelsTouchesInView = false
-        recognizer.delaysTouchesEnded = false
-        view.addGestureRecognizer(recognizer)
+    func makeUIView(context: Context) -> LongPressPassthroughView {
+        let view = LongPressPassthroughView()
+        view.minimumDuration = minimumDuration
+        view.onLongPress = onLongPress
         return view
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.onLongPress = onLongPress
+    func updateUIView(_ uiView: LongPressPassthroughView, context: Context) {
+        uiView.onLongPress = onLongPress
+    }
+}
+
+final class LongPressPassthroughView: UIView {
+    var minimumDuration: TimeInterval = 0.6
+    var onLongPress: ((CGPoint) -> Void)?
+    private weak var windowRecognizer: UILongPressGestureRecognizer?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .clear
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    // Invisible to hit testing — Map receives all pan/zoom/tap touches
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? { nil }
+
+    // Register on window when added; clean up when removed
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if let window {
+            let r = UILongPressGestureRecognizer(target: self, action: #selector(handle(_:)))
+            r.minimumPressDuration = minimumDuration
+            r.cancelsTouchesInView = false
+            window.addGestureRecognizer(r)
+            windowRecognizer = r
+        } else {
+            if let r = windowRecognizer {
+                r.view?.removeGestureRecognizer(r)
+            }
+            windowRecognizer = nil
+        }
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator(onLongPress: onLongPress) }
-
-    class Coordinator: NSObject {
-        var onLongPress: (CGPoint) -> Void
-        init(onLongPress: @escaping (CGPoint) -> Void) { self.onLongPress = onLongPress }
-
-        @objc func handle(_ r: UILongPressGestureRecognizer) {
-            guard r.state == .began else { return }
-            onLongPress(r.location(in: r.view))
-        }
+    @objc private func handle(_ r: UILongPressGestureRecognizer) {
+        guard r.state == .began, let window else { return }
+        let windowPoint = r.location(in: window)
+        // Convert to this view's coordinate space and check it's within the map area
+        let localPoint = convert(windowPoint, from: window)
+        guard bounds.contains(localPoint) else { return }
+        onLongPress?(localPoint)
     }
 }
