@@ -50,6 +50,7 @@ private struct LongPressMark: Identifiable {
 // MARK: - Map view
 
 struct FragmentMapView: View {
+    @Environment(\.dismiss) private var dismiss
     @Query private var fragments: [Fragment]
     @State private var position: MapCameraPosition = .automatic
     @State private var selectedCluster: FragmentCluster? = nil
@@ -293,6 +294,9 @@ struct FragmentMapView: View {
             .navigationTitle("地图")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("关闭") { dismiss() }
+                }
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         withAnimation(.spring(response: 0.3)) {

@@ -16,8 +16,8 @@ struct ContentView: View {
                 StoryListView()
                     .tabItem { Label("故事线", systemImage: "link") }
                     .tag(1)
-                FragmentMapView()
-                    .tabItem { Label("地图", systemImage: "map.fill") }
+                ImportantDatesTabView()
+                    .tabItem { Label("日期", systemImage: "calendar.badge.clock") }
                     .tag(2)
                 StatsView()
                     .tabItem { Label("统计", systemImage: "chart.bar.fill") }
@@ -34,9 +34,7 @@ struct ContentView: View {
         }
         .animation(.easeIn(duration: 0.15), value: isLocked)
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background && appLockEnabled {
-                isLocked = true
-            }
+            if phase == .background && appLockEnabled { isLocked = true }
         }
         .onAppear {
             if appLockEnabled { isLocked = true }

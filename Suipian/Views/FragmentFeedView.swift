@@ -8,6 +8,7 @@ struct FragmentFeedView: View {
     @Environment(CloudKitSyncMonitor.self) private var syncMonitor
     @Environment(AppRouter.self) private var appRouter
     @Query(sort: \Fragment.date, order: .reverse) private var fragments: [Fragment]
+    @Query private var importantDates: [ImportantDate]
 
     @State private var deepLinkFragment: Fragment? = nil
 
@@ -32,6 +33,7 @@ struct FragmentFeedView: View {
     @State private var fragmentToEdit: Fragment? = nil
     @State private var fragmentToDelete: Fragment? = nil
     @State private var showDeleteAlert = false
+    @State private var showingMap = false
     @State private var showConfetti = false
     @State private var milestoneText: String? = nil
 
@@ -160,6 +162,15 @@ struct FragmentFeedView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
+                    // Upcoming important date banner (today or within 7 days)
+                    if let upcoming = importantDates
+                        .filter({ $0.daysUntil >= 0 && $0.daysUntil <= 7 })
+                        .min(by: { $0.daysUntil < $1.daysUntil }) {
+                        ImportantDateBanner(item: upcoming)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                    }
+
                     // Draft banner
                     if hasDraft {
                         DraftBanner(
@@ -377,6 +388,11 @@ struct FragmentFeedView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    Button { showingMap = true } label: {
+                        Image(systemName: "map")
+                            .glassToolbarIcon()
+                    }
+                    .buttonStyle(.plain)
                     Button {
                         withAnimation(.easeInOut(duration: 0.22)) { isGridView.toggle() }
                     } label: {
@@ -466,6 +482,9 @@ struct FragmentFeedView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
+        }
+        .fullScreenCover(isPresented: $showingMap) {
+            FragmentMapView()
         }
         .sheet(item: $randomReviewRequest) { request in
             RandomReviewSheet(initialFragment: request.initialFragment,
@@ -1165,6 +1184,50 @@ private struct RandomReviewSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+}
+
+// MARK: - Upcoming important date banner
+
+private struct ImportantDateBanner: View {
+    let item: ImportantDate
+    @State private var showingDates = false
+
+    var body: some View {
+        Button { showingDates = true } label: {
+            HStack(spacing: 12) {
+                Text(item.emoji)
+                    .font(.title2)
+                    .frame(width: 44, height: 44)
+                    .background(Color.accentColor.opacity(0.1), in: Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(item.isToday ? "今天是 \(item.title) 🎉" : item.title)
+                        .font(.subheadline).fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                    Text(item.isToday ? "去记录一条碎片纪念这一天" : item.countdownLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if !item.isToday {
+                    Text("\(item.daysUntil)")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.accentColor)
+                        .monospacedDigit()
+                }
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(item.isToday ? Color.accentColor.opacity(0.4) : Color.primary.opacity(0.08),
+                              lineWidth: item.isToday ? 1.5 : 0.5))
+        }
+        .buttonStyle(PressScaleButtonStyle())
+        .sheet(isPresented: $showingDates) { ImportantDatesView() }
     }
 }
 

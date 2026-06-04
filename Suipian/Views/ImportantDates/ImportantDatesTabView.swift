@@ -1,0 +1,235 @@
+import SwiftUI
+import SwiftData
+
+// MARK: - Tab-level view for Important Dates
+
+struct ImportantDatesTabView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query private var dates: [ImportantDate]
+    @State private var showingAdd = false
+    @State private var dateToEdit: ImportantDate? = nil
+
+    private var sorted: [ImportantDate] {
+        dates.sorted { $0.daysUntil < $1.daysUntil }
+    }
+
+    private var todayItems: [ImportantDate] { sorted.filter { $0.isToday } }
+    private var upcomingItems: [ImportantDate] { sorted.filter { !$0.isToday && $0.daysUntil >= 0 } }
+    private var pastItems: [ImportantDate] { sorted.filter { $0.isPast } }
+
+    var body: some View {
+        NavigationStack {
+            ZStack(alignment: .bottomTrailing) {
+                Group {
+                    if dates.isEmpty {
+                        emptyState
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 0) {
+                                if !todayItems.isEmpty {
+                                    sectionHeader("🎉 今天")
+                                    ForEach(todayItems) { item in
+                                        ImportantDateCard(item: item)
+                                            .onTapGesture { dateToEdit = item }
+                                            .padding(.horizontal, 16)
+                                            .padding(.bottom, 10)
+                                    }
+                                }
+
+                                if !upcomingItems.isEmpty {
+                                    sectionHeader("即将到来")
+                                    ForEach(upcomingItems) { item in
+                                        ImportantDateCard(item: item)
+                                            .onTapGesture { dateToEdit = item }
+                                            .padding(.horizontal, 16)
+                                            .padding(.bottom, 10)
+                                    }
+                                }
+
+                                if !pastItems.isEmpty {
+                                    sectionHeader("已过")
+                                    ForEach(pastItems) { item in
+                                        ImportantDateCard(item: item, muted: true)
+                                            .onTapGesture { dateToEdit = item }
+                                            .padding(.horizontal, 16)
+                                            .padding(.bottom, 10)
+                                    }
+                                }
+                            }
+                            .padding(.top, 8)
+                            .padding(.bottom, 100)
+                        }
+                        .background { AppBackgroundCanvas().ignoresSafeArea() }
+                    }
+                }
+                .toolbar(.hidden, for: .navigationBar)
+
+                // FAB
+                Button { showingAdd = true } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color.accentColor.opacity(0.18))
+                            .frame(width: 70, height: 70)
+                            .blur(radius: 8)
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .frame(width: 56, height: 56)
+                            .overlay(Circle().strokeBorder(
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.6), Color.white.opacity(0.1)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing),
+                                lineWidth: 1))
+                            .shadow(color: .black.opacity(0.16), radius: 10, y: 5)
+                        Image(systemName: "plus")
+                            .font(.title2).fontWeight(.semibold)
+                            .foregroundStyle(Color.accentColor)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 20).padding(.bottom, 24)
+            }
+        }
+        .sheet(isPresented: $showingAdd) {
+            ImportantDateEditView()
+        }
+        .sheet(item: $dateToEdit) { item in
+            ImportantDateEditView(item: item)
+        }
+    }
+
+    @ViewBuilder
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.caption).fontWeight(.semibold)
+            .foregroundStyle(.secondary)
+            .padding(.top, 16)
+            .padding(.bottom, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "calendar.badge.clock")
+                .font(.system(size: 52))
+                .foregroundStyle(.tertiary)
+            VStack(spacing: 8) {
+                Text("还没有重要日期")
+                    .font(.title3).fontWeight(.semibold)
+                Text("生日、纪念日、重要目标\n都可以在这里设定倒计时")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            Button { showingAdd = true } label: {
+                Label("添加第一个日期", systemImage: "plus")
+                    .font(.subheadline).fontWeight(.semibold)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 24).padding(.vertical, 12)
+                    .background(Color.accentColor, in: Capsule())
+            }
+            .buttonStyle(PressScaleButtonStyle())
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Card
+
+private struct ImportantDateCard: View {
+    let item: ImportantDate
+    var muted: Bool = false
+
+    private var accent: Color {
+        item.isToday ? Color(red: 0.780, green: 0.624, blue: 0.384) : Color.accentColor
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            // Left: emoji + countdown ring
+            ZStack {
+                Circle()
+                    .stroke(accent.opacity(muted ? 0.08 : 0.15), lineWidth: 3)
+                    .frame(width: 56, height: 56)
+                if !item.isPast {
+                    Circle()
+                        .trim(from: 0, to: ringProgress)
+                        .stroke(accent.opacity(muted ? 0.25 : 0.6),
+                                style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 56, height: 56)
+                }
+                Text(item.emoji)
+                    .font(.system(size: 24))
+            }
+
+            // Middle: title + meta
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title)
+                    .font(.subheadline).fontWeight(.semibold)
+                    .foregroundStyle(muted ? .secondary : .primary)
+                HStack(spacing: 6) {
+                    Text(item.category)
+                        .font(.caption2)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(accent.opacity(0.1), in: Capsule())
+                        .foregroundStyle(accent)
+                    Text(monthDayLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if item.isRecurring, let y = item.yearsElapsed, y > 0 {
+                        Text("第\(y + 1)年")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+
+            Spacer()
+
+            // Right: countdown
+            VStack(spacing: 0) {
+                if item.isToday {
+                    Text("今天")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(accent)
+                } else {
+                    Text("\(abs(item.daysUntil))")
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundStyle(muted ? .tertiary : .primary)
+                        .monospacedDigit()
+                    Text(item.daysUntil > 0 ? "天后" : "天前")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .frame(minWidth: 50, alignment: .trailing)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 14)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .strokeBorder(
+                    item.isToday ? accent.opacity(0.5) : Color.primary.opacity(0.07),
+                    lineWidth: item.isToday ? 1.5 : 0.5
+                )
+        )
+        .shadow(color: .black.opacity(item.isToday ? 0.06 : 0.03), radius: 6, y: 2)
+    }
+
+    private var monthDayLabel: String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "M月d日"
+        return fmt.string(from: item.date)
+    }
+
+    // Progress within the current year cycle (0–1)
+    private var ringProgress: CGFloat {
+        guard item.isRecurring else { return 1.0 }
+        let d = item.daysUntil
+        guard d > 0 else { return 1.0 }
+        return CGFloat(365 - d) / 365.0
+    }
+}

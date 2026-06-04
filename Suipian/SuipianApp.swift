@@ -8,7 +8,7 @@ struct SuipianApp: App {
     @State private var appRouter = AppRouter()
 
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([Fragment.self])
+        let schema = Schema([Fragment.self, ImportantDate.self])
         let config = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false,
