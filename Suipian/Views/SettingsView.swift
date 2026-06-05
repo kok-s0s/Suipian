@@ -395,6 +395,7 @@ struct SettingsView: View {
             let fmt = ISO8601DateFormatter()
             let existingSet = Set(fragments.map { "\(Int($0.date.timeIntervalSinceReferenceDate))|\($0.content)" })
             var inserted = 0, skipped = 0
+            var insertedFragments: [Fragment] = []
             for r in payload.fragments {
                 let date = fmt.date(from: r.date) ?? Date()
                 let key = "\(Int(date.timeIntervalSinceReferenceDate))|\(r.content)"
@@ -402,7 +403,10 @@ struct SettingsView: View {
                 let f = Fragment(content: r.content, date: date, tags: r.tags,
                                  latitude: r.latitude, longitude: r.longitude, locationName: r.locationName)
                 f.mood = r.mood; f.storyName = r.storyName; f.isPrivate = r.isPrivate; f.isPinned = r.isPinned
-                modelContext.insert(f); inserted += 1
+                modelContext.insert(f)
+                SpotlightManager.index(f)
+                insertedFragments.append(f)
+                inserted += 1
             }
 
             var existingDateSet = Set(importantDates.map { "\($0.title)|\(Int($0.date.timeIntervalSinceReferenceDate))" })
@@ -427,6 +431,7 @@ struct SettingsView: View {
                 insertedDates += 1
             }
             try? modelContext.save()
+            WidgetDataStore.rebuildFragmentWidgets(insertedFragments + fragments)
             let allDates = importantDates + insertedDateItems
             WidgetDataStore.updateImportantDates(allDates)
             ImportantDateNotifier.rescheduleAll(allDates)
