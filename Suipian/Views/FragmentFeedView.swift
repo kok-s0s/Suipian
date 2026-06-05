@@ -30,6 +30,7 @@ struct FragmentFeedView: View {
     @State private var fabExpanded = false
     @State private var showingVoiceInput = false
     @State private var pendingVoiceTranscript = ""
+    @State private var showingQuickFragment = false
     @State private var fragmentToEdit: Fragment? = nil
     @State private var fragmentToDelete: Fragment? = nil
     @State private var showDeleteAlert = false
@@ -158,14 +159,41 @@ struct FragmentFeedView: View {
 
     private var listSections: [FeedSection] { cachedListSections }
 
+    private var todayFragments: [Fragment] {
+        let start = Calendar.current.startOfDay(for: Date())
+        return fragments.filter { $0.date >= start }
+    }
+
+    private var recentImportantDate: ImportantDate? {
+        importantDates
+            .filter { $0.daysUntil >= 0 && $0.daysUntil <= 7 }
+            .min { $0.daysUntil < $1.daysUntil }
+    }
+
+    private var daysSinceLastFragment: Int? {
+        guard let latest = fragments.map(\.date).max() else { return nil }
+        let cal = Calendar.current
+        return cal.dateComponents([.day],
+                                  from: cal.startOfDay(for: latest),
+                                  to: cal.startOfDay(for: Date())).day
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
+                    TodayEntryCard(
+                        todayCount: todayFragments.count,
+                        daysSinceLastFragment: daysSinceLastFragment,
+                        onThisDayCount: onThisDayFragments.count,
+                        upcomingDate: recentImportantDate,
+                        onQuickWrite: { showingQuickFragment = true }
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+
                     // Upcoming important date banner (today or within 7 days)
-                    if let upcoming = importantDates
-                        .filter({ $0.daysUntil >= 0 && $0.daysUntil <= 7 })
-                        .min(by: { $0.daysUntil < $1.daysUntil }) {
+                    if let upcoming = recentImportantDate {
                         ImportantDateBanner(item: upcoming)
                             .padding(.horizontal, 16)
                             .padding(.top, 8)
@@ -483,6 +511,11 @@ struct FragmentFeedView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
+        .sheet(isPresented: $showingQuickFragment) {
+            QuickFragmentSheet(fragments: fragments)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
         .fullScreenCover(isPresented: $showingMap) {
             FragmentMapView()
         }
@@ -564,6 +597,185 @@ private struct RandomReviewRequest: Identifiable {
 private struct MediaEditRequest: Identifiable {
     let id = UUID()
     let mediaIDs: [String]
+}
+
+// MARK: - Today entry
+
+private struct TodayEntryCard: View {
+    let todayCount: Int
+    let daysSinceLastFragment: Int?
+    let onThisDayCount: Int
+    let upcomingDate: ImportantDate?
+    let onQuickWrite: () -> Void
+
+    private var statusText: String {
+        guard let daysSinceLastFragment else { return "今天从第一条碎片开始" }
+        if daysSinceLastFragment == 0 { return "今天已经留下 \(todayCount) 条碎片" }
+        if daysSinceLastFragment == 1 { return "昨天记录过，今天继续" }
+        return "距离上次记录 \(daysSinceLastFragment) 天"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("今天")
+                        .font(.title2).fontWeight(.bold)
+                    Text(statusText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Text(Date(), format: .dateTime.month(.defaultDigits).day())
+                    .font(.caption).fontWeight(.semibold)
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.accentColor.opacity(0.10), in: Capsule())
+            }
+
+            HStack(spacing: 10) {
+                TodayStat(value: "\(todayCount)", label: "今日")
+                TodayStat(value: "\(onThisDayCount)", label: "历史")
+                TodayStat(value: upcomingDate.map { $0.isToday ? "今天" : "\($0.daysUntil)" } ?? "-", label: "日期")
+            }
+
+            if let upcomingDate {
+                HStack(spacing: 8) {
+                    Text(upcomingDate.emoji)
+                    Text(upcomingDate.isToday ? "今天是 \(upcomingDate.title)" : "\(upcomingDate.title) · \(upcomingDate.countdownLabel)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
+            }
+
+            Button(action: onQuickWrite) {
+                Label("快速记一条", systemImage: "square.and.pencil")
+                    .font(.subheadline).fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 12))
+                    .foregroundStyle(.white)
+            }
+            .buttonStyle(PressScaleButtonStyle(scale: 0.97))
+        }
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+    }
+}
+
+private struct TodayStat: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private struct QuickFragmentSheet: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
+    let fragments: [Fragment]
+
+    @State private var content = ""
+    @State private var mood = ""
+
+    private let moods = ["😊", "😌", "🥰", "😤", "😴", "✨"]
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("快速碎片")
+                        .font(.title3).fontWeight(.bold)
+                    Text("先把这一刻留下来，细节之后再补")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                TextField("这一刻发生了什么？", text: $content, axis: .vertical)
+                    .font(.body)
+                    .lineLimit(4...7)
+                    .padding(14)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+
+                HStack(spacing: 10) {
+                    ForEach(moods, id: \.self) { item in
+                        Button {
+                            mood = mood == item ? "" : item
+                        } label: {
+                            Text(item)
+                                .font(.title3)
+                                .frame(width: 42, height: 42)
+                                .background(mood == item ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.055),
+                                            in: Circle())
+                                .overlay(Circle().strokeBorder(mood == item ? Color.accentColor.opacity(0.55) : .clear, lineWidth: 1))
+                        }
+                        .buttonStyle(PressScaleButtonStyle(scale: 0.9))
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                Button { save() } label: {
+                    Text("保存碎片")
+                        .font(.subheadline).fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(canSave ? Color.accentColor : Color.secondary.opacity(0.18),
+                                    in: RoundedRectangle(cornerRadius: 14))
+                        .foregroundStyle(canSave ? .white : .secondary)
+                }
+                .disabled(!canSave)
+                .buttonStyle(PressScaleButtonStyle(scale: 0.98))
+            }
+            .padding(16)
+            .background { AppBackgroundCanvas().ignoresSafeArea() }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private var canSave: Bool {
+        !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func save() {
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let fragment = Fragment(content: trimmed, date: Date(), tags: [])
+        fragment.mood = mood
+        modelContext.insert(fragment)
+        try? modelContext.save()
+        WidgetDataStore.rebuildFragmentWidgets([fragment] + fragments)
+        HapticFeedback.success()
+        dismiss()
+    }
 }
 
 // MARK: - Speed-dial FAB
@@ -798,7 +1010,16 @@ private struct FragmentGridCellView: View {
         .animeCard(cornerRadius: 12)
     }
 
+    @ViewBuilder
     private var normalCell: some View {
+        if fragment.coverMediaID == nil {
+            textOnlyCell
+        } else {
+            mediaCell
+        }
+    }
+
+    private var mediaCell: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let coverID = fragment.coverMediaID {
                 // Frame height = column width × actual h/w ratio so the image
@@ -821,10 +1042,6 @@ private struct FragmentGridCellView: View {
                         imageRatio = r
                     }
                 }
-            } else {
-                // Text-only: warm accent header strip
-                Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.18)
-                    .frame(maxWidth: .infinity, minHeight: 6, maxHeight: 6)
             }
 
             VStack(alignment: .leading, spacing: 5) {
@@ -891,6 +1108,90 @@ private struct FragmentGridCellView: View {
                     .padding(6)
             }
         }
+    }
+
+    private var textOnlyCell: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                if !fragment.mood.isEmpty {
+                    Text(fragment.mood)
+                        .font(.title3)
+                        .frame(width: 34, height: 34)
+                        .background(Color.accentColor.opacity(0.10), in: Circle())
+                } else {
+                    Image(systemName: "text.quote")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                        .frame(width: 34, height: 34)
+                        .background(Color.accentColor.opacity(0.10), in: Circle())
+                }
+                Spacer()
+                if fragment.isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+
+            if !fragment.content.isEmpty {
+                Group {
+                    if highlight.isEmpty {
+                        Text(fragment.content)
+                    } else {
+                        Text(highlighted(fragment.content, query: highlight))
+                    }
+                }
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.primary)
+                .lineLimit(7)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !fragment.tags.isEmpty {
+                HStack(spacing: 4) {
+                    ForEach(fragment.tags.prefix(2), id: \.self) { tag in
+                        Text("#\(tag)")
+                            .gradientTagStyle(fontSize: 9, paddingH: 5, paddingV: 2)
+                            .lineLimit(1)
+                    }
+                    if fragment.tags.count > 2 {
+                        Text("+\(fragment.tags.count - 2)")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+
+            HStack(spacing: 4) {
+                if fragment.hasLocation && !fragment.locationName.isEmpty {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 8))
+                    Text(fragment.locationName)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Text(fragment.date.formatted(.relative(presentation: .named)))
+                    .lineLimit(1)
+            }
+            .font(.system(size: 9))
+            .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.primary.opacity(0.035),
+                    Color.accentColor.opacity(0.055)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 12)
+        )
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.035), radius: 5, y: 2)
     }
 }
 
@@ -1191,10 +1492,18 @@ private struct RandomReviewSheet: View {
 
 private struct ImportantDateBanner: View {
     let item: ImportantDate
+    @Query(sort: \Fragment.date, order: .reverse) private var fragments: [Fragment]
     @State private var showingDates = false
+    @State private var showingMoment = false
 
     var body: some View {
-        Button { showingDates = true } label: {
+        Button {
+            if item.isToday {
+                showingMoment = true
+            } else {
+                showingDates = true
+            }
+        } label: {
             HStack(spacing: 12) {
                 Text(item.emoji)
                     .font(.title2)
@@ -1228,6 +1537,123 @@ private struct ImportantDateBanner: View {
         }
         .buttonStyle(PressScaleButtonStyle())
         .sheet(isPresented: $showingDates) { ImportantDatesView() }
+        .sheet(isPresented: $showingMoment) {
+            ImportantDateMomentSheet(item: item, fragments: matchingFragments)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var matchingFragments: [Fragment] {
+        let cal = Calendar.current
+        let target = cal.dateComponents([.month, .day], from: item.date)
+        return fragments.filter {
+            let comps = cal.dateComponents([.month, .day], from: $0.date)
+            return comps.month == target.month && comps.day == target.day
+        }
+    }
+}
+
+private struct ImportantDateMomentSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let item: ImportantDate
+    let fragments: [Fragment]
+
+    @State private var showingEditor = false
+
+    private var yearsText: String? {
+        guard item.isRecurring, let years = item.yearsElapsed, years > 0 else { return nil }
+        return "第 \(years + 1) 年"
+    }
+
+    private var prefilledContent: String {
+        if let yearsText {
+            return "\(item.emoji) 今天是 \(item.title) \(yearsText)。"
+        }
+        return "\(item.emoji) 今天是 \(item.title)。"
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(alignment: .top) {
+                            Text(item.emoji)
+                                .font(.system(size: 42))
+                                .frame(width: 64, height: 64)
+                                .background(Color.accentColor.opacity(0.12), in: Circle())
+                            Spacer()
+                            Text("今天")
+                                .font(.caption).fontWeight(.semibold)
+                                .foregroundStyle(Color.accentColor)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.accentColor.opacity(0.10), in: Capsule())
+                        }
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(item.title)
+                                .font(.title2).fontWeight(.bold)
+                            if let yearsText {
+                                Text(yearsText)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if !item.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text(item.note)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+
+                        Button { showingEditor = true } label: {
+                            Label("记录这个特别的日子", systemImage: "square.and.pencil")
+                                .font(.subheadline).fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 14))
+                                .foregroundStyle(.white)
+                        }
+                        .buttonStyle(PressScaleButtonStyle(scale: 0.97))
+                    }
+                    .padding(16)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+                    .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+
+                    if !fragments.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("这一天的碎片")
+                                .font(.caption).fontWeight(.semibold)
+                                .foregroundStyle(.secondary)
+
+                            ForEach(fragments.prefix(6)) { fragment in
+                                NavigationLink {
+                                    FragmentDetailView(fragment: fragment)
+                                } label: {
+                                    FragmentCardView(fragment: fragment)
+                                }
+                                .buttonStyle(PressScaleButtonStyle())
+                            }
+                        }
+                    }
+                }
+                .padding(16)
+            }
+            .background { AppBackgroundCanvas().ignoresSafeArea() }
+            .navigationTitle("特别的今天")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("关闭") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $showingEditor) {
+                FragmentEditView(preloadedContent: prefilledContent, saveDraftOnCancel: false)
+            }
+        }
     }
 }
 

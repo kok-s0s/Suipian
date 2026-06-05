@@ -391,24 +391,65 @@ struct StoryDetailView: View {
     @State private var newName = ""
     @State private var showingAddFragment = false
 
+    private var sortedFragments: [Fragment] {
+        fragments.sorted { $0.date > $1.date }
+    }
+
+    private var coverIDs: [String] {
+        Array(sortedFragments.compactMap { $0.coverMediaID }.prefix(4))
+    }
+
+    private var dateRange: String {
+        guard let first = sortedFragments.last?.date, let last = sortedFragments.first?.date else { return "" }
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy.MM.dd"
+        if Calendar.current.isDate(first, inSameDayAs: last) { return fmt.string(from: first) }
+        return "\(fmt.string(from: first)) - \(fmt.string(from: last))"
+    }
+
+    private var locationCount: Int {
+        Set(sortedFragments.compactMap { $0.locationName.isEmpty ? nil : $0.locationName }).count
+    }
+
+    private var mediaCount: Int {
+        sortedFragments.reduce(0) { $0 + $1.mediaIdentifiers.count }
+    }
+
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 14) {
-                ForEach(fragments) { fragment in
-                    NavigationLink {
-                        FragmentDetailView(fragment: fragment)
-                    } label: {
-                        FragmentCardView(fragment: fragment)
+            LazyVStack(spacing: 16) {
+                StoryDetailHero(name: name,
+                                coverIDs: coverIDs,
+                                dateRange: dateRange,
+                                fragmentCount: sortedFragments.count,
+                                locationCount: locationCount,
+                                mediaCount: mediaCount)
+
+                HStack {
+                    Text("时间轴")
+                        .font(.caption).fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text("\(sortedFragments.count) 条碎片")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(sortedFragments.enumerated()), id: \.offset) { index, fragment in
+                        StoryTimelineRow(fragment: fragment,
+                                         isFirst: index == 0,
+                                         isLast: index == sortedFragments.count - 1)
                     }
-                    .buttonStyle(PressScaleButtonStyle())
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .padding(.bottom, 40)
         }
+        .background { AppBackgroundCanvas().ignoresSafeArea() }
         .navigationTitle(name)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 4) {
@@ -445,6 +486,124 @@ struct StoryDetailView: View {
         }
         .sheet(isPresented: $showingAddFragment) {
             FragmentEditView(preloadedStoryName: name, saveDraftOnCancel: false)
+        }
+    }
+}
+
+private struct StoryDetailHero: View {
+    let name: String
+    let coverIDs: [String]
+    let dateRange: String
+    let fragmentCount: Int
+    let locationCount: Int
+    let mediaCount: Int
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            if coverIDs.isEmpty {
+                LinearGradient(
+                    colors: [Color(red: 0.36, green: 0.44, blue: 0.64), Color(red: 0.780, green: 0.624, blue: 0.384)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            } else {
+                StoryMosaicBackground(ids: coverIDs)
+            }
+
+            LinearGradient(colors: [.black.opacity(0.08), .black.opacity(0.74)],
+                           startPoint: .top, endPoint: .bottom)
+
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(dateRange)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.white.opacity(0.80))
+                    Text(name)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                }
+
+                HStack(spacing: 10) {
+                    StoryHeroMetric(value: "\(fragmentCount)", label: "碎片")
+                    StoryHeroMetric(value: "\(locationCount)", label: "地点")
+                    StoryHeroMetric(value: "\(mediaCount)", label: "媒体")
+                }
+            }
+            .padding(16)
+        }
+        .frame(maxWidth: .infinity, minHeight: 260)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.white.opacity(0.16), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.10), radius: 8, y: 4)
+    }
+}
+
+private struct StoryHeroMetric: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(value)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.72))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(.white.opacity(0.13), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private struct StoryTimelineRow: View {
+    let fragment: Fragment
+    let isFirst: Bool
+    let isLast: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(isFirst ? Color.clear : Color.accentColor.opacity(0.22))
+                    .frame(width: 2, height: 14)
+                Circle()
+                    .fill(Color.accentColor)
+                    .frame(width: 9, height: 9)
+                Rectangle()
+                    .fill(isLast ? Color.clear : Color.accentColor.opacity(0.22))
+                    .frame(width: 2)
+            }
+            .frame(width: 18)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Text(fragment.date.formatted(date: .abbreviated, time: .omitted))
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                    if !fragment.locationName.isEmpty {
+                        Label(fragment.locationName, systemImage: "location.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
+                }
+
+                NavigationLink {
+                    FragmentDetailView(fragment: fragment)
+                } label: {
+                    FragmentCardView(fragment: fragment)
+                }
+                .buttonStyle(PressScaleButtonStyle())
+            }
+            .padding(.bottom, isLast ? 0 : 14)
         }
     }
 }
