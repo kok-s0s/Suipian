@@ -805,6 +805,7 @@ struct FragmentEditView: View {
 
     private func save() {
         if let fragment {
+            let oldSpotlightID = SpotlightManager.itemID(for: fragment)
             fragment.content = content
             fragment.mediaIdentifiers = mediaIdentifiers
             fragment.coverIdentifier = coverIdentifier
@@ -827,6 +828,10 @@ struct FragmentEditView: View {
             fragment.longitude = longitude
             fragment.locationName = locationName
             fragment.isPrivate = isPrivate
+            let newSpotlightID = SpotlightManager.itemID(for: fragment)
+            if oldSpotlightID != newSpotlightID {
+                SpotlightManager.remove(itemID: oldSpotlightID)
+            }
             SpotlightManager.index(fragment)
             WidgetDataStore.rebuildFragmentWidgets(allFragments)
         } else {

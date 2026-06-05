@@ -5,12 +5,16 @@ struct SpotlightManager {
     private static let domain = "com.suipian.fragments"
 
     static func index(_ fragment: Fragment) {
+        guard !fragment.isPrivate else {
+            remove(itemID: itemID(for: fragment))
+            return
+        }
         let item = searchableItem(for: fragment)
         CSSearchableIndex.default().indexSearchableItems([item]) { _ in }
     }
 
     static func reindexAll(_ fragments: [Fragment]) {
-        let items = fragments.map { searchableItem(for: $0) }
+        let items = fragments.filter { !$0.isPrivate }.map { searchableItem(for: $0) }
         CSSearchableIndex.default().indexSearchableItems(items) { _ in }
     }
 

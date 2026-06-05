@@ -231,6 +231,7 @@ struct FragmentDetailView: View {
             DeleteConfirmSheet {
                 UINotificationFeedbackGenerator().notificationOccurred(.warning)
                 fragment.audioFileNames.forEach { AudioStore.delete($0) }
+                SpotlightManager.remove(itemID: SpotlightManager.itemID(for: fragment))
                 modelContext.delete(fragment)
                 WidgetDataStore.rebuildFragmentWidgets(allFragments.filter { $0.persistentModelID != fragment.persistentModelID })
                 dismiss()

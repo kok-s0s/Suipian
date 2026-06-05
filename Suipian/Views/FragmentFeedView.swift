@@ -568,6 +568,7 @@ struct FragmentFeedView: View {
             Button("永久删除", role: .destructive) {
                 if let f = fragmentToDelete {
                     f.audioFileNames.forEach { AudioStore.delete($0) }
+                    SpotlightManager.remove(itemID: SpotlightManager.itemID(for: f))
                     modelContext.delete(f)
                     WidgetDataStore.rebuildFragmentWidgets(fragments.filter { $0.persistentModelID != f.persistentModelID })
                     HapticFeedback.impact(.medium)
