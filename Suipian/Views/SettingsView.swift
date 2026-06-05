@@ -138,6 +138,26 @@ struct SettingsView: View {
                         iCloudStatusRow
                     }
 
+                    SettingsCard(title: "数据与隐私", icon: "hand.raised", iconColor: .green) {
+                        SettingsPrivacyRow(
+                            icon: "lock.square",
+                            title: "私密碎片",
+                            detail: "不会写入主屏幕小组件，也不会出现在 Spotlight 搜索结果中"
+                        )
+                        Divider().padding(.leading, 48)
+                        SettingsPrivacyRow(
+                            icon: "rectangle.on.rectangle",
+                            title: "桌面小组件",
+                            detail: "只读取 App Group 中的公开碎片摘要和重要日期倒计时数据"
+                        )
+                        Divider().padding(.leading, 48)
+                        SettingsPrivacyRow(
+                            icon: "square.and.arrow.up",
+                            title: "导出数据",
+                            detail: "JSON 导出只包含文字、标签、情绪、地点等元数据，不包含照片和视频"
+                        )
+                    }
+
                     // MARK: - 数据管理
                     SettingsCard(title: "数据管理", icon: "externaldrive", iconColor: Color(red: 0.780, green: 0.624, blue: 0.384)) {
                         SettingsInfoRow(icon: "square.on.square", label: "已记录碎片",
@@ -449,6 +469,29 @@ private struct SettingsLinkRow: View {
             Text(label).font(.subheadline).foregroundStyle(.primary)
             Spacer()
             Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+        }
+    }
+}
+
+private struct SettingsPrivacyRow: View {
+    let icon: String
+    let title: String
+    let detail: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(.secondary)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }
