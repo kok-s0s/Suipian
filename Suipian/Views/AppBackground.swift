@@ -15,8 +15,8 @@ struct AppBackgroundCanvas: View {
         ZStack {
             LinearGradient(
                 colors: colorScheme == .dark
-                    ? [base, AnimePalette.primary.opacity(0.18)]
-                    : [base, AnimePalette.sakura.opacity(0.10), AnimePalette.primary.opacity(0.08)],
+                    ? [base, AnimePalette.primary.opacity(0.22), AnimePalette.violet.opacity(0.14)]
+                    : [base, AnimePalette.primary.opacity(0.08), AnimePalette.mint.opacity(0.05)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )

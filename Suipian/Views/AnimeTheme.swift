@@ -1,22 +1,22 @@
 import SwiftUI
 
 enum AnimePalette {
-    static let primary = Color(red: 0.48, green: 0.55, blue: 0.95)      // magic blue
-    static let sakura = Color(red: 0.96, green: 0.50, blue: 0.68)       // sakura pink
-    static let star = Color(red: 0.96, green: 0.72, blue: 0.34)         // star gold
-    static let mint = Color(red: 0.38, green: 0.78, blue: 0.68)         // mint green
-    static let violet = Color(red: 0.66, green: 0.54, blue: 0.98)       // dream violet
-    static let coral = Color(red: 0.93, green: 0.36, blue: 0.40)
+    static let primary = Color(red: 0.24, green: 0.64, blue: 0.98)      // electric blue
+    static let sakura = Color(red: 0.96, green: 0.33, blue: 0.40)       // neon crimson
+    static let star = Color(red: 0.98, green: 0.76, blue: 0.18)         // signal amber
+    static let mint = Color(red: 0.20, green: 0.82, blue: 0.76)          // neon teal
+    static let violet = Color(red: 0.56, green: 0.42, blue: 0.98)       // arc violet
+    static let coral = Color(red: 0.95, green: 0.48, blue: 0.24)
 
-    static let lightBackground = Color(red: 0.975, green: 0.965, blue: 1.000)
-    static let darkBackground = Color(red: 0.090, green: 0.085, blue: 0.155)
+    static let lightBackground = Color(red: 0.955, green: 0.965, blue: 0.985)
+    static let darkBackground = Color(red: 0.045, green: 0.055, blue: 0.105)
 
-    static let softPrimary = primary.opacity(0.14)
-    static let softSakura = sakura.opacity(0.14)
-    static let softStar = star.opacity(0.16)
-    static let softMint = mint.opacity(0.14)
+    static let softPrimary = primary.opacity(0.18)
+    static let softSakura = sakura.opacity(0.16)
+    static let softStar = star.opacity(0.18)
+    static let softMint = mint.opacity(0.16)
 
-    static let heroGradient = [primary, sakura]
+    static let heroGradient = [primary, violet]
     static let warmGradient = [sakura, star]
     static let coolGradient = [primary, mint]
 }
@@ -36,7 +36,7 @@ extension View {
     func glassToolbarIcon(active: Bool = false) -> some View {
         self
             .font(.system(size: 15, weight: .medium))
-            .foregroundStyle(active ? Color.accentColor : .secondary)
+            .foregroundStyle(active ? AnimePalette.primary : .secondary)
             .frame(width: 34, height: 34)
             .background(Circle().fill(.ultraThinMaterial))
     }
@@ -50,7 +50,7 @@ extension View {
             .padding(.horizontal, paddingH)
             .padding(.vertical, paddingV)
             .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5))
+            .overlay(Capsule().strokeBorder(AnimePalette.primary.opacity(0.22), lineWidth: 0.6))
     }
 }
 
@@ -71,15 +71,25 @@ struct AnimeCardModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .background(
+                LinearGradient(
+                    colors: secondary
+                        ? [Color.white.opacity(0.12), Color.black.opacity(0.02)]
+                        : [AnimePalette.primary.opacity(0.08), Color.white.opacity(0.06)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: RoundedRectangle(cornerRadius: cornerRadius)
+            )
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .strokeBorder(
-                        Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.08),
-                        lineWidth: 0.5
+                        (secondary ? AnimePalette.mint : AnimePalette.primary).opacity(colorScheme == .dark ? 0.28 : 0.18),
+                        lineWidth: secondary ? 0.8 : 0.7
                     )
             )
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 6, y: 2)
+            .shadow(color: (secondary ? AnimePalette.violet : AnimePalette.primary).opacity(colorScheme == .dark ? 0.14 : 0.08), radius: 10, y: 3)
     }
 }
