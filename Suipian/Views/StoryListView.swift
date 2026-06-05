@@ -28,6 +28,10 @@ struct StoryListView: View {
         stories.first
     }
 
+    private var otherStories: [(name: String, fragments: [Fragment])] {
+        Array(stories.dropFirst())
+    }
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
@@ -48,23 +52,25 @@ struct StoryListView: View {
                                     .buttonStyle(PressScaleButtonStyle())
                                 }
 
-                                HStack {
-                                    Text("全部故事线")
-                                        .font(.caption).fontWeight(.semibold)
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text("\(stories.count) 条")
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-                                }
-
-                                ForEach(stories, id: \.name) { story in
-                                    NavigationLink {
-                                        StoryDetailView(name: story.name, fragments: story.fragments)
-                                    } label: {
-                                        StoryCard(name: story.name, fragments: story.fragments)
+                                if !otherStories.isEmpty {
+                                    HStack {
+                                        Text("其他故事线")
+                                            .font(.caption).fontWeight(.semibold)
+                                            .foregroundStyle(.secondary)
+                                        Spacer()
+                                        Text("\(otherStories.count) 条")
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
                                     }
-                                    .buttonStyle(PressScaleButtonStyle())
+
+                                    ForEach(otherStories, id: \.name) { story in
+                                        NavigationLink {
+                                            StoryDetailView(name: story.name, fragments: story.fragments)
+                                        } label: {
+                                            StoryCard(name: story.name, fragments: story.fragments)
+                                        }
+                                        .buttonStyle(PressScaleButtonStyle())
+                                    }
                                 }
                             }
                             .padding(16)
