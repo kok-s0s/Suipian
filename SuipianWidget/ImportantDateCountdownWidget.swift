@@ -121,6 +121,7 @@ struct ImportantDateCountdownProvider: TimelineProvider {
 struct ImportantDateCountdownWidgetView: View {
     let entry: ImportantDateEntry
     @Environment(\.widgetFamily) private var family
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Group {
@@ -138,13 +139,18 @@ struct ImportantDateCountdownWidgetView: View {
             }
         }
         .containerBackground(for: .widget) {
-            WidgetDateBackground()
+            WidgetDateBackground(colorScheme: colorScheme)
         }
     }
 }
 
 private struct SmallCountdownView: View {
     let item: WidgetImportantDateData
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var secondaryText: Color {
+        colorScheme == .dark ? Color.white.opacity(0.78) : Color.secondary
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -158,7 +164,7 @@ private struct SmallCountdownView: View {
                     .font(.caption)
                     .foregroundStyle(item.tone.accent)
                     .frame(width: 24, height: 24)
-                    .background(.white.opacity(0.55), in: Circle())
+                    .background(colorScheme == .dark ? .white.opacity(0.14) : .white.opacity(0.55), in: Circle())
             }
 
             Spacer(minLength: 8)
@@ -171,7 +177,7 @@ private struct SmallCountdownView: View {
                     .minimumScaleFactor(0.82)
                 Text("\(item.category) · \(item.monthDayText)")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(secondaryText)
                     .lineLimit(1)
             }
 
@@ -186,6 +192,14 @@ private struct SmallCountdownView: View {
 private struct MediumCountdownView: View {
     let primary: WidgetImportantDateData
     let items: [WidgetImportantDateData]
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var secondaryText: Color {
+        colorScheme == .dark ? Color.white.opacity(0.78) : Color.secondary
+    }
+    private var tertiaryText: Color {
+        colorScheme == .dark ? Color.white.opacity(0.66) : Color.secondary.opacity(0.55)
+    }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -202,7 +216,7 @@ private struct MediumCountdownView: View {
                             .lineLimit(1)
                         Text("\(primary.category) · \(primary.monthDayText)")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(secondaryText)
                             .lineLimit(1)
                     }
                 }
@@ -216,11 +230,11 @@ private struct MediumCountdownView: View {
                 Text("接下来")
                     .font(.caption2)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(secondaryText)
                 if items.isEmpty {
                     Text("暂无其他日期")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(secondaryText.opacity(0.92))
                         .frame(maxHeight: .infinity, alignment: .center)
                 } else {
                     ForEach(items, id: \.stableID) { item in
@@ -238,6 +252,11 @@ private struct MediumCountdownView: View {
 private struct LargeCountdownView: View {
     let primary: WidgetImportantDateData
     let items: [WidgetImportantDateData]
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var secondaryText: Color {
+        colorScheme == .dark ? Color.white.opacity(0.78) : Color.secondary
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -246,7 +265,7 @@ private struct LargeCountdownView: View {
                     Text("最近的重要日期")
                         .font(.caption2)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(secondaryText)
                     HStack(spacing: 10) {
                         Text(primary.emoji)
                             .font(.system(size: 34))
@@ -259,7 +278,7 @@ private struct LargeCountdownView: View {
                                 .lineLimit(1)
                             Text("\(primary.category) · \(primary.monthDayText)")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(secondaryText)
                         }
                     }
                 }
@@ -276,7 +295,7 @@ private struct LargeCountdownView: View {
                 if items.isEmpty {
                     Text("暂无其他日期")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(secondaryText.opacity(0.92))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
@@ -288,6 +307,11 @@ private struct LargeCountdownView: View {
 private struct CountdownNumber: View {
     let item: WidgetImportantDateData
     var compact: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var secondaryText: Color {
+        colorScheme == .dark ? Color.white.opacity(0.78) : Color.secondary
+    }
 
     var body: some View {
         HStack(alignment: .lastTextBaseline, spacing: 5) {
@@ -303,7 +327,7 @@ private struct CountdownNumber: View {
                 Text("天后")
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(secondaryText)
                     .padding(.bottom, compact ? 7 : 8)
             }
         }
@@ -314,6 +338,11 @@ private struct CountdownNumber: View {
 
 private struct CompactDateRow: View {
     let item: WidgetImportantDateData
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var tertiaryText: Color {
+        colorScheme == .dark ? Color.white.opacity(0.66) : Color.secondary.opacity(0.55)
+    }
 
     var body: some View {
         HStack(spacing: 7) {
@@ -328,7 +357,7 @@ private struct CompactDateRow: View {
                     .lineLimit(1)
                 Text(item.monthDayText)
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(tertiaryText)
             }
             Spacer(minLength: 0)
             Text(item.countdownText)
@@ -342,6 +371,11 @@ private struct CompactDateRow: View {
 
 private struct WideDateRow: View {
     let item: WidgetImportantDateData
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var secondaryText: Color {
+        colorScheme == .dark ? Color.white.opacity(0.78) : Color.secondary
+    }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -356,7 +390,7 @@ private struct WideDateRow: View {
                     .lineLimit(1)
                 Text("\(item.category) · \(item.monthDayText)")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(secondaryText)
             }
             Spacer(minLength: 0)
             Text(item.countdownText)
@@ -370,6 +404,12 @@ private struct WideDateRow: View {
 }
 
 private struct EmptyImportantDateWidgetView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var secondaryText: Color {
+        colorScheme == .dark ? Color.white.opacity(0.78) : Color.secondary
+    }
+
     var body: some View {
         VStack(spacing: 10) {
             Image(systemName: "calendar.badge.plus")
@@ -381,7 +421,7 @@ private struct EmptyImportantDateWidgetView: View {
                     .fontWeight(.semibold)
                 Text("在碎片里添加生日、纪念日或目标日")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(secondaryText)
                     .multilineTextAlignment(.center)
             }
         }
@@ -391,12 +431,21 @@ private struct EmptyImportantDateWidgetView: View {
 }
 
 private struct WidgetDateBackground: View {
+    let colorScheme: ColorScheme
+
     var body: some View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.96, green: 0.98, blue: 1.00),
-                    Color(red: 0.99, green: 0.95, blue: 0.90)
+                    colorScheme == .dark
+                        ? Color(red: 0.04, green: 0.05, blue: 0.10)
+                        : Color(red: 0.96, green: 0.98, blue: 1.00),
+                    colorScheme == .dark
+                        ? Color(red: 0.08, green: 0.10, blue: 0.18)
+                        : Color(red: 0.99, green: 0.95, blue: 0.90),
+                    colorScheme == .dark
+                        ? WidgetAnimePalette.violet.opacity(0.16)
+                        : WidgetAnimePalette.primary.opacity(0.08)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing

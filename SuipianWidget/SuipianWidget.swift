@@ -54,6 +54,7 @@ struct FragmentTimelineProvider: TimelineProvider {
 struct SuipianWidgetEntryView: View {
     let entry: FragmentEntry
     @Environment(\.widgetFamily) private var family
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         if let f = entry.fragment {
@@ -61,17 +62,17 @@ struct SuipianWidgetEntryView: View {
                 HStack {
                     Text("碎片")
                         .font(.caption2).fontWeight(.semibold)
-                        .foregroundStyle(WidgetAnimePalette.sakura)
+                        .foregroundStyle(colorScheme == .dark ? WidgetAnimePalette.star : WidgetAnimePalette.sakura)
                     Spacer()
                     Text(f.date.formatted(.relative(presentation: .named)))
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(colorScheme == .dark ? .white.opacity(0.72) : .secondary)
                 }
                 .padding(.bottom, 6)
 
                 Text(f.content.isEmpty ? "（无文字内容）" : f.content)
                     .font(family == .systemSmall ? .caption : .subheadline)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(colorScheme == .dark ? .white : .primary)
                     .lineLimit(family == .systemSmall ? 5 : 7)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -82,13 +83,14 @@ struct SuipianWidgetEntryView: View {
                     if !f.locationName.isEmpty {
                         Image(systemName: "location.fill")
                             .font(.system(size: 8))
+                            .foregroundStyle(colorScheme == .dark ? .white.opacity(0.82) : .secondary)
                         Text(f.locationName).lineLimit(1)
                     } else if let tag = f.tags.first {
                         Text("#\(tag)")
                     }
                 }
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(colorScheme == .dark ? .white.opacity(0.78) : .secondary)
             }
             .padding(14)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -96,10 +98,10 @@ struct SuipianWidgetEntryView: View {
             VStack(spacing: 10) {
                 Image(systemName: "square.on.square")
                     .font(.title2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(colorScheme == .dark ? .white.opacity(0.72) : .secondary)
                 Text("还没有碎片")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(colorScheme == .dark ? .white.opacity(0.78) : .secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -115,10 +117,34 @@ struct SuipianWidget: Widget {
             provider: FragmentTimelineProvider()
         ) { entry in
             SuipianWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(for: .widget) {
+                    WidgetSurfaceBackground()
+                }
         }
         .configurationDisplayName("最新碎片")
         .description("在主屏幕查看你最近记录的碎片")
         .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
+private struct WidgetSurfaceBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [
+                    Color(red: 0.05, green: 0.06, blue: 0.12),
+                    Color(red: 0.08, green: 0.10, blue: 0.18),
+                    WidgetAnimePalette.primary.opacity(0.18)
+                ]
+                : [
+                    Color(red: 0.99, green: 0.99, blue: 1.00),
+                    Color(red: 0.95, green: 0.97, blue: 1.00),
+                    WidgetAnimePalette.primary.opacity(0.08)
+                ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 }

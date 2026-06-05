@@ -103,6 +103,7 @@ struct TagFeedProvider: AppIntentTimelineProvider {
 struct TagFeedWidgetView: View {
     let entry: TagFeedEntry
     @Environment(\.widgetFamily) private var family
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         if let f = entry.fragment {
@@ -111,12 +112,12 @@ struct TagFeedWidgetView: View {
                 HStack(alignment: .center) {
                     Text(entry.tag.isEmpty ? "碎片" : "#\(entry.tag)")
                         .font(.caption2).fontWeight(.semibold)
-                        .foregroundStyle(WidgetAnimePalette.sakura)
+                        .foregroundStyle(colorScheme == .dark ? WidgetAnimePalette.star : WidgetAnimePalette.sakura)
                     Spacer()
                     if entry.total > 1 {
                         Text("\(entry.index + 1) / \(entry.total)")
                             .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(colorScheme == .dark ? .white.opacity(0.72) : Color.secondary)
                     }
                 }
                 .padding(.bottom, 6)
@@ -124,7 +125,7 @@ struct TagFeedWidgetView: View {
                 // Content
                 Text(f.content.isEmpty ? "（无文字内容）" : f.content)
                     .font(family == .systemSmall ? .caption : .subheadline)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(colorScheme == .dark ? .white : .primary)
                     .lineLimit(family == .systemSmall ? 4 : 6)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -141,7 +142,7 @@ struct TagFeedWidgetView: View {
                         }
                     }
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(colorScheme == .dark ? .white.opacity(0.78) : .secondary)
                     .lineLimit(1)
 
                     Spacer()
@@ -150,9 +151,9 @@ struct TagFeedWidgetView: View {
                         Button(intent: NextTagFragmentIntent(tag: entry.tag)) {
                             Image(systemName: "arrow.clockwise")
                                 .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(WidgetAnimePalette.sakura)
+                                .foregroundStyle(colorScheme == .dark ? .black : WidgetAnimePalette.sakura)
                                 .frame(width: 26, height: 26)
-                                .background(WidgetAnimePalette.sakura.opacity(0.12), in: Circle())
+                                .background(colorScheme == .dark ? WidgetAnimePalette.star : WidgetAnimePalette.sakura.opacity(0.12), in: Circle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -164,10 +165,10 @@ struct TagFeedWidgetView: View {
             VStack(spacing: 8) {
                 Image(systemName: entry.tag.isEmpty ? "square.on.square.dashed" : "tag")
                     .font(.title2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(colorScheme == .dark ? .white.opacity(0.72) : .secondary)
                 Text(entry.tag.isEmpty ? "还没有碎片" : "「\(entry.tag)」下还没有碎片")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(colorScheme == .dark ? .white.opacity(0.78) : .secondary)
                     .multilineTextAlignment(.center)
             }
             .padding(14)
@@ -186,10 +187,34 @@ struct TagFeedWidget: Widget {
             provider: TagFeedProvider()
         ) { entry in
             TagFeedWidgetView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(for: .widget) {
+                    WidgetSurfaceBackground()
+                }
         }
         .configurationDisplayName("碎片标签流")
         .description("按标签浏览碎片，点击右下角切换下一条")
         .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
+private struct WidgetSurfaceBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [
+                    Color(red: 0.05, green: 0.06, blue: 0.12),
+                    Color(red: 0.08, green: 0.10, blue: 0.18),
+                    WidgetAnimePalette.violet.opacity(0.16)
+                ]
+                : [
+                    Color(red: 0.99, green: 0.99, blue: 1.00),
+                    Color(red: 0.95, green: 0.97, blue: 1.00),
+                    WidgetAnimePalette.primary.opacity(0.08)
+                ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 }
