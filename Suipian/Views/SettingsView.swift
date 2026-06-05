@@ -393,13 +393,14 @@ struct SettingsView: View {
                 importResult = ImportResult(success: false, message: "JSON 格式不匹配，请使用碎片导出的文件。"); return
             }
             let fmt = ISO8601DateFormatter()
-            let existingSet = Set(fragments.map { "\(Int($0.date.timeIntervalSinceReferenceDate))|\($0.content)" })
+            var existingSet = Set(fragments.map { "\(Int($0.date.timeIntervalSinceReferenceDate))|\($0.content)" })
             var inserted = 0, skipped = 0
             var insertedFragments: [Fragment] = []
             for r in payload.fragments {
                 let date = fmt.date(from: r.date) ?? Date()
                 let key = "\(Int(date.timeIntervalSinceReferenceDate))|\(r.content)"
                 if existingSet.contains(key) { skipped += 1; continue }
+                existingSet.insert(key)
                 let f = Fragment(content: r.content, date: date, tags: r.tags,
                                  latitude: r.latitude, longitude: r.longitude, locationName: r.locationName)
                 f.mood = r.mood; f.storyName = r.storyName; f.isPrivate = r.isPrivate; f.isPinned = r.isPinned
