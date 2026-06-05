@@ -20,6 +20,14 @@ struct StoryListView: View {
         }.map { (name: $0.key, fragments: $0.value) }
     }
 
+    private var storyFragmentCount: Int {
+        stories.reduce(0) { $0 + $1.fragments.count }
+    }
+
+    private var activeStory: (name: String, fragments: [Fragment])? {
+        stories.first
+    }
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
@@ -28,7 +36,28 @@ struct StoryListView: View {
                         storyEmptyState
                     } else {
                         ScrollView {
-                            LazyVStack(spacing: 14) {
+                            LazyVStack(spacing: 16) {
+                                storyDashboard
+
+                                if let activeStory {
+                                    NavigationLink {
+                                        StoryDetailView(name: activeStory.name, fragments: activeStory.fragments)
+                                    } label: {
+                                        FeaturedStoryCard(name: activeStory.name, fragments: activeStory.fragments)
+                                    }
+                                    .buttonStyle(PressScaleButtonStyle())
+                                }
+
+                                HStack {
+                                    Text("全部故事线")
+                                        .font(.caption).fontWeight(.semibold)
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                    Text("\(stories.count) 条")
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                }
+
                                 ForEach(stories, id: \.name) { story in
                                     NavigationLink {
                                         StoryDetailView(name: story.name, fragments: story.fragments)
@@ -96,6 +125,35 @@ struct StoryListView: View {
         }
     }
 
+    private var storyDashboard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("故事线")
+                        .font(.title2).fontWeight(.bold)
+                    Text("把分散的碎片串成一段正在发生的经历")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "sparkles")
+                    .font(.title3)
+                    .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
+                    .frame(width: 40, height: 40)
+                    .background(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.13), in: Circle())
+            }
+
+            HStack(spacing: 10) {
+                StoryMetric(value: "\(stories.count)", label: "故事")
+                StoryMetric(value: "\(storyFragmentCount)", label: "碎片")
+                StoryMetric(value: activeStory.map { "\($0.fragments.count)" } ?? "0", label: "最近")
+            }
+        }
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+    }
+
     private var storyEmptyState: some View {
         VStack(spacing: 20) {
             Spacer()
@@ -136,6 +194,82 @@ private struct StoryCreateRequest: Identifiable {
     let name: String
 }
 
+private struct StoryMetric: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .monospacedDigit()
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private struct FeaturedStoryCard: View {
+    let name: String
+    let fragments: [Fragment]
+
+    private var latest: Fragment? { fragments.first }
+    private var coverIDs: [String] {
+        Array(fragments.compactMap { $0.coverMediaID }.prefix(4))
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            if coverIDs.isEmpty {
+                LinearGradient(
+                    colors: [Color(red: 0.36, green: 0.44, blue: 0.64), Color(red: 0.78, green: 0.62, blue: 0.38)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            } else {
+                StoryMosaicBackground(ids: coverIDs)
+            }
+
+            LinearGradient(colors: [.black.opacity(0.04), .black.opacity(0.72)],
+                           startPoint: .top, endPoint: .bottom)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("最近更新")
+                    .font(.caption2).fontWeight(.semibold)
+                    .foregroundStyle(.white.opacity(0.82))
+                Text(name)
+                    .font(.title2).fontWeight(.bold)
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                if let latest {
+                    Text(latest.content.isEmpty ? "\(fragments.count) 条碎片" : latest.content)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.86))
+                        .lineLimit(2)
+                }
+                HStack(spacing: 8) {
+                    Label("\(fragments.count)", systemImage: "square.on.square")
+                    if let date = latest?.date {
+                        Text(date.formatted(.relative(presentation: .named)))
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.75))
+            }
+            .padding(16)
+        }
+        .frame(maxWidth: .infinity, minHeight: 220)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.white.opacity(0.16), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.10), radius: 8, y: 4)
+    }
+}
+
 // MARK: - Story card (hero poster style)
 
 private struct StoryCard: View {
@@ -155,53 +289,44 @@ private struct StoryCard: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            // Background: mosaic or gradient fallback
-            if coverIDs.isEmpty {
-                LinearGradient(
-                    colors: [Color(red: 0.40, green: 0.28, blue: 0.52), Color(red: 0.26, green: 0.17, blue: 0.38)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-            } else {
-                StoryMosaicBackground(ids: coverIDs)
+        HStack(spacing: 12) {
+            ZStack {
+                if let id = coverIDs.first {
+                    MediaThumbnailView(identifier: id, size: CGSize(width: 116, height: 116))
+                        .frame(width: 58, height: 58)
+                        .clipped()
+                } else {
+                    LinearGradient(
+                        colors: [Color.accentColor.opacity(0.55), Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.55)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
             }
+            .frame(width: 58, height: 58)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
 
-            // Bottom scrim for text readability
-            LinearGradient(
-                colors: [.clear, .black.opacity(0.72)],
-                startPoint: .top, endPoint: .bottom
-            )
-            .frame(maxHeight: .infinity, alignment: .bottom)
-
-            // Text overlay
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(fragments.count) 条碎片  ·  \(dateRange)")
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.9))
-                    .shadow(color: .black.opacity(0.6), radius: 2, x: 0, y: 1)
+            VStack(alignment: .leading, spacing: 5) {
                 Text(name)
-                    .font(.title3).fontWeight(.bold)
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.4), radius: 3, x: 0, y: 1)
-                    .lineLimit(2)
+                    .font(.subheadline).fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text(dateRange)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("\(fragments.count) 条碎片")
+                    .font(.caption2)
+                    .foregroundStyle(Color.accentColor)
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 14)
 
-            // Top-right chevron badge
+            Spacer()
             Image(systemName: "chevron.right")
-                .font(.caption).fontWeight(.semibold)
-                .foregroundStyle(.white.opacity(0.7))
-                .padding(10)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
-        .frame(maxWidth: .infinity, minHeight: 180)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5)
-        )
-        .shadow(color: .black.opacity(0.10), radius: 6, y: 3)
+        .padding(12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5))
     }
 }
 

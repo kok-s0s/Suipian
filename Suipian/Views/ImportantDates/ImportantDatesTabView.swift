@@ -16,6 +16,8 @@ struct ImportantDatesTabView: View {
     private var todayItems: [ImportantDate] { sorted.filter { $0.isToday } }
     private var upcomingItems: [ImportantDate] { sorted.filter { !$0.isToday && $0.daysUntil >= 0 } }
     private var pastItems: [ImportantDate] { sorted.filter { $0.isPast } }
+    private var nextItem: ImportantDate? { todayItems.first ?? upcomingItems.first }
+    private var soonCount: Int { dates.filter { $0.daysUntil >= 0 && $0.daysUntil <= 30 }.count }
 
     var body: some View {
         NavigationStack {
@@ -25,7 +27,14 @@ struct ImportantDatesTabView: View {
                         emptyState
                     } else {
                         ScrollView {
-                            LazyVStack(spacing: 0) {
+                            LazyVStack(spacing: 14) {
+                                DateDashboardCard(nextItem: nextItem,
+                                                  totalCount: dates.count,
+                                                  todayCount: todayItems.count,
+                                                  soonCount: soonCount)
+                                    .padding(.horizontal, 16)
+                                    .padding(.top, 8)
+
                                 if !todayItems.isEmpty {
                                     sectionHeader("🎉 今天")
                                     ForEach(todayItems) { item in
@@ -56,7 +65,6 @@ struct ImportantDatesTabView: View {
                                     }
                                 }
                             }
-                            .padding(.top, 8)
                             .padding(.bottom, 100)
                         }
                         .background { AppBackgroundCanvas().ignoresSafeArea() }
@@ -145,6 +153,112 @@ struct ImportantDatesTabView: View {
 }
 
 // MARK: - Card
+
+private struct DateDashboardCard: View {
+    let nextItem: ImportantDate?
+    let totalCount: Int
+    let todayCount: Int
+    let soonCount: Int
+
+    private var accent: Color {
+        if nextItem?.isToday == true { return Color(red: 0.86, green: 0.36, blue: 0.28) }
+        return Color(red: 0.36, green: 0.44, blue: 0.64)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("日期")
+                        .font(.title2).fontWeight(.bold)
+                    Text("把值得提前期待的日子放在眼前")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "calendar.badge.clock")
+                    .font(.title3)
+                    .foregroundStyle(accent)
+                    .frame(width: 40, height: 40)
+                    .background(accent.opacity(0.13), in: Circle())
+            }
+
+            if let item = nextItem {
+                HStack(alignment: .center, spacing: 14) {
+                    Text(item.emoji)
+                        .font(.system(size: 34))
+                        .frame(width: 54, height: 54)
+                        .background(accent.opacity(0.12), in: Circle())
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(item.isToday ? "今天是 \(item.title)" : item.title)
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .lineLimit(1)
+                        Text(item.category + " · " + monthDayLabel(item))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    VStack(alignment: .trailing, spacing: 0) {
+                        if item.isToday {
+                            Text("今天")
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .foregroundStyle(accent)
+                        } else {
+                            Text("\(item.daysUntil)")
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .foregroundStyle(accent)
+                                .monospacedDigit()
+                            Text("天后")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(12)
+                .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 14))
+            }
+
+            HStack(spacing: 10) {
+                DateMetric(value: "\(totalCount)", label: "全部")
+                DateMetric(value: "\(todayCount)", label: "今天")
+                DateMetric(value: "\(soonCount)", label: "30天内")
+            }
+        }
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+    }
+
+    private func monthDayLabel(_ item: ImportantDate) -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "M月d日"
+        return fmt.string(from: item.date)
+    }
+}
+
+private struct DateMetric: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .monospacedDigit()
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
 
 private struct ImportantDateCard: View {
     let item: ImportantDate

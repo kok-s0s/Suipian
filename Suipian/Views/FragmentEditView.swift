@@ -7,7 +7,6 @@ import CoreLocation
 struct FragmentEditView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Query private var allFragments: [Fragment]
 
     var fragment: Fragment?
     var preloadedMediaIDs: [String] = []
