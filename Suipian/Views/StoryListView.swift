@@ -144,9 +144,9 @@ struct StoryListView: View {
                 Spacer()
                 Image(systemName: "sparkles")
                     .font(.title3)
-                    .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
+                    .foregroundStyle(AnimePalette.star)
                     .frame(width: 40, height: 40)
-                    .background(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.13), in: Circle())
+                    .background(AnimePalette.softStar, in: Circle())
             }
 
             HStack(spacing: 10) {
@@ -233,7 +233,7 @@ private struct FeaturedStoryCard: View {
         ZStack(alignment: .bottomLeading) {
             if coverIDs.isEmpty {
                 LinearGradient(
-                    colors: [Color(red: 0.36, green: 0.44, blue: 0.64), Color(red: 0.78, green: 0.62, blue: 0.38)],
+                    colors: AnimePalette.warmGradient,
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -303,7 +303,7 @@ private struct StoryCard: View {
                         .clipped()
                 } else {
                     LinearGradient(
-                        colors: [Color.accentColor.opacity(0.55), Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.55)],
+                        colors: [AnimePalette.primary.opacity(0.58), AnimePalette.sakura.opacity(0.58)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -508,7 +508,7 @@ private struct StoryDetailHero: View {
         ZStack(alignment: .bottomLeading) {
             if coverIDs.isEmpty {
                 LinearGradient(
-                    colors: [Color(red: 0.36, green: 0.44, blue: 0.64), Color(red: 0.780, green: 0.624, blue: 0.384)],
+                    colors: AnimePalette.heroGradient,
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )

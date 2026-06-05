@@ -796,20 +796,20 @@ private struct SpeedDialFAB: View {
         ZStack(alignment: .bottomTrailing) {
             VStack(alignment: .trailing, spacing: 14) {
                 if cameraAvailable {
-                fabAction(icon: "camera.fill",             label: "拍照",  color: Color(red: 0.45, green: 0.55, blue: 0.72), action: onCamera)
+                fabAction(icon: "camera.fill",             label: "拍照",  color: AnimePalette.sakura, action: onCamera)
                     .offset(y: isExpanded ? 0 : 40).opacity(isExpanded ? 1 : 0)
                     .animation(.spring(response: 0.38, dampingFraction: 0.72).delay(0.0), value: isExpanded)
                 }
 
-                fabAction(icon: "photo.on.rectangle.fill", label: "相册",  color: Color(red: 0.42, green: 0.62, blue: 0.55), action: onPhoto)
+                fabAction(icon: "photo.on.rectangle.fill", label: "相册",  color: AnimePalette.mint, action: onPhoto)
                     .offset(y: isExpanded ? 0 : 40).opacity(isExpanded ? 1 : 0)
                     .animation(.spring(response: 0.38, dampingFraction: 0.72).delay(0.06), value: isExpanded)
 
-                fabAction(icon: "text.alignleft",          label: "文字",  color: Color(red: 0.36, green: 0.44, blue: 0.64), action: onText)
+                fabAction(icon: "text.alignleft",          label: "文字",  color: AnimePalette.primary, action: onText)
                     .offset(y: isExpanded ? 0 : 40).opacity(isExpanded ? 1 : 0)
                     .animation(.spring(response: 0.38, dampingFraction: 0.72).delay(0.12), value: isExpanded)
 
-                fabAction(icon: "waveform",                label: "语音",  color: Color(red: 0.52, green: 0.40, blue: 0.72), action: onVoice)
+                fabAction(icon: "waveform",                label: "语音",  color: AnimePalette.violet, action: onVoice)
                     .offset(y: isExpanded ? 0 : 40).opacity(isExpanded ? 1 : 0)
                     .animation(.spring(response: 0.38, dampingFraction: 0.72).delay(0.18), value: isExpanded)
 

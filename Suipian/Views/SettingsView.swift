@@ -160,7 +160,7 @@ struct SettingsView: View {
                     }
 
                     // MARK: - 数据管理
-                    SettingsCard(title: "数据管理", icon: "externaldrive", iconColor: Color(red: 0.780, green: 0.624, blue: 0.384)) {
+                    SettingsCard(title: "数据管理", icon: "externaldrive", iconColor: AnimePalette.star) {
                         SettingsInfoRow(icon: "square.on.square", label: "已记录碎片",
                                         value: "\(fragments.count) 条")
                         Divider().padding(.leading, 48)

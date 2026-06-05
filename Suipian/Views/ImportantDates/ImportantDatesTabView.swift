@@ -161,8 +161,8 @@ private struct DateDashboardCard: View {
     let soonCount: Int
 
     private var accent: Color {
-        if nextItem?.isToday == true { return Color(red: 0.86, green: 0.36, blue: 0.28) }
-        return Color(red: 0.36, green: 0.44, blue: 0.64)
+        if nextItem?.isToday == true { return AnimePalette.sakura }
+        return AnimePalette.primary
     }
 
     var body: some View {
@@ -265,7 +265,7 @@ private struct ImportantDateCard: View {
     var muted: Bool = false
 
     private var accent: Color {
-        item.isToday ? Color(red: 0.780, green: 0.624, blue: 0.384) : Color.accentColor
+        item.isToday ? AnimePalette.sakura : AnimePalette.primary
     }
 
     var body: some View {

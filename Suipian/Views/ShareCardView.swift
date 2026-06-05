@@ -28,10 +28,10 @@ struct ShareCardView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "square.on.square.fill")
                         .font(.caption)
-                        .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
+                        .foregroundStyle(AnimePalette.star)
                     Text("碎片")
                         .font(.caption).fontWeight(.semibold)
-                        .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
+                        .foregroundStyle(AnimePalette.star)
                     Spacer()
                     Text(dateString)
                         .font(.caption2)
@@ -52,10 +52,10 @@ struct ShareCardView: View {
                         ForEach(fragment.tags.prefix(3), id: \.self) { tag in
                             Text("#\(tag)")
                                 .font(.caption2).fontWeight(.medium)
-                                .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
+                                .foregroundStyle(AnimePalette.star)
                                 .padding(.horizontal, 8).padding(.vertical, 3)
-                                .background(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.12), in: Capsule())
-                                .overlay(Capsule().strokeBorder(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.3), lineWidth: 0.5))
+                                .background(AnimePalette.star.opacity(0.12), in: Capsule())
+                                .overlay(Capsule().strokeBorder(AnimePalette.star.opacity(0.3), lineWidth: 0.5))
                         }
                         if fragment.hasLocation && !fragment.locationName.isEmpty {
                             Spacer()

@@ -119,7 +119,7 @@ struct AudioPlayerCard: View {
                         set: { player.seek(to: $0 * player.duration) }
                     )
                 )
-                .tint(Color(red: 0.780, green: 0.624, blue: 0.384))
+                .tint(AnimePalette.star)
 
                 HStack {
                     Text(formatTime(player.currentTime))

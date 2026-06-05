@@ -555,11 +555,11 @@ private struct ClusterPin: View {
                 MediaThumbnailView(identifier: id, size: CGSize(width: 100, height: 100))
                     .frame(width: isSelected ? 44 : 32, height: isSelected ? 44 : 32)
                     .clipShape(Circle())
-                    .overlay(Circle().strokeBorder(isSelected ? Color(red: 0.780, green: 0.624, blue: 0.384) : .white, lineWidth: isSelected ? 3 : 2))
+                    .overlay(Circle().strokeBorder(isSelected ? AnimePalette.star : .white, lineWidth: isSelected ? 3 : 2))
                     .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
             } else {
                 Circle()
-                    .fill(isSelected ? Color(red: 0.780, green: 0.624, blue: 0.384) : Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.85))
+                    .fill(isSelected ? AnimePalette.star : AnimePalette.star.opacity(0.85))
                     .frame(width: isSelected ? 20 : 14, height: isSelected ? 20 : 14)
                     .overlay(Circle().strokeBorder(.white, lineWidth: 2))
                     .shadow(color: .black.opacity(0.25), radius: 3, y: 1)
@@ -581,7 +581,7 @@ private struct ClusterPin: View {
                             .zIndex(Double(3 - i))
                     } else {
                         Circle()
-                            .fill(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.8 - Double(i) * 0.15))
+                            .fill(AnimePalette.star.opacity(0.8 - Double(i) * 0.15))
                             .frame(width: isSelected ? 38 : 30, height: isSelected ? 38 : 30)
                             .overlay(Circle().strokeBorder(.white, lineWidth: 1.5))
                             .offset(x: CGFloat(i) * (isSelected ? -6 : -5))
@@ -594,7 +594,7 @@ private struct ClusterPin: View {
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 5).padding(.vertical, 2)
-                .background(Color(red: 0.780, green: 0.624, blue: 0.384))
+                .background(AnimePalette.star)
                 .clipShape(Capsule())
                 .overlay(Capsule().strokeBorder(.white, lineWidth: 1))
         }

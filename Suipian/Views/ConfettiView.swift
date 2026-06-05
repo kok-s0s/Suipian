@@ -18,8 +18,8 @@ struct ConfettiView: View {
     @State private var launchTime: Date = .distantPast
 
     private static let palette: [Color] = [
-        Color(red: 0.36, green: 0.44, blue: 0.64),
-        Color(red: 0.780, green: 0.624, blue: 0.384),
+        AnimePalette.primary,
+        AnimePalette.star,
         Color(red: 0.28, green: 0.65, blue: 0.42),
         Color(red: 0.88, green: 0.35, blue: 0.25),
         Color(red: 0.68, green: 0.32, blue: 0.72),

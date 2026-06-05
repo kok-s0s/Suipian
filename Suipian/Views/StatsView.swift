@@ -371,7 +371,7 @@ private struct HeatmapSection: View {
                 HStack(spacing: 3) {
                     ForEach([0.08, 0.3, 0.55, 0.8, 1.0], id: \.self) { opacity in
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(opacity))
+                            .fill(AnimePalette.star.opacity(opacity))
                             .frame(width: 11, height: 11)
                     }
                 }
@@ -383,7 +383,7 @@ private struct HeatmapSection: View {
                         Text("🔥").font(.system(size: 10))
                         Text("连续 \(streak) 天")
                             .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
+                            .foregroundStyle(AnimePalette.star)
                     }
                 } else {
                     Text("点击格子查看当日碎片")
@@ -407,7 +407,7 @@ private struct HeatmapCell: View {
 
     @State private var popped = false
 
-    private static let amber = Color(red: 0.780, green: 0.624, blue: 0.384)
+    private static let amber = AnimePalette.star
 
     var body: some View {
         RoundedRectangle(cornerRadius: 3)
@@ -484,13 +484,13 @@ private struct MoodCurveChart: View {
                 // Fill
                 fillPath(pts: pts, cps: cps)
                     .fill(LinearGradient(
-                        colors: [Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.22), Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.02)],
+                        colors: [AnimePalette.star.opacity(0.22), AnimePalette.star.opacity(0.02)],
                         startPoint: .top, endPoint: .bottom
                     ))
 
                 // Line
                 curvePath(pts: pts, cps: cps)
-                    .stroke(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.65),
+                    .stroke(AnimePalette.star.opacity(0.65),
                             style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
 
                 // Data points + mood emoji
@@ -509,7 +509,7 @@ private struct MoodCurveChart: View {
                                 Text(mood).font(.system(size: 11))
                             }
                             Circle()
-                                .fill(item.count > 0 ? Color(red: 0.780, green: 0.624, blue: 0.384) : Color.primary.opacity(0.15))
+                                .fill(item.count > 0 ? AnimePalette.star : Color.primary.opacity(0.15))
                                 .overlay(Circle().strokeBorder(.white.opacity(0.7), lineWidth: 1))
                                 .frame(width: 6, height: 6)
                         }
@@ -612,10 +612,10 @@ private struct MoodStatsSection: View {
                                 VStack(spacing: 5) {
                                     ZStack {
                                         Circle()
-                                            .stroke(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.12), lineWidth: 3.5)
+                                            .stroke(AnimePalette.star.opacity(0.12), lineWidth: 3.5)
                                         Circle()
                                             .trim(from: 0, to: CGFloat(item.fragments.count) / maxCount)
-                                            .stroke(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.72),
+                                            .stroke(AnimePalette.star.opacity(0.72),
                                                     style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
                                             .rotationEffect(.degrees(-90))
                                         Text(item.emoji).font(.title3)
@@ -667,15 +667,15 @@ private struct TopTagsSection: View {
                             HStack(spacing: 5) {
                                 Text("#\(item.tag)")
                                     .font(.caption).fontWeight(.medium)
-                                    .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
+                                    .foregroundStyle(AnimePalette.star)
                                     .lineLimit(1)
                                 Text("\(item.fragments.count)")
                                     .font(.system(size: 10, weight: .regular))
-                                    .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.55))
+                                    .foregroundStyle(AnimePalette.star.opacity(0.55))
                             }
                             .padding(.horizontal, 11).padding(.vertical, 6)
-                            .background(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.10), in: Capsule())
-                            .overlay(Capsule().strokeBorder(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.28), lineWidth: 0.8))
+                            .background(AnimePalette.star.opacity(0.10), in: Capsule())
+                            .overlay(Capsule().strokeBorder(AnimePalette.star.opacity(0.28), lineWidth: 0.8))
                         }
                         .buttonStyle(.plain)
                     }

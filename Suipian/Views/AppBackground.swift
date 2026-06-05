@@ -8,13 +8,19 @@ struct AppBackgroundCanvas: View {
 
     var body: some View {
         let patternOpacity: Double = colorScheme == .dark ? 0.14 : 0.09
-        // Warm cream (light) / deep ink blue (dark) — replaces clinical system white
         let base: Color = colorScheme == .dark
-            ? Color(red: 0.110, green: 0.125, blue: 0.195)
-            : Color(red: 0.969, green: 0.961, blue: 0.941)
+            ? AnimePalette.darkBackground
+            : AnimePalette.lightBackground
 
         ZStack {
-            base.allowsHitTesting(false)
+            LinearGradient(
+                colors: colorScheme == .dark
+                    ? [base, AnimePalette.primary.opacity(0.18)]
+                    : [base, AnimePalette.sakura.opacity(0.10), AnimePalette.primary.opacity(0.08)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .allowsHitTesting(false)
 
             Group {
                 switch styleRaw {

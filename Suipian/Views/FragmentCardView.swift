@@ -38,8 +38,7 @@ struct FragmentCardView: View {
         .animeCard(cornerRadius: 16)
     }
 
-    // Warm amber stripe — shown on left edge when a mood is recorded
-    private static let moodStripeColor = Color(red: 0.780, green: 0.624, blue: 0.384)
+    private static let moodStripeColor = AnimePalette.sakura
 
     @ViewBuilder
     private var normalCard: some View {
@@ -131,7 +130,7 @@ struct FragmentCardView: View {
             if fragment.isPinned {
                 Image(systemName: "pin.fill")
                     .font(.caption2)
-                    .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
+                    .foregroundStyle(AnimePalette.star)
                     .padding(8)
                     .accessibilityLabel("已置顶")
             }
@@ -149,8 +148,8 @@ func highlighted(_ text: String, query: String) -> AttributedString {
         guard let range = attr[searchStart...].range(
             of: query, options: [.caseInsensitive, .diacriticInsensitive]
         ) else { break }
-        attr[range].foregroundColor = UIColor(Color(red: 0.36, green: 0.44, blue: 0.64))
-        attr[range].backgroundColor = UIColor(Color(red: 0.36, green: 0.44, blue: 0.64).opacity(0.15))
+        attr[range].foregroundColor = UIColor(AnimePalette.primary)
+        attr[range].backgroundColor = UIColor(AnimePalette.softPrimary)
         attr[range].font = UIFont.systemFont(ofSize: 0, weight: .semibold)
         searchStart = range.upperBound
     }

@@ -66,11 +66,11 @@ private enum CountdownTone {
     var accent: Color {
         switch self {
         case .today:
-            return Color(red: 0.86, green: 0.36, blue: 0.28)
+            return WidgetAnimePalette.sakura
         case .soon:
-            return Color(red: 0.78, green: 0.62, blue: 0.38)
+            return WidgetAnimePalette.star
         case .normal:
-            return Color(red: 0.36, green: 0.44, blue: 0.64)
+            return WidgetAnimePalette.primary
         }
     }
 
@@ -374,7 +374,7 @@ private struct EmptyImportantDateWidgetView: View {
         VStack(spacing: 10) {
             Image(systemName: "calendar.badge.plus")
                 .font(.title2)
-                .foregroundStyle(Color(red: 0.36, green: 0.44, blue: 0.64))
+                .foregroundStyle(WidgetAnimePalette.primary)
             VStack(spacing: 3) {
                 Text("还没有日期")
                     .font(.headline)

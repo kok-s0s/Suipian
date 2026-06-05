@@ -61,7 +61,7 @@ struct SuipianWidgetEntryView: View {
                 HStack {
                     Text("碎片")
                         .font(.caption2).fontWeight(.semibold)
-                        .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
+                        .foregroundStyle(WidgetAnimePalette.sakura)
                     Spacer()
                     Text(f.date.formatted(.relative(presentation: .named)))
                         .font(.caption2)

@@ -1,5 +1,26 @@
 import SwiftUI
 
+enum AnimePalette {
+    static let primary = Color(red: 0.48, green: 0.55, blue: 0.95)      // magic blue
+    static let sakura = Color(red: 0.96, green: 0.50, blue: 0.68)       // sakura pink
+    static let star = Color(red: 0.96, green: 0.72, blue: 0.34)         // star gold
+    static let mint = Color(red: 0.38, green: 0.78, blue: 0.68)         // mint green
+    static let violet = Color(red: 0.66, green: 0.54, blue: 0.98)       // dream violet
+    static let coral = Color(red: 0.93, green: 0.36, blue: 0.40)
+
+    static let lightBackground = Color(red: 0.975, green: 0.965, blue: 1.000)
+    static let darkBackground = Color(red: 0.090, green: 0.085, blue: 0.155)
+
+    static let softPrimary = primary.opacity(0.14)
+    static let softSakura = sakura.opacity(0.14)
+    static let softStar = star.opacity(0.16)
+    static let softMint = mint.opacity(0.14)
+
+    static let heroGradient = [primary, sakura]
+    static let warmGradient = [sakura, star]
+    static let coolGradient = [primary, mint]
+}
+
 // MARK: - Card style modifiers
 
 extension View {

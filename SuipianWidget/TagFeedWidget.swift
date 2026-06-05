@@ -111,7 +111,7 @@ struct TagFeedWidgetView: View {
                 HStack(alignment: .center) {
                     Text(entry.tag.isEmpty ? "碎片" : "#\(entry.tag)")
                         .font(.caption2).fontWeight(.semibold)
-                        .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
+                        .foregroundStyle(WidgetAnimePalette.sakura)
                     Spacer()
                     if entry.total > 1 {
                         Text("\(entry.index + 1) / \(entry.total)")
@@ -150,9 +150,9 @@ struct TagFeedWidgetView: View {
                         Button(intent: NextTagFragmentIntent(tag: entry.tag)) {
                             Image(systemName: "arrow.clockwise")
                                 .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(Color(red: 0.780, green: 0.624, blue: 0.384))
+                                .foregroundStyle(WidgetAnimePalette.sakura)
                                 .frame(width: 26, height: 26)
-                                .background(Color(red: 0.780, green: 0.624, blue: 0.384).opacity(0.12), in: Circle())
+                                .background(WidgetAnimePalette.sakura.opacity(0.12), in: Circle())
                         }
                         .buttonStyle(.plain)
                     }

@@ -62,12 +62,12 @@ private struct TimelineSection: View {
                 }
                 VStack(spacing: 4) {
                     Circle()
-                        .fill(Color(red: 0.36, green: 0.44, blue: 0.64))
+                        .fill(AnimePalette.primary)
                         .frame(width: dotSize, height: dotSize)
-                        .shadow(color: Color(red: 0.36, green: 0.44, blue: 0.64).opacity(0.4), radius: 4)
+                        .shadow(color: AnimePalette.primary.opacity(0.4), radius: 4)
                     Text(String(year))
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color(red: 0.36, green: 0.44, blue: 0.64))
+                        .foregroundStyle(AnimePalette.primary)
                         .monospacedDigit()
                 }
             }
