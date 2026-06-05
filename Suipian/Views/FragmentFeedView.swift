@@ -772,6 +772,7 @@ private struct QuickFragmentSheet: View {
         let fragment = Fragment(content: trimmed, date: Date(), tags: [])
         fragment.mood = mood
         modelContext.insert(fragment)
+        SpotlightManager.index(fragment)
         try? modelContext.save()
         WidgetDataStore.rebuildFragmentWidgets([fragment] + fragments)
         HapticFeedback.success()
