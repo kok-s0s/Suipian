@@ -15,6 +15,7 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(CloudKitSyncMonitor.self) private var syncMonitor
     @Query private var fragments: [Fragment]
+    @Query private var importantDates: [ImportantDate]
 
     @State private var reminderTime = Date()
     @State private var showingPermissionAlert = false
@@ -178,7 +179,7 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.plain)
 
-                        Text("导出 / 导入包含文字、标签、情绪、地点等元数据，媒体文件不包含在内")
+                        Text("导出 / 导入包含碎片元数据和重要日期，媒体文件不包含在内")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                             .padding(.top, 4)
@@ -322,19 +323,46 @@ struct SettingsView: View {
         let isPrivate: Bool; let isPinned: Bool; let mediaCount: Int
     }
 
+    private struct ImportantDateRecord: Codable {
+        let title: String
+        let date: String
+        let emoji: String
+        let category: String
+        let note: String
+        let isRecurring: Bool
+        let notificationEnabled: Bool
+        let advanceReminderDays: Int
+    }
+
+    private struct ExportPayload: Codable {
+        let fragments: [FragmentRecord]
+        let importantDates: [ImportantDateRecord]
+    }
+
     private func exportJSON() {
         HapticFeedback.impact(.light)
         let fmt = ISO8601DateFormatter()
-        let records = fragments.map {
+        let fragmentRecords = fragments.map {
             FragmentRecord(date: fmt.string(from: $0.date), content: $0.content, tags: $0.tags,
                            mood: $0.mood, storyName: $0.storyName, locationName: $0.locationName,
                            latitude: $0.latitude, longitude: $0.longitude,
                            isPrivate: $0.isPrivate, isPinned: $0.isPinned,
                            mediaCount: $0.mediaIdentifiers.count)
         }
+        let dateRecords = importantDates.map {
+            ImportantDateRecord(title: $0.title,
+                                date: fmt.string(from: $0.date),
+                                emoji: $0.emoji,
+                                category: $0.category,
+                                note: $0.note,
+                                isRecurring: $0.isRecurring,
+                                notificationEnabled: $0.notificationEnabled,
+                                advanceReminderDays: $0.advanceReminderDays)
+        }
+        let payload = ExportPayload(fragments: fragmentRecords, importantDates: dateRecords)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(records) else { return }
+        guard let data = try? encoder.encode(payload) else { return }
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("suipian-export-\(Int(Date().timeIntervalSince1970)).json")
         try? data.write(to: url)
@@ -350,14 +378,22 @@ struct SettingsView: View {
                 importResult = ImportResult(success: false, message: "无法访问所选文件。"); return
             }
             defer { url.stopAccessingSecurityScopedResource() }
-            guard let data = try? Data(contentsOf: url),
-                  let records = try? JSONDecoder().decode([FragmentRecord].self, from: data) else {
+            guard let data = try? Data(contentsOf: url) else {
+                importResult = ImportResult(success: false, message: "JSON 格式不匹配，请使用碎片导出的文件。"); return
+            }
+            let decoder = JSONDecoder()
+            let payload: ExportPayload
+            if let decoded = try? decoder.decode(ExportPayload.self, from: data) {
+                payload = decoded
+            } else if let oldRecords = try? decoder.decode([FragmentRecord].self, from: data) {
+                payload = ExportPayload(fragments: oldRecords, importantDates: [])
+            } else {
                 importResult = ImportResult(success: false, message: "JSON 格式不匹配，请使用碎片导出的文件。"); return
             }
             let fmt = ISO8601DateFormatter()
             let existingSet = Set(fragments.map { "\(Int($0.date.timeIntervalSinceReferenceDate))|\($0.content)" })
             var inserted = 0, skipped = 0
-            for r in records {
+            for r in payload.fragments {
                 let date = fmt.date(from: r.date) ?? Date()
                 let key = "\(Int(date.timeIntervalSinceReferenceDate))|\(r.content)"
                 if existingSet.contains(key) { skipped += 1; continue }
@@ -366,11 +402,48 @@ struct SettingsView: View {
                 f.mood = r.mood; f.storyName = r.storyName; f.isPrivate = r.isPrivate; f.isPinned = r.isPinned
                 modelContext.insert(f); inserted += 1
             }
+
+            var existingDateSet = Set(importantDates.map { "\($0.title)|\(Int($0.date.timeIntervalSinceReferenceDate))" })
+            var insertedDateItems: [ImportantDate] = []
+            var insertedDates = 0, skippedDates = 0
+            for r in payload.importantDates {
+                let date = fmt.date(from: r.date) ?? Date()
+                let key = "\(r.title)|\(Int(date.timeIntervalSinceReferenceDate))"
+                if existingDateSet.contains(key) { skippedDates += 1; continue }
+                existingDateSet.insert(key)
+                let item = ImportantDate(title: r.title,
+                                         date: date,
+                                         emoji: r.emoji,
+                                         category: r.category,
+                                         note: r.note,
+                                         isRecurring: r.isRecurring,
+                                         notificationEnabled: r.notificationEnabled,
+                                         advanceReminderDays: r.advanceReminderDays)
+                modelContext.insert(item)
+                insertedDateItems.append(item)
+                insertedDates += 1
+            }
             try? modelContext.save()
+            let allDates = importantDates + insertedDateItems
+            WidgetDataStore.updateImportantDates(allDates)
+            ImportantDateNotifier.rescheduleAll(allDates)
             HapticFeedback.success()
             importResult = ImportResult(success: true,
-                message: skipped > 0 ? "导入 \(inserted) 条，跳过 \(skipped) 条重复" : "成功导入 \(inserted) 条碎片")
+                message: importSummary(inserted: inserted, skipped: skipped,
+                                       insertedDates: insertedDates, skippedDates: skippedDates))
         }
+    }
+
+    private func importSummary(inserted: Int, skipped: Int, insertedDates: Int, skippedDates: Int) -> String {
+        var parts = ["导入 \(inserted) 条碎片"]
+        if insertedDates > 0 || skippedDates > 0 {
+            parts.append("\(insertedDates) 个重要日期")
+        }
+        let skippedTotal = skipped + skippedDates
+        if skippedTotal > 0 {
+            parts.append("跳过 \(skippedTotal) 条重复")
+        }
+        return parts.joined(separator: "，")
     }
 
     private var formattedTime: String { String(format: "%02d:%02d", reminderHour, reminderMinute) }
