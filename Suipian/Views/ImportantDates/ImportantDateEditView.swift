@@ -16,6 +16,7 @@ struct ImportantDateEditView: View {
     @State private var isRecurring = true
     @State private var notificationEnabled = true
     @State private var advanceReminderDays = 0
+    @State private var autoRecordFragment = true
     @State private var showingEmojiPicker = false
     @State private var showingPermissionAlert = false
 
@@ -124,6 +125,23 @@ struct ImportantDateEditView: View {
                     }
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
 
+                    VStack(spacing: 0) {
+                        Toggle(isOn: $autoRecordFragment) {
+                            HStack(spacing: 10) {
+                                Image(systemName: "square.and.pencil")
+                                    .foregroundStyle(autoRecordFragment ? Color.accentColor : .secondary)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("当天自动记录碎片")
+                                        .font(.subheadline)
+                                    Text("到当天时自动生成一条纪念碎片，可避免忘记记录")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .padding(16)
+                    }
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+
                     // Note
                     VStack(alignment: .leading, spacing: 8) {
                         Text("备注").font(.caption).foregroundStyle(.secondary)
@@ -197,6 +215,7 @@ struct ImportantDateEditView: View {
         category = it.category; note = it.note
         isRecurring = it.isRecurring; notificationEnabled = it.notificationEnabled
         advanceReminderDays = it.advanceReminderDays
+        autoRecordFragment = it.autoRecordFragment
     }
 
     @MainActor
@@ -215,6 +234,7 @@ struct ImportantDateEditView: View {
             it.category = category; it.note = note
             it.isRecurring = isRecurring; it.notificationEnabled = notificationEnabled
             it.advanceReminderDays = advanceReminderDays
+            it.autoRecordFragment = autoRecordFragment
             ImportantDateNotifier.remove(it)
             if notificationEnabled { ImportantDateNotifier.schedule(it) }
             WidgetDataStore.updateImportantDates(allDates)
@@ -222,7 +242,8 @@ struct ImportantDateEditView: View {
             let newItem = ImportantDate(title: trimmed, date: date, emoji: emoji,
                                         category: category, note: note,
                                         isRecurring: isRecurring, notificationEnabled: notificationEnabled,
-                                        advanceReminderDays: advanceReminderDays)
+                                        advanceReminderDays: advanceReminderDays,
+                                        autoRecordFragment: autoRecordFragment)
             modelContext.insert(newItem)
             if notificationEnabled { ImportantDateNotifier.schedule(newItem) }
             WidgetDataStore.updateImportantDates(allDates + [newItem])

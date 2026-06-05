@@ -332,6 +332,7 @@ struct SettingsView: View {
         let isRecurring: Bool
         let notificationEnabled: Bool
         let advanceReminderDays: Int
+        let autoRecordFragment: Bool?
     }
 
     private struct ExportPayload: Codable {
@@ -357,7 +358,8 @@ struct SettingsView: View {
                                 note: $0.note,
                                 isRecurring: $0.isRecurring,
                                 notificationEnabled: $0.notificationEnabled,
-                                advanceReminderDays: $0.advanceReminderDays)
+                                advanceReminderDays: $0.advanceReminderDays,
+                                autoRecordFragment: $0.autoRecordFragment)
         }
         let payload = ExportPayload(fragments: fragmentRecords, importantDates: dateRecords)
         let encoder = JSONEncoder()
@@ -418,7 +420,8 @@ struct SettingsView: View {
                                          note: r.note,
                                          isRecurring: r.isRecurring,
                                          notificationEnabled: r.notificationEnabled,
-                                         advanceReminderDays: r.advanceReminderDays)
+                                         advanceReminderDays: r.advanceReminderDays,
+                                         autoRecordFragment: r.autoRecordFragment ?? true)
                 modelContext.insert(item)
                 insertedDateItems.append(item)
                 insertedDates += 1

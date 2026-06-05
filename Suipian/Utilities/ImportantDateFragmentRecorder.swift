@@ -4,7 +4,7 @@ import SwiftData
 enum ImportantDateFragmentRecorder {
     @MainActor
     static func recordTodayItems(_ dates: [ImportantDate], in context: ModelContext) {
-        let todayItems = dates.filter { $0.notificationEnabled && $0.isToday }
+        let todayItems = dates.filter { $0.autoRecordFragment && $0.isToday }
         guard !todayItems.isEmpty else { return }
 
         let cal = Calendar.current
