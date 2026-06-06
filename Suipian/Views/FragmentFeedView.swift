@@ -419,13 +419,6 @@ struct FragmentFeedView: View {
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    if !reviewableFragments.isEmpty {
-                        Button { pickRandomFragment() } label: {
-                            Image(systemName: "dice")
-                                .glassToolbarIcon()
-                        }
-                        .buttonStyle(.plain)
-                    }
                     Button { showingMap = true } label: {
                         Image(systemName: "map")
                             .glassToolbarIcon()
