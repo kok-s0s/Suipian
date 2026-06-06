@@ -186,11 +186,21 @@ struct FragmentFeedView: View {
                         todayCount: todayFragments.count,
                         daysSinceLastFragment: daysSinceLastFragment,
                         onThisDayCount: onThisDayFragments.count,
-                        upcomingDate: recentImportantDate,
-                        onQuickWrite: { showingQuickFragment = true }
+                        upcomingDate: recentImportantDate
                     )
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
+
+                    FeedOverviewStrip(
+                        todayCount: todayFragments.count,
+                        reviewableCount: reviewableFragments.count,
+                        onThisDayCount: onThisDayFragments.count,
+                        upcomingDate: recentImportantDate,
+                        onQuickWrite: { showingQuickFragment = true },
+                        onRandomReview: { pickRandomFragment() }
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
 
                     // Upcoming important date banner (today or within 7 days)
                     if let upcoming = recentImportantDate {
@@ -607,7 +617,6 @@ private struct TodayEntryCard: View {
     let daysSinceLastFragment: Int?
     let onThisDayCount: Int
     let upcomingDate: ImportantDate?
-    let onQuickWrite: () -> Void
 
     private var statusText: String {
         guard let daysSinceLastFragment else { return "今天从第一条碎片开始" }
@@ -656,15 +665,6 @@ private struct TodayEntryCard: View {
                 .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
             }
 
-            Button(action: onQuickWrite) {
-                Label("快速记一条", systemImage: "square.and.pencil")
-                    .font(.subheadline).fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 12))
-                    .foregroundStyle(.white)
-            }
-            .buttonStyle(PressScaleButtonStyle(scale: 0.97))
         }
         .padding(16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
@@ -691,6 +691,131 @@ private struct TodayStat: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private struct FeedOverviewStrip: View {
+    let todayCount: Int
+    let reviewableCount: Int
+    let onThisDayCount: Int
+    let upcomingDate: ImportantDate?
+    let onQuickWrite: () -> Void
+    let onRandomReview: () -> Void
+
+    private var upcomingText: String {
+        guard let upcomingDate else { return "暂无" }
+        return upcomingDate.isToday ? "今天" : "\(upcomingDate.daysUntil) 天"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                OverviewMetric(title: "今日", value: "\(todayCount)", icon: "sun.max.fill", tint: AnimePalette.primary)
+                OverviewMetric(title: "回顾", value: "\(reviewableCount)", icon: "arrow.counterclockwise", tint: AnimePalette.star)
+                OverviewMetric(title: "历史", value: "\(onThisDayCount)", icon: "clock.arrow.circlepath", tint: AnimePalette.violet)
+            }
+
+            HStack(spacing: 10) {
+                if let upcomingDate {
+                    HStack(alignment: .center, spacing: 10) {
+                        Text(upcomingDate.emoji)
+                            .font(.title3)
+                            .frame(width: 36, height: 36)
+                            .background(AnimePalette.mint.opacity(0.14), in: Circle())
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("重要日期")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.secondary)
+                            Text(upcomingDate.isToday ? "今天是 \(upcomingDate.title)" : upcomingDate.title)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
+                        Text(upcomingText)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(AnimePalette.primary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(AnimePalette.primary.opacity(0.10), in: Capsule())
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                } else {
+                    HStack {
+                        Text("暂无重要日期")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                }
+            }
+
+            HStack(spacing: 10) {
+                Button(action: onQuickWrite) {
+                    Label("快速记一条", systemImage: "square.and.pencil")
+                        .font(.subheadline).fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(AnimePalette.primary, in: RoundedRectangle(cornerRadius: 12))
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(PressScaleButtonStyle(scale: 0.97))
+
+                Button(action: onRandomReview) {
+                    Label("随机回顾", systemImage: "dice")
+                        .font(.subheadline).fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(reviewableCount > 0 ? AnimePalette.star.opacity(0.18) : Color.secondary.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
+                        .foregroundStyle(reviewableCount > 0 ? AnimePalette.star : .secondary)
+                }
+                .buttonStyle(PressScaleButtonStyle(scale: 0.97))
+                .disabled(reviewableCount == 0)
+            }
+        }
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+    }
+}
+
+private struct OverviewMetric: View {
+    let title: String
+    let value: String
+    let icon: String
+    let tint: Color
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundStyle(tint)
+                .frame(width: 24, height: 24)
+                .background(tint.opacity(0.12), in: Circle())
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 }
 
