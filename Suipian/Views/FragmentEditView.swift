@@ -1102,8 +1102,14 @@ private struct EditOverviewStrip: View {
                             .padding(.vertical, 12)
                             .background(
                                 RoundedRectangle(cornerRadius: 16)
-                                    .fill(item.filled ? item.tint : .ultraThinMaterial)
+                                    .fill(item.filled ? item.tint : Color.clear)
                             )
+                            .overlay {
+                                if !item.filled {
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(.ultraThinMaterial)
+                                }
+                            }
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
                                     .strokeBorder(item.filled ? item.tint.opacity(0.28) : Color.primary.opacity(0.10), lineWidth: 0.7)

@@ -419,19 +419,23 @@ struct FragmentFeedView: View {
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button { showingMap = true } label: {
-                        Image(systemName: "map")
-                            .glassToolbarIcon()
-                    }
-                    .buttonStyle(.plain)
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.22)) { isGridView.toggle() }
+                    Menu {
+                        Button {
+                            showingMap = true
+                        } label: {
+                            Label("查看地图", systemImage: "map")
+                        }
+
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.22)) { isGridView.toggle() }
+                        } label: {
+                            Label(isGridView ? "切换到列表" : "切换到方格",
+                                  systemImage: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
+                        }
                     } label: {
-                        Image(systemName: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
-                            .contentTransition(.symbolEffect(.replace))
-                            .glassToolbarIcon(active: isGridView)
+                        Image(systemName: "ellipsis.circle")
+                            .glassToolbarIcon(active: false)
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .overlay {
