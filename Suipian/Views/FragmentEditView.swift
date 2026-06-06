@@ -164,6 +164,23 @@ struct FragmentEditView: View {
             || !audioFileNames.isEmpty
     }
 
+    private var contentCharacterCount: Int {
+        content.trimmingCharacters(in: .whitespacesAndNewlines).count
+    }
+
+    private var overviewItems: [EditOverviewItem] {
+        [
+            .init(id: "editor_content", title: "正文", value: contentCharacterCount > 0 ? "\(contentCharacterCount) 字" : "待写", icon: "text.alignleft", target: "editor_content", tint: .accentColor, filled: contentCharacterCount > 0),
+            .init(id: "editor_media", title: "媒体", value: mediaIdentifiers.isEmpty ? "未添加" : "\(mediaIdentifiers.count) 项", icon: "photo.on.rectangle.angled", target: "editor_media", tint: AnimePalette.primary, filled: !mediaIdentifiers.isEmpty),
+            .init(id: "editor_tags", title: "标签", value: tags.isEmpty ? "未加" : "\(tags.count) 个", icon: "tag", target: "editor_tags", tint: AnimePalette.star, filled: !tags.isEmpty),
+            .init(id: "editor_mood", title: "心情", value: mood.isEmpty ? "未选" : mood, icon: "face.smiling", target: "editor_mood", tint: AnimePalette.sakura, filled: !mood.isEmpty),
+            .init(id: "editor_story", title: "故事线", value: storyName.isEmpty ? "未关联" : storyName, icon: "link", target: "editor_story", tint: AnimePalette.violet, filled: !storyName.isEmpty),
+            .init(id: "editor_time", title: "时间", value: date.formatted(.dateTime.year().month().day().hour().minute()), icon: "calendar", target: "editor_time", tint: AnimePalette.mint, filled: true),
+            .init(id: "editor_location", title: "地点", value: hasLocation ? (locationName.isEmpty ? "已定位" : locationName) : "未定位", icon: "location", target: "editor_location", tint: AnimePalette.primary, filled: hasLocation),
+            .init(id: "editor_private", title: "私密", value: isPrivate ? "已开启" : "公开", icon: isPrivate ? "lock.fill" : "lock.open", target: "editor_private", tint: isPrivate ? AnimePalette.coral : .secondary, filled: isPrivate)
+        ]
+    }
+
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
@@ -206,8 +223,20 @@ struct FragmentEditView: View {
                         }
                     }
 
+                    // ── 信息总览 ───────────────────────────────
+                    EditOverviewStrip(items: overviewItems) { target in
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            proxy.scrollTo(target, anchor: .top)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+
                     // ── 主文本区 ─────────────────────────────────
                     ZStack(alignment: .topLeading) {
+                        Color.clear
+                            .frame(height: 1)
+                            .id("editor_content")
                         if content.isEmpty {
                             Text("写下这个碎片……")
                                 .foregroundStyle(.tertiary)
@@ -226,6 +255,7 @@ struct FragmentEditView: View {
 
                     // ── 媒体（照片 & 视频）────────────────────────
                     VStack(alignment: .leading, spacing: 10) {
+                        Color.clear.frame(height: 1).id("editor_media")
                         PhotosPicker(
                             selection: $selectedItems,
                             maxSelectionCount: 20,
@@ -306,6 +336,7 @@ struct FragmentEditView: View {
 
                     // ── 标签 ─────────────────────────────────────
                     VStack(alignment: .leading, spacing: 10) {
+                        Color.clear.frame(height: 1).id("editor_tags")
                         HStack {
                             Image(systemName: "tag")
                                 .foregroundStyle(.secondary)
@@ -379,6 +410,7 @@ struct FragmentEditView: View {
 
                     // ── 情绪 ──────────────────────────────────────
                     MoodPickerRow(selected: $mood)
+                        .id("editor_mood")
                         .padding(.horizontal, 16)
 
                     Divider().padding(.vertical, 12)
@@ -406,6 +438,7 @@ struct FragmentEditView: View {
 
                     // ── 故事线 ────────────────────────────────────
                     VStack(alignment: .leading, spacing: 0) {
+                        Color.clear.frame(height: 1).id("editor_story")
                         HStack {
                             Image(systemName: "link")
                                 .foregroundStyle(.secondary)
@@ -465,12 +498,15 @@ struct FragmentEditView: View {
                         Label("设为私密", systemImage: "lock.fill")
                             .font(.subheadline)
                     }
+                    .id("editor_private")
                     .padding(.horizontal, 16)
 
                     Divider().padding(.vertical, 12)
 
                     // ── 时间 & 地点 ───────────────────────────────
                     VStack(alignment: .leading, spacing: 12) {
+                        Color.clear.frame(height: 1).id("editor_time")
+                        Color.clear.frame(height: 1).id("editor_location")
                         DatePicker("时间", selection: $date)
                             .padding(.horizontal, 16)
 
@@ -1008,5 +1044,76 @@ private struct NominatimItem: Decodable {
     enum CodingKeys: String, CodingKey {
         case displayName = "display_name"
         case lat, lon, name
+    }
+}
+
+private struct EditOverviewItem: Identifiable {
+    let id: String
+    let title: String
+    let value: String
+    let icon: String
+    let target: String
+    let tint: Color
+    let filled: Bool
+}
+
+private struct EditOverviewStrip: View {
+    let items: [EditOverviewItem]
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("信息总览")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("点一下跳转")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(items) { item in
+                        Button {
+                            onSelect(item.target)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 7) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: item.icon)
+                                        .font(.caption)
+                                    Text(item.title)
+                                        .font(.caption)
+                                        .fontWeight(.semibold)
+                                }
+                                .foregroundStyle(item.filled ? .white : item.tint)
+
+                                Text(item.value)
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(item.filled ? .white : .primary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.85)
+                            }
+                            .frame(width: 122, alignment: .leading)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(item.filled ? item.tint : .ultraThinMaterial)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .strokeBorder(item.filled ? item.tint.opacity(0.28) : Color.primary.opacity(0.10), lineWidth: 0.7)
+                            )
+                            .shadow(color: item.filled ? item.tint.opacity(0.16) : .black.opacity(0.03), radius: 6, y: 2)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
     }
 }
