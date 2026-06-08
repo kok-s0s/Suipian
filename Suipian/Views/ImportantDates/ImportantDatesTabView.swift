@@ -26,46 +26,60 @@ struct ImportantDatesTabView: View {
                     if dates.isEmpty {
                         emptyState
                     } else {
-                        ScrollView {
-                            LazyVStack(spacing: 14) {
-                                DateDashboardCard(nextItem: nextItem,
-                                                  totalCount: dates.count,
-                                                  todayCount: todayItems.count,
-                                                  soonCount: soonCount)
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                LazyVStack(spacing: 14) {
+                                    DateDashboardCard(nextItem: nextItem,
+                                                      totalCount: dates.count,
+                                                      todayCount: todayItems.count,
+                                                      soonCount: soonCount)
+                                        .padding(.horizontal, 16)
+                                        .padding(.top, 8)
+
+                                    DateJumpStrip(
+                                        todayCount: todayItems.count,
+                                        upcomingCount: upcomingItems.count,
+                                        pastCount: pastItems.count
+                                    , onAdd: { showingAdd = true }
+                                    ) { target in
+                                        withAnimation(.easeOut(duration: 0.25)) {
+                                            proxy.scrollTo(target, anchor: .top)
+                                        }
+                                    }
                                     .padding(.horizontal, 16)
-                                    .padding(.top, 8)
 
-                                if !todayItems.isEmpty {
-                                    sectionHeader("🎉 今天")
-                                    ForEach(todayItems) { item in
-                                        ImportantDateCard(item: item)
-                                            .onTapGesture { dateToEdit = item }
-                                            .padding(.horizontal, 16)
-                                            .padding(.bottom, 10)
+                                    if !todayItems.isEmpty {
+                                        sectionHeader("🎉 今天", id: "date_today")
+                                        ForEach(todayItems) { item in
+                                            ImportantDateCard(item: item)
+                                                .onTapGesture { dateToEdit = item }
+                                                .padding(.horizontal, 16)
+                                                .padding(.bottom, 10)
+                                        }
+                                    }
+
+                                    if !upcomingItems.isEmpty {
+                                        sectionHeader("即将到来", id: "date_upcoming")
+                                        ForEach(upcomingItems) { item in
+                                            ImportantDateCard(item: item)
+                                                .onTapGesture { dateToEdit = item }
+                                                .padding(.horizontal, 16)
+                                                .padding(.bottom, 10)
+                                        }
+                                    }
+
+                                    if !pastItems.isEmpty {
+                                        sectionHeader("已过", id: "date_past")
+                                        ForEach(pastItems) { item in
+                                            ImportantDateCard(item: item, muted: true)
+                                                .onTapGesture { dateToEdit = item }
+                                                .padding(.horizontal, 16)
+                                                .padding(.bottom, 10)
+                                        }
                                     }
                                 }
-
-                                if !upcomingItems.isEmpty {
-                                    sectionHeader("即将到来")
-                                    ForEach(upcomingItems) { item in
-                                        ImportantDateCard(item: item)
-                                            .onTapGesture { dateToEdit = item }
-                                            .padding(.horizontal, 16)
-                                            .padding(.bottom, 10)
-                                    }
-                                }
-
-                                if !pastItems.isEmpty {
-                                    sectionHeader("已过")
-                                    ForEach(pastItems) { item in
-                                        ImportantDateCard(item: item, muted: true)
-                                            .onTapGesture { dateToEdit = item }
-                                            .padding(.horizontal, 16)
-                                            .padding(.bottom, 10)
-                                    }
-                                }
+                                .padding(.bottom, 100)
                             }
-                            .padding(.bottom, 100)
                         }
                         .background { AppBackgroundCanvas().ignoresSafeArea() }
                     }
@@ -114,7 +128,7 @@ struct ImportantDatesTabView: View {
     }
 
     @ViewBuilder
-    private func sectionHeader(_ title: String) -> some View {
+    private func sectionHeader(_ title: String, id: String) -> some View {
         Text(title)
             .font(.caption).fontWeight(.semibold)
             .foregroundStyle(.secondary)
@@ -122,6 +136,7 @@ struct ImportantDatesTabView: View {
             .padding(.bottom, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
+            .id(id)
     }
 
     private var emptyState: some View {
@@ -148,6 +163,87 @@ struct ImportantDatesTabView: View {
             .buttonStyle(PressScaleButtonStyle())
             Spacer()
         }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct DateJumpStrip: View {
+    let todayCount: Int
+    let upcomingCount: Int
+    let pastCount: Int
+    let onAdd: () -> Void
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                jumpButton(title: "今天", value: "\(todayCount)", icon: "sparkles", target: "date_today")
+                jumpButton(title: "即将", value: "\(upcomingCount)", icon: "hourglass", target: "date_upcoming")
+                jumpButton(title: "已过", value: "\(pastCount)", icon: "clock.arrow.circlepath", target: "date_past")
+            }
+
+            Button(action: onAdd) {
+                HStack(spacing: 10) {
+                    Image(systemName: "plus")
+                        .font(.caption)
+                        .foregroundStyle(.white)
+                        .frame(width: 22, height: 22)
+                        .background(AnimePalette.primary, in: Circle())
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("添加日期")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.primary)
+                        Text("生日、纪念日、目标日都可以")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.6)
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder
+    private func jumpButton(title: String, value: String, icon: String, target: String) -> some View {
+        Button {
+            onSelect(target)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.caption)
+                    .foregroundStyle(AnimePalette.primary)
+                    .frame(width: 22, height: 22)
+                    .background(AnimePalette.primary.opacity(0.12), in: Circle())
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(value)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.6)
+            )
+        }
+        .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
     }
 }

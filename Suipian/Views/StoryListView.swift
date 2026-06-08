@@ -43,6 +43,8 @@ struct StoryListView: View {
                             LazyVStack(spacing: 16) {
                                 storyDashboard
 
+                                storyActionStrip
+
                                 if let activeStory {
                                     NavigationLink {
                                         StoryDetailView(name: activeStory.name, fragments: activeStory.fragments)
@@ -80,37 +82,6 @@ struct StoryListView: View {
                     }
                 }
 
-                // FAB — create new story
-                Button {
-                    newStoryNameInput = ""
-                    showingNewStoryAlert = true
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(Color.accentColor.opacity(0.18))
-                            .frame(width: 70, height: 70)
-                            .blur(radius: 8)
-                        Circle()
-                            .fill(.ultraThinMaterial)
-                            .frame(width: 56, height: 56)
-                            .overlay(
-                                Circle().strokeBorder(
-                                    LinearGradient(
-                                        colors: [Color.white.opacity(0.6), Color.white.opacity(0.1)],
-                                        startPoint: .topLeading, endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 1
-                                )
-                            )
-                            .shadow(color: Color.black.opacity(0.16), radius: 10, y: 5)
-                        Image(systemName: "plus")
-                            .font(.title2).fontWeight(.semibold)
-                            .foregroundStyle(Color.accentColor)
-                    }
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 20)
-                .padding(.bottom, 24)
             }
             .toolbar(.hidden, for: .navigationBar)
         }
@@ -158,6 +129,62 @@ struct StoryListView: View {
         .padding(16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+    }
+
+    private var storyActionStrip: some View {
+        HStack(spacing: 10) {
+            Button {
+                newStoryNameInput = ""
+                showingNewStoryAlert = true
+            } label: {
+                Label("新建故事线", systemImage: "plus")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(AnimePalette.primary, in: RoundedRectangle(cornerRadius: 14))
+                    .foregroundStyle(.white)
+            }
+            .buttonStyle(PressScaleButtonStyle(scale: 0.97))
+
+            if let activeStory {
+                NavigationLink {
+                    StoryDetailView(name: activeStory.name, fragments: activeStory.fragments)
+                } label: {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("最近故事")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text(activeStory.name)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.6)
+                    )
+                }
+                .buttonStyle(.plain)
+            } else {
+                Text("暂无最近故事")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.6)
+                    )
+            }
+        }
     }
 
     private var storyEmptyState: some View {
