@@ -229,51 +229,28 @@ struct FragmentFeedView: View {
                             .padding(.top, 8)
                     }
 
-                    // Compact filter bar
-                    HStack(spacing: 10) {
-                        if let tag = selectedTag {
-                            HStack(spacing: 5) {
-                                Text("#\(tag)  ·  \(filteredFragments.count) 条碎片")
-                                    .font(.subheadline).fontWeight(.medium)
-                                    .foregroundStyle(Color.accentColor)
-                                    .lineLimit(1)
-                                Button { selectedTag = nil } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.caption)
-                                        .foregroundStyle(Color.accentColor.opacity(0.8))
-                                }
-                            }
-                            .padding(.horizontal, 12).padding(.vertical, 6)
-                            .background(.ultraThinMaterial, in: Capsule())
-                            .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 0.7))
-                        } else {
-                            Text("全部 · \(fragments.count) 条碎片")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                    FeedFilterSummaryBar(
+                        totalCount: fragments.count,
+                        filteredCount: filteredFragments.count,
+                        searchText: searchText,
+                        selectedTag: selectedTag,
+                        sortAscending: sortAscending,
+                        isGridView: isGridView,
+                        hasTagOptions: !cachedSortedTags.isEmpty,
+                        onShowTagPicker: { showingTagPicker = true },
+                        onClearSearch: { searchText = "" },
+                        onClearTag: { selectedTag = nil },
+                        onToggleSort: { sortAscending.toggle() },
+                        onToggleView: {
+                            withAnimation(.easeInOut(duration: 0.22)) { isGridView.toggle() }
+                        },
+                        onClearAll: {
+                            searchText = ""
+                            selectedTag = nil
+                            sortAscending = false
+                            isGridView = false
                         }
-
-                        Spacer()
-
-                        // Sort order toggle
-                        Button {
-                            sortAscending.toggle()
-                        } label: {
-                            Image(systemName: sortAscending ? "arrow.up.circle" : "arrow.down.circle")
-                                .font(.title3)
-                                .foregroundStyle(sortAscending ? Color.accentColor : .secondary)
-                        }
-
-                        // Tag filter
-                        if !cachedSortedTags.isEmpty {
-                            Button { showingTagPicker = true } label: {
-                                Image(systemName: selectedTag != nil
-                                      ? "line.3.horizontal.decrease.circle.fill"
-                                      : "line.3.horizontal.decrease.circle")
-                                    .font(.title3)
-                                    .foregroundStyle(selectedTag != nil ? Color.accentColor : .secondary)
-                            }
-                        }
-                    }
+                    )
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
 
@@ -419,23 +396,11 @@ struct FragmentFeedView: View {
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    Menu {
-                        Button {
-                            showingMap = true
-                        } label: {
-                            Label("查看地图", systemImage: "map")
-                        }
-
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.22)) { isGridView.toggle() }
-                        } label: {
-                            Label(isGridView ? "切换到列表" : "切换到方格",
-                                  systemImage: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .glassToolbarIcon(active: false)
+                    Button { showingMap = true } label: {
+                        Image(systemName: "map")
+                            .glassToolbarIcon()
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .overlay {
@@ -759,6 +724,151 @@ private struct FeedOverviewStrip: View {
         .padding(16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+    }
+}
+
+private struct FeedFilterSummaryBar: View {
+    let totalCount: Int
+    let filteredCount: Int
+    let searchText: String
+    let selectedTag: String?
+    let sortAscending: Bool
+    let isGridView: Bool
+    let hasTagOptions: Bool
+    let onShowTagPicker: () -> Void
+    let onClearSearch: () -> Void
+    let onClearTag: () -> Void
+    let onToggleSort: () -> Void
+    let onToggleView: () -> Void
+    let onClearAll: () -> Void
+
+    private var activeCount: Int {
+        var count = 0
+        if !searchText.isEmpty { count += 1 }
+        if selectedTag != nil { count += 1 }
+        if sortAscending { count += 1 }
+        if isGridView { count += 1 }
+        return count
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(activeCount == 0 ? "全部 · \(totalCount) 条碎片" : "已筛选 · \(filteredCount) 条碎片")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    if activeCount > 0 {
+                        Text("当前筛选 \(activeCount) 项")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("搜索、标签、排序都会在这里显示")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                if activeCount > 0 {
+                    Button("清除全部", action: onClearAll)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(.ultraThinMaterial, in: Capsule())
+                }
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    if let tag = selectedTag {
+                        FilterStateChip(
+                            title: "#\(tag)",
+                            icon: "tag.fill",
+                            tint: AnimePalette.sakura,
+                            removable: true,
+                            onTap: onClearTag
+                        )
+                    }
+
+                    if !searchText.isEmpty {
+                        FilterStateChip(
+                            title: "搜索：\(searchText)",
+                            icon: "magnifyingglass",
+                            tint: AnimePalette.primary,
+                            removable: true,
+                            onTap: onClearSearch
+                        )
+                    }
+
+                    FilterStateChip(
+                        title: sortAscending ? "正序" : "倒序",
+                        icon: sortAscending ? "arrow.up" : "arrow.down",
+                        tint: AnimePalette.star,
+                        removable: false,
+                        onTap: onToggleSort
+                    )
+
+                    FilterStateChip(
+                        title: isGridView ? "方格" : "列表",
+                        icon: isGridView ? "square.grid.2x2" : "rectangle.grid.1x2",
+                        tint: AnimePalette.violet,
+                        removable: false,
+                        onTap: onToggleView
+                    )
+
+                    if hasTagOptions {
+                        FilterStateChip(
+                            title: "筛标签",
+                            icon: "line.3.horizontal.decrease.circle",
+                            tint: .secondary,
+                            removable: false,
+                            onTap: onShowTagPicker
+                        )
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+    }
+}
+
+private struct FilterStateChip: View {
+    let title: String
+    let icon: String
+    let tint: Color
+    let removable: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.caption2)
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                if removable {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption2)
+                }
+            }
+            .foregroundStyle(tint)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(tint.opacity(0.12), in: Capsule())
+            .overlay(
+                Capsule().strokeBorder(tint.opacity(0.24), lineWidth: 0.7)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
