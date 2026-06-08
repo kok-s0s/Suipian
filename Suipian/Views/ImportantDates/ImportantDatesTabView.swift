@@ -153,74 +153,37 @@ private struct DateJumpStrip: View {
     var body: some View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
-                jumpButton(title: "今天", value: "\(todayCount)", icon: "sparkles", target: "date_today")
-                jumpButton(title: "即将", value: "\(upcomingCount)", icon: "hourglass", target: "date_upcoming")
-                jumpButton(title: "已过", value: "\(pastCount)", icon: "clock.arrow.circlepath", target: "date_past")
-            }
-
-            Button(action: onAdd) {
-                HStack(spacing: 10) {
-                    Image(systemName: "plus")
-                        .font(.caption)
-                        .foregroundStyle(.white)
-                        .frame(width: 22, height: 22)
-                        .background(AnimePalette.primary, in: Circle())
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("添加日期")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.primary)
-                        Text("生日、纪念日、目标日都可以")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.6)
+                TabActionMetricCard(
+                    title: "今天",
+                    subtitle: "\(todayCount)",
+                    icon: "sparkles",
+                    tint: AnimePalette.sakura,
+                    onTap: { onSelect("date_today") }
+                )
+                TabActionMetricCard(
+                    title: "即将",
+                    subtitle: "\(upcomingCount)",
+                    icon: "hourglass",
+                    tint: AnimePalette.star,
+                    onTap: { onSelect("date_upcoming") }
+                )
+                TabActionMetricCard(
+                    title: "已过",
+                    subtitle: "\(pastCount)",
+                    icon: "clock.arrow.circlepath",
+                    tint: AnimePalette.violet,
+                    onTap: { onSelect("date_past") }
                 )
             }
-            .buttonStyle(.plain)
-        }
-    }
 
-    @ViewBuilder
-    private func jumpButton(title: String, value: String, icon: String, target: String) -> some View {
-        Button {
-            onSelect(target)
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.caption)
-                    .foregroundStyle(AnimePalette.primary)
-                    .frame(width: 22, height: 22)
-                    .background(AnimePalette.primary.opacity(0.12), in: Circle())
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text(value)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.6)
+            TabActionMetricCard(
+                title: "添加日期",
+                subtitle: "生日、纪念日、目标日都可以",
+                icon: "plus",
+                tint: AnimePalette.primary,
+                onTap: onAdd
             )
         }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
     }
 }
 
