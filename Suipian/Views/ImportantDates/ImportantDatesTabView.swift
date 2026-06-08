@@ -21,7 +21,7 @@ struct ImportantDatesTabView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
+            ZStack(alignment: .topTrailing) {
                 Group {
                     if dates.isEmpty {
                         emptyState
@@ -35,18 +35,6 @@ struct ImportantDatesTabView: View {
                                                       soonCount: soonCount)
                                         .padding(.horizontal, 16)
                                         .padding(.top, 8)
-
-                                    DateJumpStrip(
-                                        todayCount: todayItems.count,
-                                        upcomingCount: upcomingItems.count,
-                                        pastCount: pastItems.count,
-                                        onAdd: { showingAdd = true }
-                                    ) { target in
-                                        withAnimation(.easeOut(duration: 0.25)) {
-                                            proxy.scrollTo(target, anchor: .top)
-                                        }
-                                    }
-                                    .padding(.horizontal, 16)
 
                                     if !todayItems.isEmpty {
                                         sectionHeader("🎉 今天", id: "date_today")
@@ -85,6 +73,18 @@ struct ImportantDatesTabView: View {
                     }
                 }
                 .toolbar(.hidden, for: .navigationBar)
+
+                Button { showingAdd = true } label: {
+                    Image(systemName: "plus")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(AnimePalette.primary, in: Circle())
+                        .shadow(color: AnimePalette.primary.opacity(0.24), radius: 8, y: 3)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 18)
+                .padding(.top, 12)
             }
         }
         .sheet(isPresented: $showingAdd) {
@@ -140,50 +140,6 @@ struct ImportantDatesTabView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity)
-    }
-}
-
-private struct DateJumpStrip: View {
-    let todayCount: Int
-    let upcomingCount: Int
-    let pastCount: Int
-    let onAdd: () -> Void
-    let onSelect: (String) -> Void
-
-    var body: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 10) {
-                TabActionMetricCard(
-                    title: "今天",
-                    subtitle: "\(todayCount)",
-                    icon: "sparkles",
-                    tint: AnimePalette.sakura,
-                    onTap: { onSelect("date_today") }
-                )
-                TabActionMetricCard(
-                    title: "即将",
-                    subtitle: "\(upcomingCount)",
-                    icon: "hourglass",
-                    tint: AnimePalette.star,
-                    onTap: { onSelect("date_upcoming") }
-                )
-                TabActionMetricCard(
-                    title: "已过",
-                    subtitle: "\(pastCount)",
-                    icon: "clock.arrow.circlepath",
-                    tint: AnimePalette.violet,
-                    onTap: { onSelect("date_past") }
-                )
-            }
-
-            TabActionMetricCard(
-                title: "添加日期",
-                subtitle: "生日、纪念日、目标日都可以",
-                icon: "plus",
-                tint: AnimePalette.primary,
-                onTap: onAdd
-            )
-        }
     }
 }
 
@@ -257,11 +213,9 @@ private struct DateDashboardCard: View {
                 .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 14))
             }
 
-            HStack(spacing: 10) {
-                TabSummaryMetricCard(title: "全部", value: "\(totalCount)", icon: "calendar", tint: AnimePalette.primary)
-                TabSummaryMetricCard(title: "今天", value: "\(todayCount)", icon: "sparkles", tint: AnimePalette.sakura)
-                TabSummaryMetricCard(title: "30天内", value: "\(soonCount)", icon: "hourglass", tint: AnimePalette.star)
-            }
+            Text("全部 \(totalCount) · 今天 \(todayCount) · 30天内 \(soonCount)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .padding(16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))

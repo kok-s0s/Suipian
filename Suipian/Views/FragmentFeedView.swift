@@ -30,7 +30,6 @@ struct FragmentFeedView: View {
     @State private var fabExpanded = false
     @State private var showingVoiceInput = false
     @State private var pendingVoiceTranscript = ""
-    @State private var showingQuickFragment = false
     @State private var fragmentToEdit: Fragment? = nil
     @State private var fragmentToDelete: Fragment? = nil
     @State private var showDeleteAlert = false
@@ -191,17 +190,6 @@ struct FragmentFeedView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
 
-                    FeedOverviewStrip(
-                        todayCount: todayFragments.count,
-                        reviewableCount: reviewableFragments.count,
-                        onThisDayCount: onThisDayFragments.count,
-                        upcomingDate: recentImportantDate,
-                        onQuickWrite: { showingQuickFragment = true },
-                        onRandomReview: { pickRandomFragment() }
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.top, 10)
-
                     // Upcoming important date banner (today or within 7 days)
                     if let upcoming = recentImportantDate {
                         ImportantDateBanner(item: upcoming)
@@ -229,30 +217,16 @@ struct FragmentFeedView: View {
                             .padding(.top, 8)
                     }
 
-                    FeedFilterSummaryBar(
+                    FeedFilterSummaryLine(
                         totalCount: fragments.count,
                         filteredCount: filteredFragments.count,
                         searchText: searchText,
                         selectedTag: selectedTag,
                         sortAscending: sortAscending,
-                        isGridView: isGridView,
-                        hasTagOptions: !cachedSortedTags.isEmpty,
-                        onShowTagPicker: { showingTagPicker = true },
-                        onClearSearch: { searchText = "" },
-                        onClearTag: { selectedTag = nil },
-                        onToggleSort: { sortAscending.toggle() },
-                        onToggleView: {
-                            withAnimation(.easeInOut(duration: 0.22)) { isGridView.toggle() }
-                        },
-                        onClearAll: {
-                            searchText = ""
-                            selectedTag = nil
-                            sortAscending = false
-                            isGridView = false
-                        }
+                        isGridView: isGridView
                     )
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                    .padding(.top, 4)
 
                     // Fragment cards
                     if isGridView {
@@ -396,6 +370,44 @@ struct FragmentFeedView: View {
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    Menu {
+                        if cachedSortedTags.isEmpty == false {
+                            Button { showingTagPicker = true } label: {
+                                Label("筛选标签", systemImage: "line.3.horizontal.decrease.circle")
+                            }
+                        }
+                        Button {
+                            sortAscending.toggle()
+                        } label: {
+                            Label(sortAscending ? "正序" : "倒序",
+                                  systemImage: sortAscending ? "arrow.up" : "arrow.down")
+                        }
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.22)) { isGridView.toggle() }
+                        } label: {
+                            Label(isGridView ? "切换到列表" : "切换到方格",
+                                  systemImage: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
+                        }
+                        Divider()
+                        Button {
+                            pickRandomFragment()
+                        } label: {
+                            Label("随机回顾", systemImage: "dice")
+                        }
+                        Divider()
+                        Button {
+                            searchText = ""
+                            selectedTag = nil
+                            sortAscending = false
+                            isGridView = false
+                        } label: {
+                            Label("清除筛选", systemImage: "xmark.circle")
+                        }
+                    } label: {
+                        Image(systemName: "slider.horizontal.3")
+                            .glassToolbarIcon(active: selectedTag != nil || !searchText.isEmpty || sortAscending || isGridView)
+                    }
+
                     Button { showingMap = true } label: {
                         Image(systemName: "map")
                             .glassToolbarIcon()
@@ -482,11 +494,6 @@ struct FragmentFeedView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
-        }
-        .sheet(isPresented: $showingQuickFragment) {
-            QuickFragmentSheet(fragments: fragments)
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
         }
         .fullScreenCover(isPresented: $showingMap) {
             FragmentMapView()
@@ -607,11 +614,9 @@ private struct TodayEntryCard: View {
                     .background(Color.accentColor.opacity(0.10), in: Capsule())
             }
 
-            HStack(spacing: 10) {
-                TabSummaryMetricCard(title: "今日", value: "\(todayCount)", icon: "sun.max.fill", tint: AnimePalette.primary)
-                TabSummaryMetricCard(title: "历史", value: "\(onThisDayCount)", icon: "clock.arrow.circlepath", tint: AnimePalette.violet)
-                TabSummaryMetricCard(title: "日期", value: upcomingDate.map { $0.isToday ? "今天" : "\($0.daysUntil)" } ?? "-", icon: "sparkles", tint: AnimePalette.star)
-            }
+            Text("今日 \(todayCount) · 历史 \(onThisDayCount) · 日期 \(upcomingDate.map { $0.isToday ? "今天" : "\($0.daysUntil) 天后" } ?? "暂无")")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             if let upcomingDate {
                 HStack(spacing: 8) {
@@ -634,327 +639,36 @@ private struct TodayEntryCard: View {
     }
 }
 
-private struct FeedOverviewStrip: View {
-    let todayCount: Int
-    let reviewableCount: Int
-    let onThisDayCount: Int
-    let upcomingDate: ImportantDate?
-    let onQuickWrite: () -> Void
-    let onRandomReview: () -> Void
-
-    private var upcomingText: String {
-        guard let upcomingDate else { return "暂无" }
-        return upcomingDate.isToday ? "今天" : "\(upcomingDate.daysUntil) 天"
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                TabSummaryMetricCard(title: "今日", value: "\(todayCount)", icon: "sun.max.fill", tint: AnimePalette.primary)
-                TabSummaryMetricCard(title: "回顾", value: "\(reviewableCount)", icon: "arrow.counterclockwise", tint: AnimePalette.star)
-                TabSummaryMetricCard(title: "历史", value: "\(onThisDayCount)", icon: "clock.arrow.circlepath", tint: AnimePalette.violet)
-            }
-
-            HStack(spacing: 10) {
-                if let upcomingDate {
-                    HStack(alignment: .center, spacing: 10) {
-                        Text(upcomingDate.emoji)
-                            .font(.title3)
-                            .frame(width: 36, height: 36)
-                            .background(AnimePalette.mint.opacity(0.14), in: Circle())
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("重要日期")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.secondary)
-                            Text(upcomingDate.isToday ? "今天是 \(upcomingDate.title)" : upcomingDate.title)
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .lineLimit(1)
-                        }
-                        Spacer(minLength: 0)
-                        Text(upcomingText)
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(AnimePalette.primary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(AnimePalette.primary.opacity(0.10), in: Capsule())
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                } else {
-                    HStack {
-                        Text("暂无重要日期")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                }
-            }
-
-            HStack(spacing: 10) {
-                Button(action: onQuickWrite) {
-                    Label("快速记一条", systemImage: "square.and.pencil")
-                        .font(.subheadline).fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(AnimePalette.primary, in: RoundedRectangle(cornerRadius: 12))
-                        .foregroundStyle(.white)
-                }
-                .buttonStyle(PressScaleButtonStyle(scale: 0.97))
-
-                Button(action: onRandomReview) {
-                    Label("随机回顾", systemImage: "dice")
-                        .font(.subheadline).fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(reviewableCount > 0 ? AnimePalette.star.opacity(0.18) : Color.secondary.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
-                        .foregroundStyle(reviewableCount > 0 ? AnimePalette.star : .secondary)
-                }
-                .buttonStyle(PressScaleButtonStyle(scale: 0.97))
-                .disabled(reviewableCount == 0)
-            }
-        }
-        .padding(16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
-    }
-}
-
-private struct FeedFilterSummaryBar: View {
+private struct FeedFilterSummaryLine: View {
     let totalCount: Int
     let filteredCount: Int
     let searchText: String
     let selectedTag: String?
     let sortAscending: Bool
     let isGridView: Bool
-    let hasTagOptions: Bool
-    let onShowTagPicker: () -> Void
-    let onClearSearch: () -> Void
-    let onClearTag: () -> Void
-    let onToggleSort: () -> Void
-    let onToggleView: () -> Void
-    let onClearAll: () -> Void
 
-    private var activeCount: Int {
-        var count = 0
-        if !searchText.isEmpty { count += 1 }
-        if selectedTag != nil { count += 1 }
-        if sortAscending { count += 1 }
-        if isGridView { count += 1 }
-        return count
+    private var activeText: String {
+        var parts: [String] = []
+        if let selectedTag { parts.append("#\(selectedTag)") }
+        if !searchText.isEmpty { parts.append("搜索") }
+        if sortAscending { parts.append("正序") }
+        if isGridView { parts.append("方格") }
+        return parts.isEmpty ? "全部" : parts.joined(separator: " · ")
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(activeCount == 0 ? "全部 · \(totalCount) 条碎片" : "已筛选 · \(filteredCount) 条碎片")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                    if activeCount > 0 {
-                        Text("当前筛选 \(activeCount) 项")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("搜索、标签、排序都会在这里显示")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Spacer()
-
-                if activeCount > 0 {
-                    Button("清除全部", action: onClearAll)
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(.ultraThinMaterial, in: Capsule())
-                }
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    if let tag = selectedTag {
-                        FilterStateChip(
-                            title: "#\(tag)",
-                            icon: "tag.fill",
-                            tint: AnimePalette.sakura,
-                            removable: true,
-                            onTap: onClearTag
-                        )
-                    }
-
-                    if !searchText.isEmpty {
-                        FilterStateChip(
-                            title: "搜索：\(searchText)",
-                            icon: "magnifyingglass",
-                            tint: AnimePalette.primary,
-                            removable: true,
-                            onTap: onClearSearch
-                        )
-                    }
-
-                    FilterStateChip(
-                        title: sortAscending ? "正序" : "倒序",
-                        icon: sortAscending ? "arrow.up" : "arrow.down",
-                        tint: AnimePalette.star,
-                        removable: false,
-                        onTap: onToggleSort
-                    )
-
-                    FilterStateChip(
-                        title: isGridView ? "方格" : "列表",
-                        icon: isGridView ? "square.grid.2x2" : "rectangle.grid.1x2",
-                        tint: AnimePalette.violet,
-                        removable: false,
-                        onTap: onToggleView
-                    )
-
-                    if hasTagOptions {
-                        FilterStateChip(
-                            title: "筛标签",
-                            icon: "line.3.horizontal.decrease.circle",
-                            tint: .secondary,
-                            removable: false,
-                            onTap: onShowTagPicker
-                        )
-                    }
-                }
-            }
+        HStack(spacing: 10) {
+            Text("碎片 \(filteredCount)/\(totalCount)")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(.primary)
+            Spacer(minLength: 0)
+            Text(activeText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
-        .padding(14)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
-    }
-}
-
-private struct FilterStateChip: View {
-    let title: String
-    let icon: String
-    let tint: Color
-    let removable: Bool
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.caption2)
-                Text(title)
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-                if removable {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.caption2)
-                }
-            }
-            .foregroundStyle(tint)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(tint.opacity(0.12), in: Capsule())
-            .overlay(
-                Capsule().strokeBorder(tint.opacity(0.24), lineWidth: 0.7)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct QuickFragmentSheet: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
-
-    let fragments: [Fragment]
-
-    @State private var content = ""
-    @State private var mood = ""
-
-    private let moods = ["😊", "😌", "🥰", "😤", "😴", "✨"]
-
-    var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("快速碎片")
-                        .font(.title3).fontWeight(.bold)
-                    Text("先把这一刻留下来，细节之后再补")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                TextField("这一刻发生了什么？", text: $content, axis: .vertical)
-                    .font(.body)
-                    .lineLimit(4...7)
-                    .padding(14)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-
-                HStack(spacing: 10) {
-                    ForEach(moods, id: \.self) { item in
-                        Button {
-                            mood = mood == item ? "" : item
-                        } label: {
-                            Text(item)
-                                .font(.title3)
-                                .frame(width: 42, height: 42)
-                                .background(mood == item ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.055),
-                                            in: Circle())
-                                .overlay(Circle().strokeBorder(mood == item ? Color.accentColor.opacity(0.55) : .clear, lineWidth: 1))
-                        }
-                        .buttonStyle(PressScaleButtonStyle(scale: 0.9))
-                    }
-                }
-
-                Spacer(minLength: 0)
-
-                Button { save() } label: {
-                    Text("保存碎片")
-                        .font(.subheadline).fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 13)
-                        .background(canSave ? Color.accentColor : Color.secondary.opacity(0.18),
-                                    in: RoundedRectangle(cornerRadius: 14))
-                        .foregroundStyle(canSave ? .white : .secondary)
-                }
-                .disabled(!canSave)
-                .buttonStyle(PressScaleButtonStyle(scale: 0.98))
-            }
-            .padding(16)
-            .background { AppBackgroundCanvas().ignoresSafeArea() }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
-                }
-            }
-        }
-    }
-
-    private var canSave: Bool {
-        !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private func save() {
-        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        let fragment = Fragment(content: trimmed, date: Date(), tags: [])
-        fragment.mood = mood
-        modelContext.insert(fragment)
-        SpotlightManager.index(fragment)
-        try? modelContext.save()
-        WidgetDataStore.rebuildFragmentWidgets([fragment] + fragments)
-        HapticFeedback.success()
-        dismiss()
+        .padding(.horizontal, 4)
     }
 }
 
