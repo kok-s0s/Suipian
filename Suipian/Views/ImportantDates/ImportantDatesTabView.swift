@@ -21,7 +21,7 @@ struct ImportantDatesTabView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottomTrailing) {
+            ZStack {
                 Group {
                     if dates.isEmpty {
                         emptyState
@@ -39,8 +39,8 @@ struct ImportantDatesTabView: View {
                                     DateJumpStrip(
                                         todayCount: todayItems.count,
                                         upcomingCount: upcomingItems.count,
-                                        pastCount: pastItems.count
-                                    , onAdd: { showingAdd = true }
+                                        pastCount: pastItems.count,
+                                        onAdd: { showingAdd = true }
                                     ) { target in
                                         withAnimation(.easeOut(duration: 0.25)) {
                                             proxy.scrollTo(target, anchor: .top)
@@ -85,30 +85,6 @@ struct ImportantDatesTabView: View {
                     }
                 }
                 .toolbar(.hidden, for: .navigationBar)
-
-                // FAB
-                Button { showingAdd = true } label: {
-                    ZStack {
-                        Circle()
-                            .fill(Color.accentColor.opacity(0.18))
-                            .frame(width: 70, height: 70)
-                            .blur(radius: 8)
-                        Circle()
-                            .fill(.ultraThinMaterial)
-                            .frame(width: 56, height: 56)
-                            .overlay(Circle().strokeBorder(
-                                LinearGradient(
-                                    colors: [Color.white.opacity(0.6), Color.white.opacity(0.1)],
-                                    startPoint: .topLeading, endPoint: .bottomTrailing),
-                                lineWidth: 1))
-                            .shadow(color: .black.opacity(0.16), radius: 10, y: 5)
-                        Image(systemName: "plus")
-                            .font(.title2).fontWeight(.semibold)
-                            .foregroundStyle(Color.accentColor)
-                    }
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 20).padding(.bottom, 24)
             }
         }
         .sheet(isPresented: $showingAdd) {
