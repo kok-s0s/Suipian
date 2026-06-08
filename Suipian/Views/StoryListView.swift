@@ -121,9 +121,9 @@ struct StoryListView: View {
             }
 
             HStack(spacing: 10) {
-                StoryMetric(value: "\(stories.count)", label: "故事")
-                StoryMetric(value: "\(storyFragmentCount)", label: "碎片")
-                StoryMetric(value: activeStory.map { "\($0.fragments.count)" } ?? "0", label: "最近")
+                TabSummaryMetricCard(title: "故事", value: "\(stories.count)", icon: "sparkles", tint: AnimePalette.star)
+                TabSummaryMetricCard(title: "碎片", value: "\(storyFragmentCount)", icon: "square.on.square", tint: AnimePalette.primary)
+                TabSummaryMetricCard(title: "最近", value: activeStory.map { "\($0.fragments.count)" } ?? "0", icon: "clock.arrow.circlepath", tint: AnimePalette.violet)
             }
         }
         .padding(16)
@@ -225,26 +225,6 @@ struct StoryListView: View {
 private struct StoryCreateRequest: Identifiable {
     let id = UUID()
     let name: String
-}
-
-private struct StoryMetric: View {
-    let value: String
-    let label: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .monospacedDigit()
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
-    }
 }
 
 private struct FeaturedStoryCard: View {

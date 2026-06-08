@@ -643,9 +643,9 @@ private struct TodayEntryCard: View {
             }
 
             HStack(spacing: 10) {
-                TodayStat(value: "\(todayCount)", label: "今日")
-                TodayStat(value: "\(onThisDayCount)", label: "历史")
-                TodayStat(value: upcomingDate.map { $0.isToday ? "今天" : "\($0.daysUntil)" } ?? "-", label: "日期")
+                TabSummaryMetricCard(title: "今日", value: "\(todayCount)", icon: "sun.max.fill", tint: AnimePalette.primary)
+                TabSummaryMetricCard(title: "历史", value: "\(onThisDayCount)", icon: "clock.arrow.circlepath", tint: AnimePalette.violet)
+                TabSummaryMetricCard(title: "日期", value: upcomingDate.map { $0.isToday ? "今天" : "\($0.daysUntil)" } ?? "-", icon: "sparkles", tint: AnimePalette.star)
             }
 
             if let upcomingDate {
@@ -669,28 +669,6 @@ private struct TodayEntryCard: View {
     }
 }
 
-private struct TodayStat: View {
-    let value: String
-    let label: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
-    }
-}
-
 private struct FeedOverviewStrip: View {
     let todayCount: Int
     let reviewableCount: Int
@@ -707,9 +685,9 @@ private struct FeedOverviewStrip: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                OverviewMetric(title: "今日", value: "\(todayCount)", icon: "sun.max.fill", tint: AnimePalette.primary)
-                OverviewMetric(title: "回顾", value: "\(reviewableCount)", icon: "arrow.counterclockwise", tint: AnimePalette.star)
-                OverviewMetric(title: "历史", value: "\(onThisDayCount)", icon: "clock.arrow.circlepath", tint: AnimePalette.violet)
+                TabSummaryMetricCard(title: "今日", value: "\(todayCount)", icon: "sun.max.fill", tint: AnimePalette.primary)
+                TabSummaryMetricCard(title: "回顾", value: "\(reviewableCount)", icon: "arrow.counterclockwise", tint: AnimePalette.star)
+                TabSummaryMetricCard(title: "历史", value: "\(onThisDayCount)", icon: "clock.arrow.circlepath", tint: AnimePalette.violet)
             }
 
             HStack(spacing: 10) {
@@ -781,38 +759,6 @@ private struct FeedOverviewStrip: View {
         .padding(16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
-    }
-}
-
-private struct OverviewMetric: View {
-    let title: String
-    let value: String
-    let icon: String
-    let tint: Color
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Image(systemName: icon)
-                .font(.caption)
-                .foregroundStyle(tint)
-                .frame(width: 24, height: 24)
-                .background(tint.opacity(0.12), in: Circle())
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Text(value)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 }
 

@@ -295,9 +295,9 @@ private struct DateDashboardCard: View {
             }
 
             HStack(spacing: 10) {
-                DateMetric(value: "\(totalCount)", label: "全部")
-                DateMetric(value: "\(todayCount)", label: "今天")
-                DateMetric(value: "\(soonCount)", label: "30天内")
+                TabSummaryMetricCard(title: "全部", value: "\(totalCount)", icon: "calendar", tint: AnimePalette.primary)
+                TabSummaryMetricCard(title: "今天", value: "\(todayCount)", icon: "sparkles", tint: AnimePalette.sakura)
+                TabSummaryMetricCard(title: "30天内", value: "\(soonCount)", icon: "hourglass", tint: AnimePalette.star)
             }
         }
         .padding(16)
@@ -309,26 +309,6 @@ private struct DateDashboardCard: View {
         let fmt = DateFormatter()
         fmt.dateFormat = "M月d日"
         return fmt.string(from: item.date)
-    }
-}
-
-private struct DateMetric: View {
-    let value: String
-    let label: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .monospacedDigit()
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
     }
 }
 
