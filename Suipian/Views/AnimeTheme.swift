@@ -33,11 +33,11 @@ extension View {
     }
 
     // Frosted glass disc for toolbar icon buttons — matches FAB material
-    func glassToolbarIcon(active: Bool = false) -> some View {
+    func glassToolbarIcon(size: CGFloat = 34, active: Bool = false) -> some View {
         self
             .font(.system(size: 15, weight: .medium))
             .foregroundStyle(active ? AnimePalette.primary : .secondary)
-            .frame(width: 34, height: 34)
+            .frame(width: size, height: size)
             .background(Circle().fill(.ultraThinMaterial))
     }
 

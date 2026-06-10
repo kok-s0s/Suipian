@@ -405,13 +405,13 @@ struct FragmentFeedView: View {
                         }
                     } label: {
                         Image(systemName: "slider.horizontal.3")
-                            .glassToolbarIcon(active: selectedTag != nil || !searchText.isEmpty || sortAscending || isGridView)
+                            .glassToolbarIcon(size: 30, active: selectedTag != nil || !searchText.isEmpty || sortAscending || isGridView)
                     }
                     .buttonStyle(.plain)
 
                     Button { showingMap = true } label: {
                         Image(systemName: "map")
-                            .glassToolbarIcon()
+                            .glassToolbarIcon(size: 30)
                     }
                     .buttonStyle(.plain)
                 }
