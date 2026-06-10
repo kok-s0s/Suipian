@@ -405,21 +405,13 @@ struct FragmentFeedView: View {
                         }
                     } label: {
                         Image(systemName: "slider.horizontal.3")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(selectedTag != nil || !searchText.isEmpty || sortAscending || isGridView ? AnimePalette.primary : .secondary)
-                            .frame(width: 38, height: 38)
-                            .background(Circle().fill(.ultraThinMaterial))
-                            .overlay(Circle().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+                            .glassToolbarIcon(active: selectedTag != nil || !searchText.isEmpty || sortAscending || isGridView)
                     }
                     .buttonStyle(.plain)
 
                     Button { showingMap = true } label: {
                         Image(systemName: "map")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 38, height: 38)
-                            .background(Circle().fill(.ultraThinMaterial))
-                            .overlay(Circle().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+                            .glassToolbarIcon()
                     }
                     .buttonStyle(.plain)
                 }
