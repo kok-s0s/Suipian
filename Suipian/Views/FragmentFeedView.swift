@@ -369,63 +369,59 @@ struct FragmentFeedView: View {
                         SyncStatusIcon(state: syncMonitor.state)
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 8) {
-                        Menu {
-                            if cachedSortedTags.isEmpty == false {
-                                Button { showingTagPicker = true } label: {
-                                    Label("筛选标签", systemImage: "line.3.horizontal.decrease.circle")
-                                }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Menu {
+                        if cachedSortedTags.isEmpty == false {
+                            Button { showingTagPicker = true } label: {
+                                Label("筛选标签", systemImage: "line.3.horizontal.decrease.circle")
                             }
-                            Button {
-                                sortAscending.toggle()
-                            } label: {
-                                Label(sortAscending ? "正序" : "倒序",
-                                      systemImage: sortAscending ? "arrow.up" : "arrow.down")
-                            }
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.22)) { isGridView.toggle() }
-                            } label: {
-                                Label(isGridView ? "切换到列表" : "切换到方格",
-                                      systemImage: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
-                            }
-                            Divider()
-                            Button {
-                                pickRandomFragment()
-                            } label: {
-                                Label("随机回顾", systemImage: "dice")
-                            }
-                            Divider()
-                            Button {
-                                searchText = ""
-                                selectedTag = nil
-                                sortAscending = false
-                                isGridView = false
-                            } label: {
-                                Label("清除筛选", systemImage: "xmark.circle")
-                            }
+                        }
+                        Button {
+                            sortAscending.toggle()
                         } label: {
-                            Image(systemName: "slider.horizontal.3")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(selectedTag != nil || !searchText.isEmpty || sortAscending || isGridView ? AnimePalette.primary : .secondary)
-                                .frame(width: 36, height: 36)
-                                .background(Circle().fill(.ultraThinMaterial))
+                            Label(sortAscending ? "正序" : "倒序",
+                                  systemImage: sortAscending ? "arrow.up" : "arrow.down")
                         }
-                        .buttonStyle(.plain)
-
-                        Button { showingMap = true } label: {
-                            Image(systemName: "map")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 36, height: 36)
-                                .background(Circle().fill(.ultraThinMaterial))
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.22)) { isGridView.toggle() }
+                        } label: {
+                            Label(isGridView ? "切换到列表" : "切换到方格",
+                                  systemImage: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
                         }
-                        .buttonStyle(.plain)
+                        Divider()
+                        Button {
+                            pickRandomFragment()
+                        } label: {
+                            Label("随机回顾", systemImage: "dice")
+                        }
+                        Divider()
+                        Button {
+                            searchText = ""
+                            selectedTag = nil
+                            sortAscending = false
+                            isGridView = false
+                        } label: {
+                            Label("清除筛选", systemImage: "xmark.circle")
+                        }
+                    } label: {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(selectedTag != nil || !searchText.isEmpty || sortAscending || isGridView ? AnimePalette.primary : .secondary)
+                            .frame(width: 38, height: 38)
+                            .background(Circle().fill(.ultraThinMaterial))
+                            .overlay(Circle().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.6))
+                    .buttonStyle(.plain)
+
+                    Button { showingMap = true } label: {
+                        Image(systemName: "map")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 38, height: 38)
+                            .background(Circle().fill(.ultraThinMaterial))
+                            .overlay(Circle().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .overlay {
