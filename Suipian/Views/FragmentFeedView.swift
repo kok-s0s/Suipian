@@ -369,51 +369,53 @@ struct FragmentFeedView: View {
                         SyncStatusIcon(state: syncMonitor.state)
                     }
                 }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Menu {
-                        if cachedSortedTags.isEmpty == false {
-                            Button { showingTagPicker = true } label: {
-                                Label("筛选标签", systemImage: "line.3.horizontal.decrease.circle")
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 4) {
+                        Menu {
+                            if cachedSortedTags.isEmpty == false {
+                                Button { showingTagPicker = true } label: {
+                                    Label("筛选标签", systemImage: "line.3.horizontal.decrease.circle")
+                                }
                             }
-                        }
-                        Button {
-                            sortAscending.toggle()
+                            Button {
+                                sortAscending.toggle()
+                            } label: {
+                                Label(sortAscending ? "正序" : "倒序",
+                                      systemImage: sortAscending ? "arrow.up" : "arrow.down")
+                            }
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.22)) { isGridView.toggle() }
+                            } label: {
+                                Label(isGridView ? "切换到列表" : "切换到方格",
+                                      systemImage: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
+                            }
+                            Divider()
+                            Button {
+                                pickRandomFragment()
+                            } label: {
+                                Label("随机回顾", systemImage: "dice")
+                            }
+                            Divider()
+                            Button {
+                                searchText = ""
+                                selectedTag = nil
+                                sortAscending = false
+                                isGridView = false
+                            } label: {
+                                Label("清除筛选", systemImage: "xmark.circle")
+                            }
                         } label: {
-                            Label(sortAscending ? "正序" : "倒序",
-                                  systemImage: sortAscending ? "arrow.up" : "arrow.down")
+                            Image(systemName: "slider.horizontal.3")
+                                .glassToolbarIcon(active: selectedTag != nil || !searchText.isEmpty || sortAscending || isGridView)
                         }
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.22)) { isGridView.toggle() }
-                        } label: {
-                            Label(isGridView ? "切换到列表" : "切换到方格",
-                                  systemImage: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
-                        }
-                        Divider()
-                        Button {
-                            pickRandomFragment()
-                        } label: {
-                            Label("随机回顾", systemImage: "dice")
-                        }
-                        Divider()
-                        Button {
-                            searchText = ""
-                            selectedTag = nil
-                            sortAscending = false
-                            isGridView = false
-                        } label: {
-                            Label("清除筛选", systemImage: "xmark.circle")
-                        }
-                    } label: {
-                        Image(systemName: "slider.horizontal.3")
-                            .glassToolbarIcon(size: 30, active: selectedTag != nil || !searchText.isEmpty || sortAscending || isGridView)
-                    }
-                    .buttonStyle(.plain)
+                        .buttonStyle(.plain)
 
-                    Button { showingMap = true } label: {
-                        Image(systemName: "map")
-                            .glassToolbarIcon(size: 30)
+                        Button { showingMap = true } label: {
+                            Image(systemName: "map")
+                                .glassToolbarIcon()
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .overlay {
