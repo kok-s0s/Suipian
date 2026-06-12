@@ -370,7 +370,7 @@ struct FragmentFeedView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 16) {
                         Menu {
                             if cachedSortedTags.isEmpty == false {
                                 Button { showingTagPicker = true } label: {
