@@ -223,6 +223,14 @@ private struct CardCoverView: View {
             return
         }
 
+        if let img = LocalMediaStore.thumbnail(for: identifier, targetSize: Self.targetSize) {
+            isVideo = LocalMediaStore.isVideoIdentifier(identifier)
+            sharedThumbnailCache.setObject(img, forKey: key,
+                                           cost: Int(Self.targetSize.width * Self.targetSize.height * 4))
+            withAnimation { thumbnail = img }
+            return
+        }
+
         await requestPermissionIfNeeded()
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
         guard let asset = assets.firstObject, !Task.isCancelled else { return }

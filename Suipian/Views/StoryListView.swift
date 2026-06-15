@@ -5,6 +5,7 @@ import SwiftData
 
 struct StoryListView: View {
     @Query(sort: \Fragment.date, order: .reverse) private var fragments: [Fragment]
+    @Query private var importantDates: [ImportantDate]
 
     @State private var showingNewStoryAlert = false
     @State private var newStoryNameInput = ""
@@ -32,6 +33,23 @@ struct StoryListView: View {
         Array(stories.dropFirst())
     }
 
+    private var relationshipTimelines: [RelationshipSummary] {
+        var dict: [String: [Fragment]] = [:]
+        for fragment in fragments {
+            for tag in fragment.tags where !tag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                dict[tag, default: []].append(fragment)
+            }
+        }
+        let sorted = dict
+            .map { RelationshipSummary(name: $0.key, fragments: $0.value.sorted { $0.date > $1.date }) }
+            .sorted {
+                if $0.fragments.count != $1.fragments.count { return $0.fragments.count > $1.fragments.count }
+                return ($0.fragments.first?.date ?? .distantPast) > ($1.fragments.first?.date ?? .distantPast)
+            }
+        let repeated = sorted.filter { $0.fragments.count >= 2 }
+        return Array((repeated.isEmpty ? sorted : repeated).prefix(8))
+    }
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
@@ -43,9 +61,15 @@ struct StoryListView: View {
                             LazyVStack(spacing: 16) {
                                 storyDashboard
 
-                                storyActionStrip
+                                if !relationshipTimelines.isEmpty {
+                                    storySectionHeader("关系时间线", detail: "从标签自动生成")
+                                    RelationshipRail(items: relationshipTimelines,
+                                                     importantDates: importantDates)
+                                }
 
                                 if let activeStory {
+                                    storySectionHeader("最近更新", detail: "继续整理这条故事线")
+
                                     NavigationLink {
                                         StoryDetailView(name: activeStory.name, fragments: activeStory.fragments)
                                     } label: {
@@ -55,15 +79,7 @@ struct StoryListView: View {
                                 }
 
                                 if !otherStories.isEmpty {
-                                    HStack {
-                                        Text("其他故事线")
-                                            .font(.caption).fontWeight(.semibold)
-                                            .foregroundStyle(.secondary)
-                                        Spacer()
-                                        Text("\(otherStories.count) 条")
-                                            .font(.caption2)
-                                            .foregroundStyle(.tertiary)
-                                    }
+                                    storySectionHeader("更多故事线", detail: "\(otherStories.count) 条")
 
                                     ForEach(otherStories, id: \.name) { story in
                                         NavigationLink {
@@ -82,6 +98,12 @@ struct StoryListView: View {
                     }
                 }
 
+                StoryAddFAB {
+                    newStoryNameInput = ""
+                    showingNewStoryAlert = true
+                }
+                .padding(.trailing, 20)
+                .padding(.bottom, 24)
             }
             .toolbar(.hidden, for: .navigationBar)
         }
@@ -131,60 +153,17 @@ struct StoryListView: View {
         .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
     }
 
-    private var storyActionStrip: some View {
-        HStack(spacing: 10) {
-            Button {
-                newStoryNameInput = ""
-                showingNewStoryAlert = true
-            } label: {
-                Label("新建故事线", systemImage: "plus")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(AnimePalette.primary, in: RoundedRectangle(cornerRadius: 14))
-                    .foregroundStyle(.white)
-            }
-            .buttonStyle(PressScaleButtonStyle(scale: 0.97))
-
-            if let activeStory {
-                NavigationLink {
-                    StoryDetailView(name: activeStory.name, fragments: activeStory.fragments)
-                } label: {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("最近故事")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        Text(activeStory.name)
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.6)
-                    )
-                }
-                .buttonStyle(.plain)
-            } else {
-                Text("暂无最近故事")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.6)
-                    )
-            }
+    private func storySectionHeader(_ title: String, detail: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.caption).fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(detail)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
+        .padding(.top, 4)
     }
 
     private var storyEmptyState: some View {
@@ -220,11 +199,307 @@ struct StoryListView: View {
     }
 }
 
+private struct StoryAddFAB: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            action()
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(Color.accentColor.opacity(0.2))
+                    .frame(width: 72, height: 72)
+                    .blur(radius: 8)
+
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 58, height: 58)
+                    .overlay(
+                        Circle().strokeBorder(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.6), Color.white.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                    )
+                    .shadow(color: Color.black.opacity(0.18), radius: 10, y: 5)
+
+                Image(systemName: "plus")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color.accentColor)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("新建故事线")
+    }
+}
+
 // MARK: - Request token
 
 private struct StoryCreateRequest: Identifiable {
     let id = UUID()
     let name: String
+}
+
+private struct RelationshipSummary: Identifiable {
+    let name: String
+    let fragments: [Fragment]
+    var id: String { name }
+
+    var latest: Fragment? { fragments.first }
+    var locationCount: Int {
+        Set(fragments.compactMap { $0.locationName.isEmpty ? nil : $0.locationName }).count
+    }
+    var mediaCount: Int {
+        fragments.reduce(0) { $0 + $1.mediaIdentifiers.count }
+    }
+}
+
+private struct RelationshipRail: View {
+    let items: [RelationshipSummary]
+    let importantDates: [ImportantDate]
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                ForEach(items) { item in
+                    NavigationLink {
+                        RelationshipTimelineView(summary: item, importantDates: importantDates)
+                    } label: {
+                        RelationshipCard(summary: item)
+                    }
+                    .buttonStyle(PressScaleButtonStyle())
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+}
+
+private struct RelationshipCard: View {
+    let summary: RelationshipSummary
+
+    private var accent: Color {
+        let palette = [AnimePalette.sakura, AnimePalette.primary, AnimePalette.violet, AnimePalette.mint, AnimePalette.star]
+        let index = abs(summary.name.hashValue) % palette.count
+        return palette[index]
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                Text(initialText)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(width: 38, height: 38)
+                    .background(accent, in: Circle())
+                Spacer()
+                Image(systemName: "person.2.fill")
+                    .font(.caption)
+                    .foregroundStyle(accent)
+                    .padding(7)
+                    .background(accent.opacity(0.12), in: Circle())
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(summary.name)
+                    .font(.subheadline).fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text(latestText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            HStack(spacing: 8) {
+                Label("\(summary.fragments.count)", systemImage: "square.on.square")
+                if summary.locationCount > 0 {
+                    Label("\(summary.locationCount)", systemImage: "mappin.and.ellipse")
+                }
+            }
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+        }
+        .frame(width: 168, alignment: .leading)
+        .padding(14)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(accent.opacity(0.18), lineWidth: 0.7))
+    }
+
+    private var initialText: String {
+        String(summary.name.prefix(1)).uppercased()
+    }
+
+    private var latestText: String {
+        guard let latest = summary.latest else { return "还没有共同碎片" }
+        if !latest.content.isEmpty { return latest.content }
+        if !latest.locationName.isEmpty { return latest.locationName }
+        return latest.date.formatted(date: .abbreviated, time: .omitted)
+    }
+}
+
+private struct RelationshipTimelineView: View {
+    let summary: RelationshipSummary
+    let importantDates: [ImportantDate]
+
+    private var relatedDates: [ImportantDate] {
+        importantDates
+            .filter {
+                $0.title.localizedCaseInsensitiveContains(summary.name)
+                || $0.note.localizedCaseInsensitiveContains(summary.name)
+            }
+            .sorted { $0.daysUntil < $1.daysUntil }
+    }
+
+    private var topLocations: [(name: String, count: Int)] {
+        var freq: [String: Int] = [:]
+        for fragment in summary.fragments where !fragment.locationName.isEmpty {
+            freq[fragment.locationName, default: 0] += 1
+        }
+        return Array(freq.sorted { $0.value > $1.value }.map { (name: $0.key, count: $0.value) }.prefix(3))
+    }
+
+    private var moodLine: String {
+        let moods = summary.fragments.map(\.mood).filter { !$0.isEmpty }
+        guard !moods.isEmpty else { return "暂无心情" }
+        return Array(moods.prefix(5)).joined(separator: " ")
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                RelationshipHero(summary: summary,
+                                 relatedDateCount: relatedDates.count,
+                                 moodLine: moodLine)
+
+                if !relatedDates.isEmpty {
+                    relationshipSectionHeader("关联日期", detail: "\(relatedDates.count) 个")
+                    VStack(spacing: 10) {
+                        ForEach(Array(relatedDates.prefix(4))) { item in
+                            RelationshipDateRow(item: item)
+                        }
+                    }
+                }
+
+                if !topLocations.isEmpty {
+                    relationshipSectionHeader("常出现的地点", detail: "\(summary.locationCount) 个地点")
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(topLocations, id: \.name) { loc in
+                                Label("\(loc.name) \(loc.count)", systemImage: "location.fill")
+                                    .font(.caption)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(.ultraThinMaterial, in: Capsule())
+                            }
+                        }
+                    }
+                }
+
+                relationshipSectionHeader("共同碎片", detail: "\(summary.fragments.count) 条")
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(summary.fragments.enumerated()), id: \.offset) { index, fragment in
+                        StoryTimelineRow(fragment: fragment,
+                                         isFirst: index == 0,
+                                         isLast: index == summary.fragments.count - 1)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .padding(.bottom, 40)
+        }
+        .background { AppBackgroundCanvas().ignoresSafeArea() }
+        .navigationTitle(summary.name)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func relationshipSectionHeader(_ title: String, detail: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.caption).fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(detail)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.top, 4)
+    }
+}
+
+private struct RelationshipHero: View {
+    let summary: RelationshipSummary
+    let relatedDateCount: Int
+    let moodLine: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
+                Text(String(summary.name.prefix(1)).uppercased())
+                    .font(.title2).fontWeight(.bold)
+                    .foregroundStyle(.white)
+                    .frame(width: 58, height: 58)
+                    .background(AnimePalette.primary, in: Circle())
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(summary.name)
+                        .font(.title2).fontWeight(.bold)
+                    Text("由 #\(summary.name) 标签生成")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+
+            HStack(spacing: 10) {
+                TabSummaryMetricCard(title: "碎片", value: "\(summary.fragments.count)", icon: "square.on.square", tint: AnimePalette.primary)
+                TabSummaryMetricCard(title: "日期", value: "\(relatedDateCount)", icon: "calendar", tint: AnimePalette.sakura)
+                TabSummaryMetricCard(title: "媒体", value: "\(summary.mediaCount)", icon: "photo", tint: AnimePalette.star)
+            }
+
+            Text(moodLine)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+    }
+}
+
+private struct RelationshipDateRow: View {
+    let item: ImportantDate
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(item.emoji)
+                .font(.title3)
+                .frame(width: 38, height: 38)
+                .background(Color.accentColor.opacity(0.12), in: Circle())
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.title)
+                    .font(.subheadline).fontWeight(.semibold)
+                    .lineLimit(1)
+                Text(item.category)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text(item.countdownLabel)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.accentColor)
+        }
+        .padding(12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
 }
 
 private struct FeaturedStoryCard: View {
@@ -400,6 +675,7 @@ struct StoryDetailView: View {
     let fragments: [Fragment]
 
     @Environment(\.modelContext) private var modelContext
+    @AppStorage("storyDetailIsGrid") private var isGridView = false
     @State private var showingRename = false
     @State private var newName = ""
     @State private var showingAddFragment = false
@@ -439,7 +715,7 @@ struct StoryDetailView: View {
                                 mediaCount: mediaCount)
 
                 HStack {
-                    Text("时间轴")
+                    Text(isGridView ? "方格" : "时间轴")
                         .font(.caption).fontWeight(.semibold)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -448,11 +724,15 @@ struct StoryDetailView: View {
                         .foregroundStyle(.tertiary)
                 }
 
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(sortedFragments.enumerated()), id: \.offset) { index, fragment in
-                        StoryTimelineRow(fragment: fragment,
-                                         isFirst: index == 0,
-                                         isLast: index == sortedFragments.count - 1)
+                if isGridView {
+                    StoryFragmentGrid(fragments: sortedFragments)
+                } else {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(sortedFragments.enumerated()), id: \.offset) { index, fragment in
+                            StoryTimelineRow(fragment: fragment,
+                                             isFirst: index == 0,
+                                             isLast: index == sortedFragments.count - 1)
+                        }
                     }
                 }
             }
@@ -466,6 +746,14 @@ struct StoryDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 4) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) { isGridView.toggle() }
+                    } label: {
+                        Image(systemName: isGridView ? "rectangle.grid.1x2" : "square.grid.2x2")
+                            .glassToolbarIcon(active: isGridView)
+                    }
+                    .buttonStyle(.plain)
+
                     Button {
                         showingAddFragment = true
                     } label: {
@@ -572,6 +860,123 @@ private struct StoryHeroMetric: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(.white.opacity(0.13), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private struct StoryFragmentGrid: View {
+    let fragments: [Fragment]
+
+    private var leftItems: [Fragment] {
+        fragments.enumerated().filter { $0.offset % 2 == 0 }.map(\.element)
+    }
+
+    private var rightItems: [Fragment] {
+        fragments.enumerated().filter { $0.offset % 2 == 1 }.map(\.element)
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            LazyVStack(spacing: 12) {
+                ForEach(leftItems) { fragment in
+                    StoryGridFragmentCard(fragment: fragment)
+                }
+            }
+            LazyVStack(spacing: 12) {
+                ForEach(rightItems) { fragment in
+                    StoryGridFragmentCard(fragment: fragment)
+                }
+            }
+        }
+    }
+}
+
+private struct StoryGridFragmentCard: View {
+    let fragment: Fragment
+
+    var body: some View {
+        NavigationLink {
+            FragmentDetailView(fragment: fragment)
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                if fragment.isPrivate {
+                    privateCover
+                } else if let id = fragment.coverMediaID {
+                    MediaThumbnailView(identifier: id, size: CGSize(width: 260, height: 260))
+                        .frame(maxWidth: .infinity)
+                        .aspectRatio(1, contentMode: .fit)
+                        .clipped()
+                } else {
+                    textBlock
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    if !fragment.content.isEmpty, fragment.coverMediaID != nil, !fragment.isPrivate {
+                        Text(fragment.content)
+                            .font(.caption)
+                            .foregroundStyle(.primary)
+                            .lineLimit(3)
+                    }
+
+                    HStack(spacing: 5) {
+                        if !fragment.mood.isEmpty {
+                            Text(fragment.mood)
+                        }
+                        Text(fragment.date.formatted(date: .abbreviated, time: .omitted))
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                    if !fragment.tags.isEmpty && !fragment.isPrivate {
+                        HStack(spacing: 4) {
+                            ForEach(fragment.tags.prefix(2), id: \.self) { tag in
+                                Text("#\(tag)")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(Color.accentColor)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+                .padding(10)
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5))
+        }
+        .buttonStyle(PressScaleButtonStyle(scale: 0.97))
+    }
+
+    private var privateCover: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "lock.fill")
+                .font(.title3)
+                .foregroundStyle(.tertiary)
+            Text("私密碎片")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, minHeight: 112)
+    }
+
+    private var textBlock: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !fragment.mood.isEmpty {
+                Text(fragment.mood)
+                    .font(.title3)
+            }
+            Text(fragment.content.isEmpty ? "（无文字内容）" : fragment.content)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(.primary)
+                .lineLimit(7)
+                .multilineTextAlignment(.leading)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
+        .background(Color.accentColor.opacity(0.06))
     }
 }
 

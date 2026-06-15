@@ -15,7 +15,9 @@ struct SpotlightManager {
 
     static func reindexAll(_ fragments: [Fragment]) {
         let items = fragments.filter { !$0.isPrivate }.map { searchableItem(for: $0) }
-        CSSearchableIndex.default().indexSearchableItems(items) { _ in }
+        CSSearchableIndex.default().deleteSearchableItems(withDomainIdentifiers: [domain]) { _ in
+            CSSearchableIndex.default().indexSearchableItems(items) { _ in }
+        }
     }
 
     static func remove(itemID: String) {
@@ -23,7 +25,7 @@ struct SpotlightManager {
     }
 
     static func itemID(for fragment: Fragment) -> String {
-        "fragment-\(Int(fragment.date.timeIntervalSince1970))-\(abs(fragment.content.hashValue) % 100000)"
+        "fragment-\(fragment.uuid)"
     }
 
     private static func searchableItem(for fragment: Fragment) -> CSSearchableItem {

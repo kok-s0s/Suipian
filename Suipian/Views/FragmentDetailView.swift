@@ -231,8 +231,10 @@ struct FragmentDetailView: View {
             DeleteConfirmSheet {
                 UINotificationFeedbackGenerator().notificationOccurred(.warning)
                 fragment.audioFileNames.forEach { AudioStore.delete($0) }
+                fragment.mediaIdentifiers.forEach { LocalMediaStore.delete(identifier: $0) }
                 SpotlightManager.remove(itemID: SpotlightManager.itemID(for: fragment))
                 modelContext.delete(fragment)
+                try? modelContext.save()
                 WidgetDataStore.rebuildFragmentWidgets(allFragments.filter { $0.persistentModelID != fragment.persistentModelID })
                 dismiss()
             }
@@ -262,11 +264,24 @@ struct FragmentDetailView: View {
 
     private func computeCarouselHeight() {
         guard let firstID = fragment.mediaIdentifiers.first else { return }
+        if let image = LocalMediaStore.thumbnail(for: firstID, targetSize: CGSize(width: 900, height: 900)),
+           image.size.width > 0 {
+            let screenWidth = currentScreenWidth()
+            let ratio = image.size.height / image.size.width
+            carouselHeight = min(screenWidth * ratio, 420)
+            return
+        }
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [firstID], options: nil)
         guard let asset = assets.firstObject, asset.pixelWidth > 0 else { return }
-        let screenWidth = UIScreen.main.bounds.width
+        let screenWidth = currentScreenWidth()
         let ratio = CGFloat(asset.pixelHeight) / CGFloat(asset.pixelWidth)
         carouselHeight = min(screenWidth * ratio, 420)
+    }
+
+    private func currentScreenWidth() -> CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.screen.bounds.width }
+            .first ?? 390
     }
 }
 

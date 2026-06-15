@@ -46,6 +46,8 @@ struct FragmentEditView: View {
     @State private var linkImageURL: String = ""
     @State private var isFetchingLocation = false
     @State private var showDraftRestoredBanner = false
+    @State private var isSaving = false
+    @State private var saveErrorMessage: String?
 
     @Query(sort: \Fragment.date, order: .reverse) private var allFragments: [Fragment]
 
@@ -683,8 +685,10 @@ struct FragmentEditView: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") { save() }
-                        .disabled(!canSave)
+                    Button(isSaving ? "保存中…" : "保存") {
+                        Task { await save() }
+                    }
+                    .disabled(!canSave || isSaving)
                 }
             }
             .onAppear { loadExisting() }
@@ -697,6 +701,14 @@ struct FragmentEditView: View {
                 selectedItems = []
             }
         } // ScrollViewReader
+        }
+        .alert("保存失败", isPresented: Binding(
+            get: { saveErrorMessage != nil },
+            set: { if !$0 { saveErrorMessage = nil } }
+        )) {
+            Button("好", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage ?? "请稍后重试。")
         }
     }
 
@@ -839,9 +851,33 @@ struct FragmentEditView: View {
         cameraPosition = .automatic
     }
 
-    private func save() {
+    @MainActor
+    private func save() async {
+        guard !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
+
+        let originalMediaIdentifiers = mediaIdentifiers
+        do {
+            mediaIdentifiers = try await localizeMediaIdentifiers(mediaIdentifiers)
+        } catch {
+            mediaIdentifiers = originalMediaIdentifiers
+            saveErrorMessage = "媒体保存到本机时失败，请检查 iCloud 照片下载状态或稍后重试。"
+            return
+        }
+
+        var localIDsToDeleteAfterSave: [String] = []
+        var insertedFragment: Fragment?
+        var oldSpotlightIDToRemove: String?
+        var fragmentToIndex: Fragment?
+        var widgetFragmentsAfterSave: [Fragment] = allFragments
+
         if let fragment {
             let oldSpotlightID = SpotlightManager.itemID(for: fragment)
+            let removedLocalIDs = Set(fragment.mediaIdentifiers)
+                .subtracting(mediaIdentifiers)
+                .filter { LocalMediaStore.isLocalIdentifier($0) }
+            localIDsToDeleteAfterSave = Array(removedLocalIDs)
             fragment.content = content
             fragment.mediaIdentifiers = mediaIdentifiers
             fragment.coverIdentifier = coverIdentifier
@@ -866,10 +902,10 @@ struct FragmentEditView: View {
             fragment.isPrivate = isPrivate
             let newSpotlightID = SpotlightManager.itemID(for: fragment)
             if oldSpotlightID != newSpotlightID {
-                SpotlightManager.remove(itemID: oldSpotlightID)
+                oldSpotlightIDToRemove = oldSpotlightID
             }
-            SpotlightManager.index(fragment)
-            WidgetDataStore.rebuildFragmentWidgets(allFragments)
+            fragmentToIndex = fragment
+            widgetFragmentsAfterSave = allFragments
         } else {
             let f = Fragment(
                 content: content,
@@ -896,12 +932,44 @@ struct FragmentEditView: View {
             f.linkDescription = linkDescription
             f.linkImageURL = linkImageURL
             modelContext.insert(f)
-            SpotlightManager.index(f)
-            WidgetDataStore.rebuildFragmentWidgets(allFragments + [f])
+            insertedFragment = f
+            fragmentToIndex = f
+            widgetFragmentsAfterSave = allFragments + [f]
         }
-        clearDraft()
-        HapticFeedback.success()
-        dismiss()
+        do {
+            try modelContext.save()
+            for id in localIDsToDeleteAfterSave { LocalMediaStore.delete(identifier: id) }
+            if let oldSpotlightIDToRemove {
+                SpotlightManager.remove(itemID: oldSpotlightIDToRemove)
+            }
+            if let fragmentToIndex {
+                SpotlightManager.index(fragmentToIndex)
+            }
+            WidgetDataStore.rebuildFragmentWidgets(widgetFragmentsAfterSave)
+            clearDraft()
+            HapticFeedback.success()
+            dismiss()
+        } catch {
+            if let insertedFragment {
+                modelContext.delete(insertedFragment)
+                mediaIdentifiers
+                    .filter { LocalMediaStore.isLocalIdentifier($0) }
+                    .forEach { LocalMediaStore.delete(identifier: $0) }
+            }
+            saveErrorMessage = "数据写入失败：\(error.localizedDescription)"
+        }
+    }
+
+    private func localizeMediaIdentifiers(_ identifiers: [String]) async throws -> [String] {
+        var result: [String] = []
+        for id in identifiers {
+            let localID = try await LocalMediaStore.copyAssetIfNeeded(identifier: id)
+            if !result.contains(localID) { result.append(localID) }
+        }
+        if let coverIdentifier, let index = identifiers.firstIndex(of: coverIdentifier), index < result.count {
+            self.coverIdentifier = result[index]
+        }
+        return result
     }
 }
 
@@ -932,7 +1000,7 @@ private struct MoodPickerRow: View {
     }
 
     private func removeCustomMood(_ emoji: String) {
-        var moods = customMoods.filter { $0 != emoji }
+        let moods = customMoods.filter { $0 != emoji }
         customMoodsData = (try? JSONEncoder().encode(moods)) ?? Data()
     }
 

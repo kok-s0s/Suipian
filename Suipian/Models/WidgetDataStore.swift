@@ -1,7 +1,6 @@
 import Foundation
 import WidgetKit
 
-private let kAppGroupID = "group.com.kok-s0s.Suipian"
 private let kLatestFragmentKey = "latestFragment"
 private let kImportantDatesKey = "importantDates"
 
@@ -31,7 +30,7 @@ enum WidgetDataStore {
         if let latest = publicFragments.first {
             updateLatestFragment(latest)
         } else {
-            UserDefaults(suiteName: kAppGroupID)?.removeObject(forKey: kLatestFragmentKey)
+            AppGroupDefaults.make()?.removeObject(forKey: kLatestFragmentKey)
         }
 
         updateTagFragments(publicFragments)
@@ -46,14 +45,14 @@ enum WidgetDataStore {
             tags: fragment.tags
         )
         if let encoded = try? JSONEncoder().encode(payload) {
-            UserDefaults(suiteName: kAppGroupID)?.set(encoded, forKey: kLatestFragmentKey)
+            AppGroupDefaults.make()?.set(encoded, forKey: kLatestFragmentKey)
         }
     }
 
     // Writes tag-grouped fragment data for the TagFeedWidget.
     // Called whenever the fragment list changes.
     static func updateTagFragments(_ fragments: [Fragment]) {
-        guard let defaults = UserDefaults(suiteName: kAppGroupID) else { return }
+        guard let defaults = AppGroupDefaults.make() else { return }
 
         let public_ = fragments.filter { !$0.isPrivate }
 
@@ -103,7 +102,7 @@ enum WidgetDataStore {
             }
 
         if let encoded = try? JSONEncoder().encode(Array(payloads)) {
-            UserDefaults(suiteName: kAppGroupID)?.set(encoded, forKey: kImportantDatesKey)
+            AppGroupDefaults.make()?.set(encoded, forKey: kImportantDatesKey)
         }
         WidgetCenter.shared.reloadTimelines(ofKind: "com.kok-s0s.Suipian.importantDateCountdown")
     }

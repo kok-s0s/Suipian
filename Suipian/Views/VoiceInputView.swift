@@ -9,7 +9,6 @@ struct VoiceInputView: View {
 
     @StateObject private var recorder = VoiceRecorder()
     @State private var barHeights: [CGFloat] = Array(repeating: 4, count: 26)
-    @State private var animTimer: Timer?
 
     var body: some View {
         ZStack {
@@ -120,17 +119,18 @@ struct VoiceInputView: View {
         .onAppear {
             recorder.setup()
             recorder.start()
-            startWaveAnimation()
         }
         .onDisappear {
             recorder.stop()
-            animTimer?.invalidate()
-            animTimer = nil
+        }
+        .task {
+            await animateWaveform()
         }
     }
 
-    private func startWaveAnimation() {
-        animTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { _ in
+    @MainActor
+    private func animateWaveform() async {
+        while !Task.isCancelled {
             if recorder.isRecording {
                 barHeights = (0..<26).map { _ in CGFloat.random(in: 6...52) }
             } else {
@@ -138,6 +138,7 @@ struct VoiceInputView: View {
                     barHeights = Array(repeating: 4, count: 26)
                 }
             }
+            try? await Task.sleep(nanoseconds: 80_000_000)
         }
     }
 }

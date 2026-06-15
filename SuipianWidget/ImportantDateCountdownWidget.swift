@@ -1,7 +1,6 @@
 import WidgetKit
 import SwiftUI
 
-private let kAppGroupID = "group.com.kok-s0s.Suipian"
 private let kImportantDatesKey = "importantDates"
 
 struct WidgetImportantDateData: Codable {
@@ -104,7 +103,7 @@ struct ImportantDateCountdownProvider: TimelineProvider {
     }
 
     private func load() -> [WidgetImportantDateData] {
-        guard let defaults = UserDefaults(suiteName: kAppGroupID),
+        guard let defaults = AppGroupDefaults.make(),
               let data = defaults.data(forKey: kImportantDatesKey),
               let decoded = try? JSONDecoder().decode([WidgetImportantDateData].self, from: data) else {
             return []

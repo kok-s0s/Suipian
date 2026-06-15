@@ -14,6 +14,7 @@ struct FragmentFeedView: View {
 
     @AppStorage("fragmentViewIsGrid") private var isGridView = false
     @AppStorage("fragmentSortAscending") private var sortAscending = false
+    @AppStorage("cloudKitFallbackToLocal") private var cloudKitFallbackToLocal = false
 
     @State private var selectedTag: String? = nil
     @State private var createRequest: CreateRequest? = nil
@@ -208,6 +209,12 @@ struct FragmentFeedView: View {
                         )
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
+                    }
+
+                    if cloudKitFallbackToLocal {
+                        LocalOnlySyncBanner()
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
                     }
 
                     // On This Day banner
@@ -550,8 +557,10 @@ struct FragmentFeedView: View {
             Button("永久删除", role: .destructive) {
                 if let f = fragmentToDelete {
                     f.audioFileNames.forEach { AudioStore.delete($0) }
+                    f.mediaIdentifiers.forEach { LocalMediaStore.delete(identifier: $0) }
                     SpotlightManager.remove(itemID: SpotlightManager.itemID(for: f))
                     modelContext.delete(f)
+                    try? modelContext.save()
                     WidgetDataStore.rebuildFragmentWidgets(fragments.filter { $0.persistentModelID != f.persistentModelID })
                     HapticFeedback.impact(.medium)
                 }
@@ -580,6 +589,28 @@ private struct RandomReviewRequest: Identifiable {
 private struct MediaEditRequest: Identifiable {
     let id = UUID()
     let mediaIDs: [String]
+}
+
+private struct LocalOnlySyncBanner: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "externaldrive.badge.icloud")
+                .foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("当前仅本机保存")
+                    .font(.caption).fontWeight(.semibold)
+                Text("iCloud 同步未能启动，可在设置中查看状态。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14)
+            .strokeBorder(Color.orange.opacity(0.28), lineWidth: 0.8))
+    }
 }
 
 // MARK: - Today entry
@@ -875,7 +906,10 @@ private struct FragmentGridCellView: View {
 
     // (screen - 16*2 padding - 12 gap) / 2 columns
     private static var columnWidth: CGFloat {
-        (UIScreen.main.bounds.width - 44) / 2
+        let width = UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.screen.bounds.width }
+            .first ?? 390
+        return (width - 44) / 2
     }
 
     init(fragment: Fragment, highlight: String = "") {
@@ -931,6 +965,13 @@ private struct FragmentGridCellView: View {
                 .frame(width: Self.columnWidth, height: imgHeight)
                 .task(id: coverID) {
                     guard Self.ratioCache[coverID] == nil else { return }
+                    if let image = LocalMediaStore.thumbnail(for: coverID, targetSize: CGSize(width: 480, height: 960)),
+                       image.size.width > 0 {
+                        let r = image.size.height / image.size.width
+                        Self.ratioCache[coverID] = r
+                        imageRatio = r
+                        return
+                    }
                     let assets = PHAsset.fetchAssets(
                         withLocalIdentifiers: [coverID], options: nil)
                     if let asset = assets.firstObject, asset.pixelWidth > 0 {

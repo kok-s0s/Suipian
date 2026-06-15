@@ -2,8 +2,6 @@ import WidgetKit
 import SwiftUI
 import AppIntents
 
-private let kAppGroupID = "group.com.kok-s0s.Suipian"
-
 // MARK: - Cycle intent
 
 struct NextTagFragmentIntent: AppIntent {
@@ -15,7 +13,7 @@ struct NextTagFragmentIntent: AppIntent {
     init(tag: String) { self.tag = tag }
 
     func perform() async throws -> some IntentResult {
-        let defaults = UserDefaults(suiteName: kAppGroupID)
+        let defaults = AppGroupDefaults.make()
         let key = "widgetIndex_\(tag)"
         let fragments = Self.load(tag: tag, from: defaults)
         guard !fragments.isEmpty else { return .result() }
@@ -84,7 +82,7 @@ struct TagFeedProvider: AppIntentTimelineProvider {
 
     private func makeEntry(for configuration: TagSelectionIntent) -> TagFeedEntry {
         let tag = configuration.tag.trimmingCharacters(in: .whitespaces)
-        let defaults = UserDefaults(suiteName: kAppGroupID)
+        let defaults = AppGroupDefaults.make()
         let fragments = NextTagFragmentIntent.load(tag: tag, from: defaults)
         let stored = defaults?.integer(forKey: "widgetIndex_\(tag)") ?? 0
         let index = fragments.isEmpty ? 0 : stored % fragments.count

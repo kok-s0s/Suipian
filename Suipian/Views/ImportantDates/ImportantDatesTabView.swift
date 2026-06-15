@@ -21,7 +21,7 @@ struct ImportantDatesTabView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .topTrailing) {
+            ZStack(alignment: .bottomTrailing) {
                 Group {
                     if dates.isEmpty {
                         emptyState
@@ -74,17 +74,9 @@ struct ImportantDatesTabView: View {
                 }
                 .toolbar(.hidden, for: .navigationBar)
 
-                Button { showingAdd = true } label: {
-                    Image(systemName: "plus")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 40, height: 40)
-                        .background(AnimePalette.primary, in: Circle())
-                        .shadow(color: AnimePalette.primary.opacity(0.24), radius: 8, y: 3)
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 18)
-                .padding(.top, 12)
+                AddDateFAB { showingAdd = true }
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 24)
             }
         }
         .sheet(isPresented: $showingAdd) {
@@ -140,6 +132,46 @@ struct ImportantDatesTabView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+private struct AddDateFAB: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            action()
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(Color.accentColor.opacity(0.2))
+                    .frame(width: 72, height: 72)
+                    .blur(radius: 8)
+
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 58, height: 58)
+                    .overlay(
+                        Circle().strokeBorder(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.6), Color.white.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                    )
+                    .shadow(color: Color.black.opacity(0.18), radius: 10, y: 5)
+
+                Image(systemName: "plus")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color.accentColor)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("新增日期")
     }
 }
 

@@ -117,9 +117,10 @@ struct FragmentMapView: View {
     }
 
     private func selectLocationResult(_ item: MKMapItem) {
+        let coordinate = item.location.coordinate
         withAnimation(.spring(response: 0.3)) {
             position = .region(MKCoordinateRegion(
-                center: item.placemark.coordinate,
+                center: coordinate,
                 span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04)
             ))
         }
@@ -149,7 +150,7 @@ struct FragmentMapView: View {
         if #available(iOS 18, *) {
             if let req = MKReverseGeocodingRequest(location: location),
                let item = try? await req.mapItems.first {
-                return [item.name, item.placemark.locality]
+                return [item.name, item.address?.shortAddress]
                     .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
             }
         } else {
@@ -413,7 +414,7 @@ struct FragmentMapView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(item.name ?? "未知地点")
                                         .font(.subheadline).foregroundStyle(.primary)
-                                    if let addr = item.placemark.title, addr != item.name {
+                                    if let addr = item.address?.fullAddress, addr != item.name {
                                         Text(addr).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                                     }
                                 }

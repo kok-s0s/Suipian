@@ -15,8 +15,10 @@ struct SuipianApp: App {
             cloudKitDatabase: .automatic
         )
         do {
+            UserDefaults.standard.set(false, forKey: "cloudKitFallbackToLocal")
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
+            UserDefaults.standard.set(true, forKey: "cloudKitFallbackToLocal")
             let local = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
             return try! ModelContainer(for: schema, configurations: [local])
         }
@@ -27,8 +29,9 @@ struct SuipianApp: App {
             ContentView()
                 .tint(AnimePalette.primary)
                 .task { migrateAudioDataIfNeeded() }
+                .task { reindexSpotlightItems() }
                 .task { await refreshNotificationIfNeeded() }
-                .task { await refreshImportantDateFeatures() }
+                .task { refreshImportantDateFeatures() }
                 .environment(syncMonitor)
                 .environment(appRouter)
                 .onContinueUserActivity(CSSearchableItemActionType) { [self] activity in
@@ -68,6 +71,12 @@ struct SuipianApp: App {
             changed = true
         }
         if changed { try? ctx.save() }
+    }
+
+    private func reindexSpotlightItems() {
+        let ctx = sharedModelContainer.mainContext
+        guard let fragments = try? ctx.fetch(FetchDescriptor<Fragment>()) else { return }
+        SpotlightManager.reindexAll(fragments)
     }
 
     @MainActor

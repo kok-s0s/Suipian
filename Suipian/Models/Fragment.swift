@@ -3,6 +3,7 @@ import SwiftData
 
 @Model
 final class Fragment {
+    var uuid: String = UUID().uuidString
     var content: String = ""
     var mediaIdentifiers: [String] = []
     var photosData: [Data] = []

@@ -94,6 +94,15 @@ struct MediaThumbnailView: View {
             return
         }
 
+        if LocalMediaStore.isLocalIdentifier(identifier) {
+            isVideo = LocalMediaStore.isVideoIdentifier(identifier)
+            guard let img = LocalMediaStore.thumbnail(for: identifier, targetSize: target), !Task.isCancelled else { return }
+            sharedThumbnailCache.setObject(img, forKey: cacheKey,
+                                           cost: Int(target.width * target.height * 4))
+            withAnimation { thumbnail = img }
+            return
+        }
+
         await requestPermissionIfNeeded()
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
         guard let asset = assets.firstObject, !Task.isCancelled else { return }
@@ -168,8 +177,11 @@ struct MediaDetailView: View {
     // Cap at a generous but bounded size: enough for any screen at 2–3×,
     // avoiding decoding 48 MB+ originals just to fill a phone display.
     private static let maxDetailSize: CGSize = {
-        let s = UIScreen.main.bounds.size
-        let scale = min(UIScreen.main.scale, 2)
+        let screen = UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.screen }
+            .first
+        let s = screen?.bounds.size ?? CGSize(width: 390, height: 844)
+        let scale = min(screen?.scale ?? 2, 2)
         return CGSize(width: s.width * scale * 1.5, height: s.height * scale * 1.5)
     }()
 
@@ -227,6 +239,22 @@ struct MediaDetailView: View {
     }
 
     private func load() async {
+        if LocalMediaStore.isLocalIdentifier(identifier) {
+            guard let url = LocalMediaStore.url(for: identifier) else {
+                loaded = true
+                return
+            }
+            isVideo = LocalMediaStore.isVideoIdentifier(identifier)
+            isLivePhoto = false
+            if isVideo {
+                player = AVPlayer(url: url)
+            } else {
+                image = UIImage(contentsOfFile: url.path)
+            }
+            loaded = true
+            return
+        }
+
         await requestPermissionIfNeeded()
 
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)

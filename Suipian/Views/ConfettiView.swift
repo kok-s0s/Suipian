@@ -29,8 +29,11 @@ struct ConfettiView: View {
     var body: some View {
         if isVisible {
             TimelineView(.animation(minimumInterval: 1/60, paused: particles.isEmpty)) { tl in
-                Canvas { ctx, _ in
+                Canvas { ctx, size in
                     let elapsed = tl.date.timeIntervalSince(launchTime)
+                    if particles.isEmpty {
+                        DispatchQueue.main.async { launch(width: size.width) }
+                    }
                     for p in particles {
                         let t = max(0, elapsed - p.delay)
                         guard t < 2.8 else { continue }
@@ -54,13 +57,13 @@ struct ConfettiView: View {
             }
             .allowsHitTesting(false)
             .ignoresSafeArea()
-            .onAppear { launch() }
+            .onAppear { launch(width: 390) }
         }
     }
 
-    private func launch() {
+    private func launch(width: CGFloat) {
         launchTime = Date()
-        let w = UIScreen.main.bounds.width
+        let w = max(width, 1)
         particles = (0..<90).map { i in
             Particle(
                 id: i,

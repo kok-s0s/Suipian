@@ -97,7 +97,10 @@ func renderShareCard(fragment: Fragment) async -> UIImage? {
 }
 
 private func fetchThumbnail(localIdentifier: String) async -> UIImage? {
-    await withCheckedContinuation { continuation in
+    if let image = LocalMediaStore.thumbnail(for: localIdentifier, targetSize: CGSize(width: 680, height: 400)) {
+        return image
+    }
+    return await withCheckedContinuation { (continuation: CheckedContinuation<UIImage?, Never>) in
         let result = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
         guard let asset = result.firstObject else { continuation.resume(returning: nil); return }
         let size = CGSize(width: 680, height: 400)

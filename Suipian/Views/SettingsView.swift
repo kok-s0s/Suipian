@@ -11,6 +11,7 @@ struct SettingsView: View {
     @AppStorage("reminderMinute") private var reminderMinute = 0
     @AppStorage("backgroundStyle") private var backgroundStyle = 0
     @AppStorage("appLockEnabled") private var appLockEnabled = false
+    @AppStorage("cloudKitFallbackToLocal") private var cloudKitFallbackToLocal = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(CloudKitSyncMonitor.self) private var syncMonitor
@@ -234,7 +235,19 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var iCloudStatusRow: some View {
-        if iCloudAccountStatus == .noAccount || iCloudAccountStatus == .restricted
+        if cloudKitFallbackToLocal {
+            HStack(spacing: 14) {
+                Image(systemName: "externaldrive.badge.icloud")
+                    .font(.system(size: 20))
+                    .foregroundStyle(.orange)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("当前仅本机保存").font(.subheadline)
+                    Text("iCloud 容器初始化失败，本次启动已切换为本地存储。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        } else if iCloudAccountStatus == .noAccount || iCloudAccountStatus == .restricted
             || iCloudAccountStatus == .temporarilyUnavailable {
             HStack(spacing: 14) {
                 Image(systemName: accountStatusIcon)

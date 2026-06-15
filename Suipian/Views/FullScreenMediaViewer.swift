@@ -27,6 +27,9 @@ struct FullScreenMediaViewer: View {
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
         var vids = Set<String>()
         var lives = Set<String>()
+        for id in identifiers where LocalMediaStore.isVideoIdentifier(id) {
+            vids.insert(id)
+        }
         assets.enumerateObjects { asset, _, _ in
             if asset.mediaType == .video { vids.insert(asset.localIdentifier) }
             if asset.playbackStyle == .livePhoto { lives.insert(asset.localIdentifier) }

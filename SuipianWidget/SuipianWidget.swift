@@ -3,7 +3,6 @@ import SwiftUI
 
 // MARK: - Shared data model
 
-private let kAppGroupID = "group.com.kok-s0s.Suipian"
 private let kLatestFragmentKey = "latestFragment"
 
 struct WidgetFragmentData: Codable {
@@ -40,7 +39,7 @@ struct FragmentTimelineProvider: TimelineProvider {
     }
 
     private func load() -> WidgetFragmentData? {
-        guard let defaults = UserDefaults(suiteName: kAppGroupID),
+        guard let defaults = AppGroupDefaults.make(),
               let data = defaults.data(forKey: kLatestFragmentKey),
               let decoded = try? JSONDecoder().decode(WidgetFragmentData.self, from: data) else {
             return nil
