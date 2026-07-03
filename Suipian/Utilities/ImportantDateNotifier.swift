@@ -27,17 +27,57 @@ enum ImportantDateNotifier {
 
     static func schedule(_ item: ImportantDate) {
         guard item.notificationEnabled else { return }
-        remove(item)
 
         if item.advanceReminderDays > 0 {
-            schedule(item, kind: .advance(days: item.advanceReminderDays))
+            scheduleKind(item, kind: .advance(days: item.advanceReminderDays))
         }
-        schedule(item, kind: .dayOf)
+        scheduleKind(item, kind: .dayOf)
     }
 
-    private static func schedule(_ item: ImportantDate, kind: ReminderKind) {
+    private static func scheduleKind(_ item: ImportantDate, kind: ReminderKind) {
+        if item.recurrenceRule == .monthly {
+            scheduleMonthly(item, kind: kind)
+            return
+        }
         guard let triggerDate = triggerDateComponents(for: item, kind: kind) else { return }
+        addRequest(item: item, kind: kind, identifier: "\(baseID(for: item))-\(kind.identifier)",
+                   triggerDate: triggerDate, repeats: item.recurrenceRule == .yearly)
+    }
 
+    private static func scheduleMonthly(_ item: ImportantDate, kind: ReminderKind) {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let wantedDay = cal.component(.day, from: item.date)
+        let monthStartComps = cal.dateComponents([.year, .month], from: today)
+        guard let monthStart = cal.date(from: monthStartComps) else { return }
+
+        var scheduled = 0
+        for offset in 0..<8 {
+            guard let candidateMonth = cal.date(byAdding: .month, value: offset, to: monthStart) else { continue }
+            let occurrence = monthlyOccurrence(inMonthContaining: candidateMonth, day: wantedDay, calendar: cal)
+            let fireDate: Date
+            switch kind {
+            case .dayOf:
+                fireDate = occurrence
+            case .advance(let days):
+                guard let advanceDate = cal.date(byAdding: .day, value: -days, to: occurrence) else { continue }
+                fireDate = cal.startOfDay(for: advanceDate)
+            }
+            guard fireDate >= today else { continue }
+            var comps = cal.dateComponents([.year, .month, .day], from: fireDate)
+            comps.hour = 9
+            comps.minute = 0
+            addRequest(item: item, kind: kind,
+                       identifier: "\(baseID(for: item))-\(kind.identifier)-\(scheduled)",
+                       triggerDate: comps,
+                       repeats: false)
+            scheduled += 1
+            if scheduled >= 6 { break }
+        }
+    }
+
+    private static func addRequest(item: ImportantDate, kind: ReminderKind, identifier: String,
+                                   triggerDate: DateComponents, repeats: Bool) {
         let content = UNMutableNotificationContent()
         content.sound = .default
         content.userInfo = ["importantDateID": "\(item.persistentModelID)", "reminderKind": kind.identifier]
@@ -45,7 +85,7 @@ enum ImportantDateNotifier {
         switch kind {
         case .dayOf:
             content.title = "\(item.emoji) 今天是 \(item.title)"
-            if item.isRecurring, let years = item.yearsElapsed, years > 0 {
+            if item.recurrenceRule == .yearly, let years = item.yearsElapsed, years > 0 {
                 content.body = "今天是第 \(years + 1) 年，打开碎片记录这个特别的日子。"
             } else {
                 content.body = "打开碎片，记录这个特别的日子。"
@@ -55,11 +95,9 @@ enum ImportantDateNotifier {
             content.body = days == 1 ? "明天就是这个重要日期。" : "还有 \(days) 天，提前准备一下。"
         }
 
-        let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: item.isRecurring)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: repeats)
         UNUserNotificationCenter.current().add(
-            UNNotificationRequest(identifier: "\(baseID(for: item))-\(kind.identifier)",
-                                  content: content,
-                                  trigger: trigger)
+            UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
         )
     }
 
@@ -74,17 +112,31 @@ enum ImportantDateNotifier {
         }
 
         guard let fireDate = cal.date(byAdding: .day, value: daysOffset, to: item.date) else { return nil }
-        var comps = cal.dateComponents(item.isRecurring ? [.month, .day] : [.year, .month, .day], from: fireDate)
+        let components: Set<Calendar.Component> = item.recurrenceRule == .yearly
+            ? [.month, .day]
+            : [.year, .month, .day]
+        var comps = cal.dateComponents(components, from: fireDate)
         comps.hour = 9
         comps.minute = 0
         return comps
     }
 
     static func remove(_ item: ImportantDate) {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [
-            "\(baseID(for: item))-day",
-            "\(baseID(for: item))-advance",
-        ])
+        let base = baseID(for: item)
+        var ids = ["\(base)-day", "\(base)-advance"]
+        for index in 0..<8 {
+            ids.append("\(base)-day-\(index)")
+            ids.append("\(base)-advance-\(index)")
+        }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)
+    }
+
+    private static func monthlyOccurrence(inMonthContaining monthDate: Date, day: Int, calendar cal: Calendar) -> Date {
+        let range = cal.range(of: .day, in: .month, for: monthDate)
+        let maxDay = range?.count ?? day
+        var comps = cal.dateComponents([.year, .month], from: monthDate)
+        comps.day = min(day, maxDay)
+        return cal.startOfDay(for: cal.date(from: comps) ?? monthDate)
     }
 
     private static func baseID(for item: ImportantDate) -> String {

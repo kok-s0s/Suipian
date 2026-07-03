@@ -41,7 +41,7 @@ enum ImportantDateFragmentRecorder {
 
     private static func content(for item: ImportantDate) -> String {
         var lines: [String]
-        if item.isRecurring, let years = item.yearsElapsed, years > 0 {
+        if item.recurrenceRule == .yearly, let years = item.yearsElapsed, years > 0 {
             lines = ["\(item.emoji) 今天是 \(item.title) 第 \(years + 1) 年。"]
         } else {
             lines = ["\(item.emoji) 今天是 \(item.title)。"]

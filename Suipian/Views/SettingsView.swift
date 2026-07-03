@@ -343,6 +343,7 @@ struct SettingsView: View {
         let category: String
         let note: String
         let isRecurring: Bool
+        let recurrenceRule: String?
         let notificationEnabled: Bool
         let advanceReminderDays: Int
         let autoRecordFragment: Bool?
@@ -370,6 +371,7 @@ struct SettingsView: View {
                                 category: $0.category,
                                 note: $0.note,
                                 isRecurring: $0.isRecurring,
+                                recurrenceRule: $0.recurrenceRule.rawValue,
                                 notificationEnabled: $0.notificationEnabled,
                                 advanceReminderDays: $0.advanceReminderDays,
                                 autoRecordFragment: $0.autoRecordFragment)
@@ -437,6 +439,7 @@ struct SettingsView: View {
                                          category: r.category,
                                          note: r.note,
                                          isRecurring: r.isRecurring,
+                                         recurrenceRule: r.recurrenceRule.flatMap(ImportantDateRecurrenceRule.init(rawValue:)),
                                          notificationEnabled: r.notificationEnabled,
                                          advanceReminderDays: r.advanceReminderDays,
                                          autoRecordFragment: r.autoRecordFragment ?? true)

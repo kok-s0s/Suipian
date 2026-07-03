@@ -1487,6 +1487,9 @@ private struct ImportantDateBanner: View {
         let target = cal.dateComponents([.month, .day], from: item.date)
         return fragments.filter {
             let comps = cal.dateComponents([.month, .day], from: $0.date)
+            if item.recurrenceRule == .monthly {
+                return comps.day == target.day
+            }
             return comps.month == target.month && comps.day == target.day
         }
     }
@@ -1501,7 +1504,7 @@ private struct ImportantDateMomentSheet: View {
     @State private var showingEditor = false
 
     private var yearsText: String? {
-        guard item.isRecurring, let years = item.yearsElapsed, years > 0 else { return nil }
+        guard item.recurrenceRule == .yearly, let years = item.yearsElapsed, years > 0 else { return nil }
         return "第 \(years + 1) 年"
     }
 

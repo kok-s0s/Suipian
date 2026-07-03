@@ -9,6 +9,31 @@ struct WidgetImportantDateData: Codable {
     let emoji: String
     let category: String
     let isRecurring: Bool
+    let recurrenceRule: String
+
+    private enum CodingKeys: String, CodingKey {
+        case title, date, emoji, category, isRecurring, recurrenceRule
+    }
+
+    init(title: String, date: Date, emoji: String, category: String, isRecurring: Bool, recurrenceRule: String? = nil) {
+        self.title = title
+        self.date = date
+        self.emoji = emoji
+        self.category = category
+        self.isRecurring = isRecurring
+        self.recurrenceRule = recurrenceRule ?? (isRecurring ? "yearly" : "none")
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        title = try container.decode(String.self, forKey: .title)
+        date = try container.decode(Date.self, forKey: .date)
+        emoji = try container.decode(String.self, forKey: .emoji)
+        category = try container.decode(String.self, forKey: .category)
+        isRecurring = try container.decode(Bool.self, forKey: .isRecurring)
+        recurrenceRule = try container.decodeIfPresent(String.self, forKey: .recurrenceRule)
+            ?? (isRecurring ? "yearly" : "none")
+    }
 
     var stableID: String { "\(title)-\(date.timeIntervalSinceReferenceDate)" }
 
@@ -16,12 +41,29 @@ struct WidgetImportantDateData: Codable {
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
 
-        if isRecurring {
+        if recurrenceRule == "yearly" {
             let comps = cal.dateComponents([.month, .day], from: date)
             return cal.nextDate(after: today.addingTimeInterval(-1),
                                 matching: comps,
                                 matchingPolicy: .nextTime)
                 .map { cal.startOfDay(for: $0) }
+        }
+
+        if recurrenceRule == "monthly" {
+            let wantedDay = cal.component(.day, from: date)
+            let monthStartComps = cal.dateComponents([.year, .month], from: today)
+            guard let monthStart = cal.date(from: monthStartComps) else { return nil }
+            for offset in 0...1 {
+                guard let candidateMonth = cal.date(byAdding: .month, value: offset, to: monthStart) else { continue }
+                let range = cal.range(of: .day, in: .month, for: candidateMonth)
+                let maxDay = range?.count ?? wantedDay
+                var comps = cal.dateComponents([.year, .month], from: candidateMonth)
+                comps.day = min(wantedDay, maxDay)
+                if let occurrence = cal.date(from: comps).map({ cal.startOfDay(for: $0) }),
+                   occurrence >= today {
+                    return occurrence
+                }
+            }
         }
 
         return cal.startOfDay(for: date)
@@ -34,13 +76,13 @@ struct WidgetImportantDateData: Codable {
     }
 
     var isPast: Bool {
-        !isRecurring && daysUntil < 0
+        recurrenceRule == "none" && daysUntil < 0
     }
 
     var monthDayText: String {
         guard let target = nextOccurrence else { return "" }
         let formatter = DateFormatter()
-        formatter.dateFormat = "M月d日"
+        formatter.dateFormat = recurrenceRule == "monthly" ? "每月d日" : "M月d日"
         return formatter.string(from: target)
     }
 

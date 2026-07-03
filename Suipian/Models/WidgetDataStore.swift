@@ -19,6 +19,7 @@ private struct WidgetImportantDateData: Codable {
     let emoji: String
     let category: String
     let isRecurring: Bool
+    let recurrenceRule: String
 }
 
 enum WidgetDataStore {
@@ -97,7 +98,8 @@ enum WidgetDataStore {
                     date: $0.date,
                     emoji: $0.emoji,
                     category: $0.category,
-                    isRecurring: $0.isRecurring
+                    isRecurring: $0.isRecurring,
+                    recurrenceRule: $0.recurrenceRule.rawValue
                 )
             }
 

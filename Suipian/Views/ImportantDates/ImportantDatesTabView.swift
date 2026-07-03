@@ -218,7 +218,7 @@ private struct DateDashboardCard: View {
                             .font(.headline)
                             .fontWeight(.semibold)
                             .lineLimit(1)
-                        Text(item.category + " · " + monthDayLabel(item))
+                        Text(item.category + " · " + item.displayDateLabel)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -254,11 +254,6 @@ private struct DateDashboardCard: View {
         .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
     }
 
-    private func monthDayLabel(_ item: ImportantDate) -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "M月d日"
-        return fmt.string(from: item.date)
-    }
 }
 
 private struct ImportantDateCard: View {
@@ -299,10 +294,10 @@ private struct ImportantDateCard: View {
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(accent.opacity(0.1), in: Capsule())
                         .foregroundStyle(accent)
-                    Text(monthDayLabel)
+                    Text(item.displayDateLabel)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    if item.isRecurring, let y = item.yearsElapsed, y > 0 {
+                    if item.recurrenceRule == .yearly, let y = item.yearsElapsed, y > 0 {
                         Text("第\(y + 1)年")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
@@ -342,17 +337,12 @@ private struct ImportantDateCard: View {
         .shadow(color: .black.opacity(item.isToday ? 0.06 : 0.03), radius: 6, y: 2)
     }
 
-    private var monthDayLabel: String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "M月d日"
-        return fmt.string(from: item.date)
-    }
-
-    // Progress within the current year cycle (0–1)
+    // Progress within the current recurrence cycle (0–1)
     private var ringProgress: CGFloat {
-        guard item.isRecurring else { return 1.0 }
+        guard item.recurrenceRule != .none else { return 1.0 }
         let d = item.daysUntil
         guard d > 0 else { return 1.0 }
-        return CGFloat(365 - d) / 365.0
+        let cycleDays = item.recurrenceRule == .monthly ? 31 : 365
+        return CGFloat(max(0, cycleDays - d)) / CGFloat(cycleDays)
     }
 }

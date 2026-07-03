@@ -13,7 +13,7 @@ struct ImportantDateEditView: View {
     @State private var emoji = "🗓"
     @State private var category = "纪念日"
     @State private var note = ""
-    @State private var isRecurring = true
+    @State private var recurrenceRule: ImportantDateRecurrenceRule = .yearly
     @State private var notificationEnabled = true
     @State private var advanceReminderDays = 0
     @State private var autoRecordFragment = true
@@ -69,7 +69,7 @@ struct ImportantDateEditView: View {
                     .padding(16)
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
 
-                    // Date + Recurring
+                    // Date + Recurrence
                     VStack(spacing: 12) {
                         DatePicker("日期", selection: $date, displayedComponents: .date)
                             .datePickerStyle(.graphical)
@@ -77,12 +77,29 @@ struct ImportantDateEditView: View {
 
                         Divider()
 
-                        Toggle(isOn: $isRecurring) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("每年重复")
-                                    .font(.subheadline)
-                                Text("适合生日、纪念日等每年循环的日期")
-                                    .font(.caption).foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("重复方式").font(.caption).foregroundStyle(.secondary)
+                            HStack(spacing: 8) {
+                                ForEach(ImportantDateRecurrenceRule.allCases) { rule in
+                                    Button { recurrenceRule = rule } label: {
+                                        VStack(spacing: 2) {
+                                            Text(rule.title)
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                            Text(rule.detail)
+                                                .font(.caption2)
+                                                .lineLimit(1)
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(
+                                            recurrenceRule == rule ? Color.accentColor : Color.accentColor.opacity(0.08),
+                                            in: RoundedRectangle(cornerRadius: 12)
+                                        )
+                                        .foregroundStyle(recurrenceRule == rule ? .white : Color.accentColor)
+                                    }
+                                    .buttonStyle(PressScaleButtonStyle(scale: 0.95))
+                                }
                             }
                         }
                         .padding(.horizontal, 4)
@@ -213,7 +230,7 @@ struct ImportantDateEditView: View {
         guard let it = item else { return }
         title = it.title; date = it.date; emoji = it.emoji
         category = it.category; note = it.note
-        isRecurring = it.isRecurring; notificationEnabled = it.notificationEnabled
+        recurrenceRule = it.recurrenceRule; notificationEnabled = it.notificationEnabled
         advanceReminderDays = it.advanceReminderDays
         autoRecordFragment = it.autoRecordFragment
     }
@@ -232,7 +249,7 @@ struct ImportantDateEditView: View {
         if let it = item {
             it.title = trimmed; it.date = date; it.emoji = emoji
             it.category = category; it.note = note
-            it.isRecurring = isRecurring; it.notificationEnabled = notificationEnabled
+            it.recurrenceRule = recurrenceRule; it.notificationEnabled = notificationEnabled
             it.advanceReminderDays = advanceReminderDays
             it.autoRecordFragment = autoRecordFragment
             ImportantDateNotifier.remove(it)
@@ -241,7 +258,7 @@ struct ImportantDateEditView: View {
         } else {
             let newItem = ImportantDate(title: trimmed, date: date, emoji: emoji,
                                         category: category, note: note,
-                                        isRecurring: isRecurring, notificationEnabled: notificationEnabled,
+                                        recurrenceRule: recurrenceRule, notificationEnabled: notificationEnabled,
                                         advanceReminderDays: advanceReminderDays,
                                         autoRecordFragment: autoRecordFragment)
             modelContext.insert(newItem)
