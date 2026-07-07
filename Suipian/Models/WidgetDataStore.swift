@@ -24,38 +24,75 @@ private struct WidgetImportantDateData: Codable {
 
 enum WidgetDataStore {
     static func rebuildFragmentWidgets(_ fragments: [Fragment]) {
+        guard let defaults = AppGroupDefaults.make() else { return }
         let publicFragments = fragments
             .filter { !$0.isPrivate }
             .sorted { $0.date > $1.date }
 
+        var latestChanged = false
         if let latest = publicFragments.first {
-            updateLatestFragment(latest)
+            latestChanged = updateLatestFragment(latest, defaults: defaults)
         } else {
-            AppGroupDefaults.make()?.removeObject(forKey: kLatestFragmentKey)
+            latestChanged = defaults.object(forKey: kLatestFragmentKey) != nil
+            if latestChanged { defaults.removeObject(forKey: kLatestFragmentKey) }
         }
 
-        updateTagFragments(publicFragments)
-        WidgetCenter.shared.reloadTimelines(ofKind: "com.kok-s0s.Suipian.latestFragment")
+        let tagsChanged = updateTagFragments(publicFragments, defaults: defaults)
+        if latestChanged {
+            WidgetCenter.shared.reloadTimelines(ofKind: "com.kok-s0s.Suipian.latestFragment")
+        }
+        if tagsChanged {
+            WidgetCenter.shared.reloadTimelines(ofKind: "com.kok-s0s.Suipian.tagFeed")
+        }
     }
 
-    private static func updateLatestFragment(_ fragment: Fragment) {
+    @discardableResult
+    private static func updateLatestFragment(_ fragment: Fragment, defaults: UserDefaults) -> Bool {
         let payload = WidgetFragmentData(
             content: fragment.content,
             date: fragment.date,
             locationName: fragment.locationName,
             tags: fragment.tags
         )
-        if let encoded = try? JSONEncoder().encode(payload) {
-            AppGroupDefaults.make()?.set(encoded, forKey: kLatestFragmentKey)
-        }
+        guard let encoded = try? JSONEncoder().encode(payload) else { return false }
+        guard defaults.data(forKey: kLatestFragmentKey) != encoded else { return false }
+        defaults.set(encoded, forKey: kLatestFragmentKey)
+        return true
+    }
+
+    @discardableResult
+    private static func setDataIfChanged(_ data: Data, forKey key: String, defaults: UserDefaults) -> Bool {
+        guard defaults.data(forKey: key) != data else { return false }
+        defaults.set(data, forKey: key)
+        return true
+    }
+
+    @discardableResult
+    private static func setStringArrayIfChanged(_ value: [String], forKey key: String, defaults: UserDefaults) -> Bool {
+        let oldValue = defaults.stringArray(forKey: key) ?? []
+        guard oldValue != value else { return false }
+        defaults.set(value, forKey: key)
+        return true
     }
 
     // Writes tag-grouped fragment data for the TagFeedWidget.
     // Called whenever the fragment list changes.
-    static func updateTagFragments(_ fragments: [Fragment]) {
-        guard let defaults = AppGroupDefaults.make() else { return }
+    @discardableResult
+    static func updateTagFragments(_ fragments: [Fragment]) -> Bool {
+        guard let defaults = AppGroupDefaults.make() else { return false }
+        let changed = updateTagFragments(fragments, defaults: defaults)
+        if changed {
+            WidgetCenter.shared.reloadTimelines(ofKind: "com.kok-s0s.Suipian.tagFeed")
+        }
+        return changed
+    }
 
+    // Writes tag-grouped fragment data for the TagFeedWidget.
+    // Called whenever the fragment list changes.
+    @discardableResult
+    private static func updateTagFragments(_ fragments: [Fragment], defaults: UserDefaults) -> Bool {
         let public_ = fragments.filter { !$0.isPrivate }
+        var changed = false
 
         // All fragments (capped at 50 for storage size)
         let allPayloads = public_.prefix(50).map {
@@ -63,7 +100,7 @@ enum WidgetDataStore {
                                locationName: $0.locationName, tags: $0.tags)
         }
         if let data = try? JSONEncoder().encode(Array(allPayloads)) {
-            defaults.set(data, forKey: "tagFragments_all")
+            changed = setDataIfChanged(data, forKey: "tagFragments_all", defaults: defaults) || changed
         }
 
         // Per-tag map (max 20 fragments per tag)
@@ -78,13 +115,12 @@ enum WidgetDataStore {
             }
         }
         if let data = try? JSONEncoder().encode(tagMap) {
-            defaults.set(data, forKey: "tagFragmentsMap")
+            changed = setDataIfChanged(data, forKey: "tagFragmentsMap", defaults: defaults) || changed
         }
 
         // Available tag list (for widget configuration hint)
-        defaults.set(Array(tagMap.keys.sorted()), forKey: "widgetAvailableTags")
-
-        WidgetCenter.shared.reloadTimelines(ofKind: "com.kok-s0s.Suipian.tagFeed")
+        changed = setStringArrayIfChanged(Array(tagMap.keys.sorted()), forKey: "widgetAvailableTags", defaults: defaults) || changed
+        return changed
     }
 
     static func updateImportantDates(_ dates: [ImportantDate]) {
@@ -103,9 +139,10 @@ enum WidgetDataStore {
                 )
             }
 
-        if let encoded = try? JSONEncoder().encode(Array(payloads)) {
-            AppGroupDefaults.make()?.set(encoded, forKey: kImportantDatesKey)
+        guard let defaults = AppGroupDefaults.make() else { return }
+        if let encoded = try? JSONEncoder().encode(Array(payloads)),
+           setDataIfChanged(encoded, forKey: kImportantDatesKey, defaults: defaults) {
+            WidgetCenter.shared.reloadTimelines(ofKind: "com.kok-s0s.Suipian.importantDateCountdown")
         }
-        WidgetCenter.shared.reloadTimelines(ofKind: "com.kok-s0s.Suipian.importantDateCountdown")
     }
 }

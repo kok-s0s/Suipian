@@ -6,6 +6,10 @@ import CoreSpotlight
 struct SuipianApp: App {
     @State private var syncMonitor = CloudKitSyncMonitor()
     @State private var appRouter = AppRouter()
+    private let audioMigrationKey = "audioDataMigrationCompleted.v1"
+    private let spotlightReindexKey = "spotlightReindexCompleted.v1"
+    private let dailyNotificationRefreshKey = "dailyNotificationRefreshDate"
+    private let importantDateRefreshKey = "importantDateRefreshDate"
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([Fragment.self, ImportantDate.self])
@@ -28,10 +32,7 @@ struct SuipianApp: App {
         WindowGroup {
             ContentView()
                 .tint(AnimePalette.primary)
-                .task { migrateAudioDataIfNeeded() }
-                .task { reindexSpotlightItems() }
-                .task { await refreshNotificationIfNeeded() }
-                .task { refreshImportantDateFeatures() }
+                .task { await runStartupMaintenance() }
                 .environment(syncMonitor)
                 .environment(appRouter)
                 .onContinueUserActivity(CSSearchableItemActionType) { [self] activity in
@@ -45,8 +46,21 @@ struct SuipianApp: App {
         .modelContainer(sharedModelContainer)
     }
 
+    @MainActor
+    private func runStartupMaintenance() async {
+        try? await Task.sleep(nanoseconds: 750_000_000)
+        guard !Task.isCancelled else { return }
+
+        migrateAudioDataIfNeeded()
+        reindexSpotlightItemsIfNeeded()
+        await refreshNotificationIfNeeded()
+        refreshImportantDateFeaturesIfNeeded()
+    }
+
     // Refresh notification copy once per day when app launches — picks up new data-driven message.
+    @MainActor
     private func refreshNotificationIfNeeded() async {
+        guard shouldRunDailyTask(key: dailyNotificationRefreshKey) else { return }
         let center = UNUserNotificationCenter.current()
         let status = await center.notificationSettings().authorizationStatus
         guard status == .authorized || status == .provisional else { return }
@@ -58,10 +72,13 @@ struct SuipianApp: App {
               }) else { return }
         let fragments = (try? sharedModelContainer.mainContext.fetch(FetchDescriptor<Fragment>())) ?? []
         NotificationScheduler.schedule(hour: comps.0, minute: comps.1, fragments: fragments)
+        markDailyTaskRan(key: dailyNotificationRefreshKey)
     }
 
     // One-time migration: populate audioData for fragments that have audio files but empty audioData.
+    @MainActor
     private func migrateAudioDataIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: audioMigrationKey) else { return }
         let ctx = sharedModelContainer.mainContext
         guard let fragments = try? ctx.fetch(FetchDescriptor<Fragment>()) else { return }
         var changed = false
@@ -71,20 +88,39 @@ struct SuipianApp: App {
             changed = true
         }
         if changed { try? ctx.save() }
-    }
-
-    private func reindexSpotlightItems() {
-        let ctx = sharedModelContainer.mainContext
-        guard let fragments = try? ctx.fetch(FetchDescriptor<Fragment>()) else { return }
-        SpotlightManager.reindexAll(fragments)
+        UserDefaults.standard.set(true, forKey: audioMigrationKey)
     }
 
     @MainActor
-    private func refreshImportantDateFeatures() {
+    private func reindexSpotlightItemsIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: spotlightReindexKey) else { return }
+        let ctx = sharedModelContainer.mainContext
+        guard let fragments = try? ctx.fetch(FetchDescriptor<Fragment>()) else { return }
+        SpotlightManager.reindexAll(fragments)
+        UserDefaults.standard.set(true, forKey: spotlightReindexKey)
+    }
+
+    @MainActor
+    private func refreshImportantDateFeaturesIfNeeded() {
+        guard shouldRunDailyTask(key: importantDateRefreshKey) else { return }
         let ctx = sharedModelContainer.mainContext
         let dates = (try? ctx.fetch(FetchDescriptor<ImportantDate>())) ?? []
         WidgetDataStore.updateImportantDates(dates)
         ImportantDateNotifier.rescheduleAll(dates)
         ImportantDateFragmentRecorder.recordTodayItems(dates, in: ctx)
+        markDailyTaskRan(key: importantDateRefreshKey)
+    }
+
+    private func shouldRunDailyTask(key: String) -> Bool {
+        UserDefaults.standard.string(forKey: key) != Self.todayKey
+    }
+
+    private func markDailyTaskRan(key: String) {
+        UserDefaults.standard.set(Self.todayKey, forKey: key)
+    }
+
+    private static var todayKey: String {
+        let comps = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        return "\(comps.year ?? 0)-\(comps.month ?? 0)-\(comps.day ?? 0)"
     }
 }

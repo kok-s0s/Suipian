@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import ImageIO
 import Photos
 import UniformTypeIdentifiers
 import UIKit
@@ -60,7 +61,7 @@ enum LocalMediaStore {
         if isVideoURL(url) {
             return nil
         }
-        return UIImage(contentsOfFile: url.path)
+        return downsampleImage(at: url, targetSize: targetSize)
     }
 
     static func isVideoIdentifier(_ identifier: String) -> Bool {
@@ -96,5 +97,27 @@ enum LocalMediaStore {
     private static func isVideoURL(_ url: URL) -> Bool {
         guard let type = UTType(filenameExtension: url.pathExtension) else { return false }
         return type.conforms(to: .movie) || type.conforms(to: .video) || type.conforms(to: .mpeg4Movie)
+    }
+
+    private static func downsampleImage(at url: URL, targetSize: CGSize) -> UIImage? {
+        let options: [CFString: Any] = [
+            kCGImageSourceShouldCache: false
+        ]
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, options as CFDictionary) else {
+            return UIImage(contentsOfFile: url.path)
+        }
+
+        let scale = UIScreen.main.scale
+        let maxDimension = max(targetSize.width, targetSize.height) * scale
+        let thumbnailOptions: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(1, Int(maxDimension.rounded(.up)))
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbnailOptions as CFDictionary) else {
+            return UIImage(contentsOfFile: url.path)
+        }
+        return UIImage(cgImage: cgImage)
     }
 }

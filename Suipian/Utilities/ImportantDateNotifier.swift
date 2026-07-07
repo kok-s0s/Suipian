@@ -4,6 +4,7 @@ import SwiftData
 
 enum ImportantDateNotifier {
     private static let prefix = "important-date-"
+    private static let scheduleSignatureKey = "importantDateNotificationScheduleSignature"
 
     static func requestAuthorizationIfNeeded() async -> Bool {
         let center = UNUserNotificationCenter.current()
@@ -15,13 +16,18 @@ enum ImportantDateNotifier {
         return false
     }
 
-    static func rescheduleAll(_ dates: [ImportantDate]) {
+    static func rescheduleAll(_ dates: [ImportantDate], force: Bool = false) {
+        let signature = scheduleSignature(for: dates)
+        if !force, UserDefaults.standard.string(forKey: scheduleSignatureKey) == signature {
+            return
+        }
         let center = UNUserNotificationCenter.current()
         // Remove all important-date notifications first
         center.getPendingNotificationRequests { requests in
             let ids = requests.filter { $0.identifier.hasPrefix(prefix) }.map(\.identifier)
             center.removePendingNotificationRequests(withIdentifiers: ids)
             for d in dates where d.notificationEnabled { schedule(d) }
+            UserDefaults.standard.set(signature, forKey: scheduleSignatureKey)
         }
     }
 
@@ -122,6 +128,7 @@ enum ImportantDateNotifier {
     }
 
     static func remove(_ item: ImportantDate) {
+        UserDefaults.standard.removeObject(forKey: scheduleSignatureKey)
         let base = baseID(for: item)
         var ids = ["\(base)-day", "\(base)-advance"]
         for index in 0..<8 {
@@ -141,6 +148,25 @@ enum ImportantDateNotifier {
 
     private static func baseID(for item: ImportantDate) -> String {
         "\(prefix)\(item.persistentModelID)"
+    }
+
+    private static func scheduleSignature(for dates: [ImportantDate]) -> String {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date()).timeIntervalSinceReferenceDate
+        let itemSignatures = dates
+            .filter(\.notificationEnabled)
+            .sorted { "\($0.persistentModelID)" < "\($1.persistentModelID)" }
+            .map {
+                [
+                    "\($0.persistentModelID)",
+                    String(Int($0.date.timeIntervalSinceReferenceDate)),
+                    $0.title,
+                    $0.emoji,
+                    $0.recurrenceRule.rawValue,
+                    "\($0.advanceReminderDays)"
+                ].joined(separator: "|")
+            }
+        return ([String(Int(today))] + itemSignatures).joined(separator: "\n")
     }
 
     private enum ReminderKind {

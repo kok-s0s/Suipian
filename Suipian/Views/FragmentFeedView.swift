@@ -439,7 +439,6 @@ struct FragmentFeedView: View {
         .onAppear {
             rebuildAll(fragments: fragments)
             refreshDraftStatus()
-            WidgetDataStore.rebuildFragmentWidgets(fragments)
         }
         .onChange(of: fragments) { oldFragments, newFragments in
             // Milestone: immediate, no debounce needed
