@@ -47,6 +47,8 @@ struct FragmentEditView: View {
     @State private var isFetchingLocation = false
     @State private var showDraftRestoredBanner = false
     @State private var isSaving = false
+    @State private var saveStatusMessage = ""
+    @State private var saveMediaProgress: Double?
     @State private var saveErrorMessage: String?
 
     @Query(sort: \Fragment.date, order: .reverse) private var allFragments: [Fragment]
@@ -121,6 +123,12 @@ struct FragmentEditView: View {
             storyName = try c.decode(String.self, forKey: .storyName)
             mediaIdentifiers = (try? c.decode([String].self, forKey: .mediaIdentifiers)) ?? []
         }
+    }
+
+    private struct LocalizedMediaResult {
+        let identifiers: [String]
+        let coverIdentifier: String?
+        let createdLocalIdentifiers: [String]
     }
 
     private func saveDraft() {
@@ -700,6 +708,11 @@ struct FragmentEditView: View {
                 }
                 selectedItems = []
             }
+            .overlay {
+                if isSaving {
+                    SavingOverlay(message: saveStatusMessage, progress: saveMediaProgress)
+                }
+            }
         } // ScrollViewReader
         }
         .alert("保存失败", isPresented: Binding(
@@ -855,13 +868,26 @@ struct FragmentEditView: View {
     private func save() async {
         guard !isSaving else { return }
         isSaving = true
-        defer { isSaving = false }
+        saveStatusMessage = "正在保存"
+        saveMediaProgress = nil
+        defer {
+            isSaving = false
+            saveStatusMessage = ""
+            saveMediaProgress = nil
+        }
 
         let originalMediaIdentifiers = mediaIdentifiers
+        let originalCoverIdentifier = coverIdentifier
+        var createdLocalIDs: [String] = []
         do {
-            mediaIdentifiers = try await localizeMediaIdentifiers(mediaIdentifiers)
+            let localized = try await localizeMediaIdentifiers(mediaIdentifiers, coverIdentifier: coverIdentifier)
+            mediaIdentifiers = localized.identifiers
+            coverIdentifier = localized.coverIdentifier
+            createdLocalIDs = localized.createdLocalIdentifiers
         } catch {
             mediaIdentifiers = originalMediaIdentifiers
+            coverIdentifier = originalCoverIdentifier
+            createdLocalIDs.forEach { LocalMediaStore.delete(identifier: $0) }
             saveErrorMessage = "媒体保存到本机时失败，请检查 iCloud 照片下载状态或稍后重试。"
             return
         }
@@ -937,6 +963,8 @@ struct FragmentEditView: View {
             widgetFragmentsAfterSave = allFragments + [f]
         }
         do {
+            saveStatusMessage = "正在写入碎片"
+            saveMediaProgress = nil
             try modelContext.save()
             for id in localIDsToDeleteAfterSave { LocalMediaStore.delete(identifier: id) }
             if let oldSpotlightIDToRemove {
@@ -950,26 +978,80 @@ struct FragmentEditView: View {
             HapticFeedback.success()
             dismiss()
         } catch {
+            mediaIdentifiers = originalMediaIdentifiers
+            coverIdentifier = originalCoverIdentifier
             if let insertedFragment {
                 modelContext.delete(insertedFragment)
-                mediaIdentifiers
-                    .filter { LocalMediaStore.isLocalIdentifier($0) }
-                    .forEach { LocalMediaStore.delete(identifier: $0) }
             }
+            createdLocalIDs.forEach { LocalMediaStore.delete(identifier: $0) }
             saveErrorMessage = "数据写入失败：\(error.localizedDescription)"
         }
     }
 
-    private func localizeMediaIdentifiers(_ identifiers: [String]) async throws -> [String] {
+    private func localizeMediaIdentifiers(_ identifiers: [String], coverIdentifier: String?) async throws -> LocalizedMediaResult {
         var result: [String] = []
-        for id in identifiers {
-            let localID = try await LocalMediaStore.copyAssetIfNeeded(identifier: id)
-            if !result.contains(localID) { result.append(localID) }
+        var createdLocalIDs: [String] = []
+        let total = max(identifiers.count, 1)
+        do {
+            for (index, id) in identifiers.enumerated() {
+                saveStatusMessage = identifiers.count == 1
+                    ? "正在保存媒体"
+                    : "正在保存媒体 \(index + 1)/\(identifiers.count)"
+                saveMediaProgress = Double(index) / Double(total)
+                let localID = try await LocalMediaStore.copyAssetIfNeeded(identifier: id) { progress in
+                    Task { @MainActor in
+                        saveMediaProgress = (Double(index) + progress) / Double(total)
+                    }
+                }
+                if localID != id, LocalMediaStore.isLocalIdentifier(localID) {
+                    createdLocalIDs.append(localID)
+                }
+                if !result.contains(localID) { result.append(localID) }
+            }
+        } catch {
+            createdLocalIDs.forEach { LocalMediaStore.delete(identifier: $0) }
+            throw error
         }
+        saveMediaProgress = nil
+        let localizedCoverIdentifier: String?
         if let coverIdentifier, let index = identifiers.firstIndex(of: coverIdentifier), index < result.count {
-            self.coverIdentifier = result[index]
+            localizedCoverIdentifier = result[index]
+        } else {
+            localizedCoverIdentifier = coverIdentifier
         }
-        return result
+        return LocalizedMediaResult(
+            identifiers: result,
+            coverIdentifier: localizedCoverIdentifier,
+            createdLocalIdentifiers: createdLocalIDs
+        )
+    }
+}
+
+private struct SavingOverlay: View {
+    let message: String
+    let progress: Double?
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.18)
+                .ignoresSafeArea()
+            VStack(spacing: 12) {
+                if let progress {
+                    ProgressView(value: min(max(progress, 0), 1))
+                        .progressViewStyle(.linear)
+                        .frame(width: 180)
+                } else {
+                    ProgressView()
+                }
+                Text(message.isEmpty ? "正在保存" : message)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+            }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 18)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .shadow(color: .black.opacity(0.12), radius: 18, y: 8)
+        }
     }
 }
 

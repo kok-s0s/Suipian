@@ -249,7 +249,7 @@ struct MediaDetailView: View {
             if isVideo {
                 player = AVPlayer(url: url)
             } else {
-                image = UIImage(contentsOfFile: url.path)
+                image = LocalMediaStore.image(for: identifier, targetSize: Self.maxDetailSize)
             }
             loaded = true
             return

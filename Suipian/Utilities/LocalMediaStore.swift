@@ -24,7 +24,7 @@ enum LocalMediaStore {
         return mediaDirectory.appendingPathComponent(name)
     }
 
-    static func copyAssetIfNeeded(identifier: String) async throws -> String {
+    static func copyAssetIfNeeded(identifier: String, progressHandler: ((Double) -> Void)? = nil) async throws -> String {
         guard !isLocalIdentifier(identifier) else { return identifier }
 
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
@@ -38,6 +38,7 @@ enum LocalMediaStore {
 
         let options = PHAssetResourceRequestOptions()
         options.isNetworkAccessAllowed = true
+        options.progressHandler = progressHandler
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             PHAssetResourceManager.default().writeData(for: resource, toFile: destination, options: options) { error in
                 if let error {
@@ -61,6 +62,11 @@ enum LocalMediaStore {
         if isVideoURL(url) {
             return nil
         }
+        return downsampleImage(at: url, targetSize: targetSize)
+    }
+
+    static func image(for identifier: String, targetSize: CGSize) -> UIImage? {
+        guard let url = url(for: identifier), !isVideoURL(url) else { return nil }
         return downsampleImage(at: url, targetSize: targetSize)
     }
 
